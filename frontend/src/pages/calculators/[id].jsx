@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import toast from 'react-hot-toast';
+import Layout from '../../components/Layout';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import { calcAPI } from '../../services/api';
+import { CALCULATORS } from '../../utils/helpers';
+
+// ── Original 8 ──────────────────────────────────────────────────
+import ConcreteForm    from '../../features/calculators/ConcreteForm';
+import MasonryForm     from '../../features/calculators/MasonryForm';
+import PlasteringForm  from '../../features/calculators/PlasteringForm';
+import PaintForm       from '../../features/calculators/PaintForm';
+import RoofingForm     from '../../features/calculators/RoofingForm';
+import SteelForm       from '../../features/calculators/SteelForm';
+import EarthworkForm   from '../../features/calculators/EarthworkForm';
+import TilingForm      from '../../features/calculators/TilingForm';
+// ── New 5 ────────────────────────────────────────────────────────
+import CarpentryForm       from '../../features/calculators/CarpentryForm';
+import FormworkForm        from '../../features/calculators/FormworkForm';
+import RoofAccessoriesForm from '../../features/calculators/RoofAccessoriesForm';
+import DoorWindowForm      from '../../features/calculators/DoorWindowForm';
+import BrcDpmForm          from '../../features/calculators/BrcDpmForm';
+import ResultsPanel        from '../../features/calculators/ResultsPanel';
+
+const FORM_MAP = {
+  concrete:         ConcreteForm,
+  masonry:          MasonryForm,
+  plastering:       PlasteringForm,
+  paint:            PaintForm,
+  roofing:          RoofingForm,
+  steel:            SteelForm,
+  earthwork:        EarthworkForm,
+  tiling:           TilingForm,
+  carpentry:        CarpentryForm,
+  formwork:         FormworkForm,
+  'roof-accessories': RoofAccessoriesForm,
+  'door-window':    DoorWindowForm,
+  'brc-dpm':        BrcDpmForm
+};
+
+// Map calc ID to API method (handles hyphened IDs)
+function callCalcAPI(id, inputs) {
+  const apiMap = {
+    concrete:           calcAPI.concrete,
+    masonry:            calcAPI.masonry,
+    plastering:         calcAPI.plastering,
+    paint:              calcAPI.paint,
+    roofing:            calcAPI.roofing,
+    steel:              calcAPI.steel,
+    earthwork:          calcAPI.earthwork,
+    tiling:             calcAPI.tiling,
+    carpentry:          calcAPI.carpentry,
+    formwork:           calcAPI.formwork,
+    'roof-accessories': calcAPI.roofAccessories,
+    'door-window':      calcAPI.doorWindow,
+    'brc-dpm':          calcAPI.brcDpm
+  };
+  const fn = apiMap[id];
+  if (!fn) throw new Error(`No API method for calculator: ${id}`);
+  return fn(inputs);
+}
+
+export default function CalculatorPage() {
+  const router  = useRouter();
+  const { id }  = router.query;
+  const [result, setResult]   = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const calc = CALCULATORS.find(c => c.id === id);
+  const FormComponent = id ? FORM_MAP[id] : null;
+
+  if (!id || !calc) return null;
+
+  const handleCalculate = async (inputs) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await callCalcAPI(id, inputs);
+      setResult({ inputs, outputs: res.data, calculator_type: id });
+      toast.success('Calculation complete!');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Calculation failed';
+      if (err.response?.status === 402) {
+        toast.error(msg + ' — Upgrade your plan to continue.');
+        router.push('/subscription');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ProtectedRoute>
+      <Head><title>{calc.label} — QSToolkit</title></Head>
+      <Layout title={`${calc.icon} ${calc.label}`}>
+        <div className="max-w-5xl">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+            <a href="/calculators" className="hover:text-primary-700">Calculators</a>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">{calc.label}</span>
+            <span className="badge-blue ml-2">{calc.category}</span>
+          </div>
+
+          <div className="grid lg:grid-cols-5 gap-6">
+            {/* Input form */}
+            <div className="lg:col-span-2">
+              <div className="card sticky top-20">
+                <h2 className="section-title mb-4">{calc.icon} Inputs</h2>
+                {FormComponent ? (
+                  <FormComponent onCalculate={handleCalculate} loading={loading} />
+                ) : (
+                  <p className="text-gray-400 text-sm">Calculator form not found.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="lg:col-span-3">
+              <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} />
+            </div>
+          </div>
+        </div>
+      </Layout>
+    </ProtectedRoute>
+  );
+}
+
+export async function getStaticPaths() {
+  const paths = Object.keys(FORM_MAP).map(id => ({ params: { id } }));
+  return { paths, fallback: false };
+}
+
+export async function getStaticProps() {
+  return { props: {} };
+}

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: qstoolkit-api
+    env: node
+    region: oregon           # Closest available free region to West Africa
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: FRONTEND_URL
+        fromGroup: qstoolkit-secrets
+      - key: SUPABASE_URL
+        fromGroup: qstoolkit-secrets
+      - key: SUPABASE_SERVICE_KEY
+        fromGroup: qstoolkit-secrets
+      - key: SUPABASE_ANON_KEY
+        fromGroup: qstoolkit-secrets
+      - key: JWT_SECRET
+        fromGroup: qstoolkit-secrets
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: BREVO_API_KEY
+        fromGroup: qstoolkit-secrets
+      - key: BREVO_SENDER_EMAIL
+        value: noreply@qstoolkit.com
+      - key: BREVO_SENDER_NAME
+        value: QSToolkit
+      - key: PAYSTACK_SECRET_KEY
+        fromGroup: qstoolkit-secrets
+      - key: PAYSTACK_PUBLIC_KEY
+        fromGroup: qstoolkit-secrets
+      - key: CRON_SECRET
+        fromGroup: qstoolkit-secrets
