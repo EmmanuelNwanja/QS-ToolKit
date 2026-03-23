@@ -134,10 +134,12 @@ export const leaderboardAPI = {
 
 // ─── Subscriptions ─────────────────────────────────────────────
 export const subscriptionAPI = {
-  getPlans:    ()       => api.get('/subscriptions/plans'),
-  getMy:       ()       => api.get('/subscriptions/my'),
-  initiate:    (plan)   => api.post('/subscriptions/initiate', { plan_name: plan }),
-  verify:      (ref)    => api.get(`/subscriptions/verify?reference=${ref}`)
+  getPlans:             ()                         => api.get('/subscriptions/plans'),
+  getMy:                ()                         => api.get('/subscriptions/my'),
+  initiate:             (plan, billing, promoCode) => api.post('/subscriptions/initiate', { plan_name: plan, billing_cycle: billing, promo_code: promoCode }),
+  verify:               (ref)                      => api.get(`/subscriptions/verify?reference=${ref}`),
+  validatePromo:        (code, plan_name)          => api.post('/subscriptions/validate-promo', { code, plan_name }),
+  initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle })
 };
 
 // ─── Utilities ─────────────────────────────────────────────────

@@ -3,13 +3,15 @@ const ctrl = require('../controllers/subscriptionController');
 const { protect } = require('../middlewares/authMiddleware');
 
 // Public
-router.get('/plans',        ctrl.getPlans);
-router.post('/webhook',     ctrl.webhook);  // Paystack webhook (no auth)
+router.get('/plans',           ctrl.getPlans);
+router.post('/webhook',        ctrl.webhook);
 
 // Protected
 router.use(protect);
-router.get('/my',           ctrl.mySubscription);
-router.post('/initiate',    ctrl.initiate);
-router.get('/verify',       ctrl.verify);
+router.get('/my',              ctrl.mySubscription);
+router.post('/initiate',       ctrl.initiate);
+router.get('/verify',          ctrl.verify);
+router.post('/validate-promo', ctrl.validatePromo);
+router.post('/philanthropist', ctrl.initiatePhilanthropist);
 
 module.exports = router;
