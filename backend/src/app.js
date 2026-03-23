@@ -17,6 +17,7 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,          // set in Render dashboard
   'http://localhost:3000',
   'https://qs.solnuv.com',           // current live frontend
+  'https://server.solnuv.com',
   'https://qstoolkit.com',           // future primary domain
   'https://www.qstoolkit.com'
 ].filter(Boolean);                   // remove any undefined/null entries
