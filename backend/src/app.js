@@ -11,13 +11,30 @@ const app = express();
 
 // ── Security ──────────────────────────────────────────────────
 app.use(helmet());
+
+// Build allowed origins from env + hardcoded production domains
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,          // set in Render dashboard
+  'http://localhost:3000',
+  'https://qs.solnuv.com',           // current live frontend
+  'https://qstoolkit.com',           // future primary domain
+  'https://www.qstoolkit.com'
+].filter(Boolean);                   // remove any undefined/null entries
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://qstoolkit.com',
-    'https://www.qstoolkit.com'
-  ],
-  credentials: true
+  origin: (incomingOrigin, callback) => {
+    // Allow server-to-server / Postman / cron (no Origin header)
+    if (!incomingOrigin) return callback(null, true);
+    // Allow any Vercel preview deployment automatically
+    if (incomingOrigin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow whitelisted origins
+    if (ALLOWED_ORIGINS.includes(incomingOrigin)) return callback(null, true);
+    // Block everything else
+    callback(new Error(`CORS blocked: origin ${incomingOrigin} not allowed`));
+  },
+  credentials: true,
+  methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // ── Parsing ───────────────────────────────────────────────────
