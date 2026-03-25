@@ -14,7 +14,7 @@ const pushController = require('../controllers/pushController');
 router.get('/keys', pushController.getVapidKey);
 
 // ── AUTHENTICATED USER ROUTES ──────────────────────────────────
-router.use(authMiddleware.auth);
+router.use(authMiddleware.protect);
 
 /**
  * Subscribe user to push notifications

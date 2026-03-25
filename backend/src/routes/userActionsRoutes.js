@@ -8,7 +8,7 @@ const {
 const userActionsController = require('../controllers/userActionsController');
 
 // ── Apply authentication to all routes ──────────────────────
-router.use(authMiddleware.auth);
+router.use(authMiddleware.protect);
 router.use(adminAuth);
 
 // ── USER ACCOUNT ACTIONS ────────────────────────────────────

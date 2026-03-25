@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const analyticsController = require('../controllers/analyticsController');
-const { adminAuth, requirePermission } = require('../middlewares/authMiddleware');
+const { adminAuth, requirePermission } = require('../middlewares/adminMiddleware');
 
 // All analytics routes require admin auth and view_analytics permission
 router.use(adminAuth);

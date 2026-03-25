@@ -9,7 +9,7 @@ const {
 const adminController = require('../controllers/adminController');
 
 // ── Apply authentication to all admin routes ──────────────────
-router.use(authMiddleware.auth);
+router.use(authMiddleware.protect);
 
 // ── ADMIN VERIFICATION ────────────────────────────────────────
 router.get(

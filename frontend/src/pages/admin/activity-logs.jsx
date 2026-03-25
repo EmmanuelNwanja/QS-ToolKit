@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import ProtectedAdminRoute from '../../../components/ProtectedAdminRoute';
+import AdminLayout from '../../components/AdminLayout';
+import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 
 export default function ActivityLogs() {
   const [logs, setLogs] = useState([]);
