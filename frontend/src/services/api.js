@@ -157,8 +157,10 @@ export const adminAPI = {
   deletePromoCode:       (codeId) => api.delete(`/admin/promo-codes/${codeId}`),
   getUsers:              (params) => api.get('/admin/users', { params }),
   getSubscriptions:      (params) => api.get('/admin/subscriptions', { params }),
+  getPushNotifications:  () => api.get('/admin/notifications'),
+  sendPushNotification:  (data) => api.post('/admin/notifications', data),
   getActivityLogs:       (params) => api.get('/admin/activity-logs', { params }),
-  getAnalytics:          (params) => api.get('/admin/analytics', { params })
+  getAnalytics:          (params) => api.get('/analytics', { params })
 };
 
 // ─── Utilities ─────────────────────────────────────────────────

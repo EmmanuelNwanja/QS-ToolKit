@@ -34,7 +34,7 @@ export default function AdminUsers() {
     try {
       setLoading(true);
       const response = await adminAPI.getUsers({ status: filter });
-      setUsers(response.data.data.users || []);
+      setUsers(response.data?.data?.users || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message);

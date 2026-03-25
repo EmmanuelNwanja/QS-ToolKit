@@ -17,7 +17,7 @@ export default function Subscriptions() {
     try {
       setLoading(true);
       const response = await adminAPI.getSubscriptions({ status: filter });
-      setSubscriptions(response.data.data.subscriptions || []);
+      setSubscriptions(response.data?.data?.subscriptions || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message);

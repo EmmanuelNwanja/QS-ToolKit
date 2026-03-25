@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function PushNotifications() {
   const [notifications, setNotifications] = useState([]);
@@ -25,18 +27,11 @@ export default function PushNotifications() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/push-notifications/admin?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch notifications');
-      const data = await response.json();
-      setNotifications(data.data.notifications || []);
+      const response = await adminAPI.getPushNotifications({ limit: 50 });
+      setNotifications(response.data?.data?.notifications || []);
+      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || 'Failed to fetch notifications');
     } finally {
       setLoading(false);
     }
@@ -45,17 +40,8 @@ export default function PushNotifications() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/push-notifications/admin/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) throw new Error('Failed to create notification');
+      await adminAPI.sendPushNotification(formData);
+      toast.success('Notification sent successfully');
 
       setShowModal(false);
       setFormData({
@@ -69,7 +55,7 @@ export default function PushNotifications() {
 
       fetchNotifications();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.response?.data?.message || 'Failed to send notification');
     }
   };
 

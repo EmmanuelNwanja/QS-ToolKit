@@ -18,20 +18,28 @@ export default function AnalyticsDashboard() {
   const fetchData = async (tab) => {
     try {
       setLoading(true);
-      const params = `?startDate=${startDate}&endDate=${endDate}${tab !== 'summary' && tab !== 'cohorts' ? `&groupBy=${groupBy}` : ''}`;
+      const queryParams = {
+        startDate,
+        endDate,
+        ...(tab !== 'summary' && tab !== 'cohorts' && { groupBy })
+      };
 
-      let endpoint = `/analytics/summary`;
-      if (tab === 'growth') endpoint = `/analytics/growth`;
-      if (tab === 'revenue') endpoint = `/analytics/revenue`;
-      if (tab === 'subscriptions') endpoint = `/analytics/subscriptions`;
-      if (tab === 'cohorts') endpoint = `/analytics/cohorts`;
+      let endpoint = `/admin/analytics/summary`;
+      if (tab === 'growth') endpoint = `/admin/analytics/growth`;
+      if (tab === 'revenue') endpoint = `/admin/analytics/revenue`;
+      if (tab === 'subscriptions') endpoint = `/admin/analytics/subscriptions`;
+      if (tab === 'cohorts') endpoint = `/admin/analytics/cohorts`;
 
-      const response = await api.get(endpoint + params);
-      setData(response.data.data);
+      const response = await api.get(endpoint, { params: queryParams });
+      setData(response.data?.data);
       setError('');
     } catch (err) {
-      setError(err.message);
-      console.error('Error fetching analytics:', err);
+      console.error('Analytics error:', err);
+      if (err.response?.status === 401) {
+        setError('Unauthorized - Admin access required');
+      } else {
+        setError(err.response?.data?.message || err.message);
+      }
     } finally {
       setLoading(false);
     }

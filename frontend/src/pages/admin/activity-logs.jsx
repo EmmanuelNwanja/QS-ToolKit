@@ -18,7 +18,7 @@ export default function ActivityLogs() {
       setLoading(true);
       const params = filter !== 'all' ? { action: filter } : {};
       const response = await adminAPI.getActivityLogs(params);
-      setLogs(response.data.data.logs || []);
+      setLogs(response.data?.data?.logs || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
