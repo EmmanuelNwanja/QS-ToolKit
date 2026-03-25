@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
 
 export default function ActivityLogs() {
   const [logs, setLogs] = useState([]);
@@ -15,23 +16,12 @@ export default function ActivityLogs() {
   const fetchActivityLogs = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const params = new URLSearchParams();
-      if (filter !== 'all') {
-        params.append('action', filter);
-      }
-
-      const response = await fetch(`/api/admin/activity-logs?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch logs');
-      const data = await response.json();
-      setLogs(data.data.logs || []);
+      const params = filter !== 'all' ? { action: filter } : {};
+      const response = await adminAPI.getActivityLogs(params);
+      setLogs(response.data.data.logs || []);
+      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }

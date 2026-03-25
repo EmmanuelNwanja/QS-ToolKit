@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import api from '../../services/api';
 
 export default function AnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState('summary');
@@ -17,22 +18,16 @@ export default function AnalyticsDashboard() {
   const fetchData = async (tab) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
       const params = `?startDate=${startDate}&endDate=${endDate}${tab !== 'summary' && tab !== 'cohorts' ? `&groupBy=${groupBy}` : ''}`;
 
-      let endpoint = `/api/analytics/summary`;
-      if (tab === 'growth') endpoint = `/api/analytics/growth`;
-      if (tab === 'revenue') endpoint = `/api/analytics/revenue`;
-      if (tab === 'subscriptions') endpoint = `/api/analytics/subscriptions`;
-      if (tab === 'cohorts') endpoint = `/api/analytics/cohorts`;
+      let endpoint = `/analytics/summary`;
+      if (tab === 'growth') endpoint = `/analytics/growth`;
+      if (tab === 'revenue') endpoint = `/analytics/revenue`;
+      if (tab === 'subscriptions') endpoint = `/analytics/subscriptions`;
+      if (tab === 'cohorts') endpoint = `/analytics/cohorts`;
 
-      const response = await fetch(endpoint + params, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      const result = await response.json();
-      setData(result.data);
+      const response = await api.get(endpoint + params);
+      setData(response.data.data);
       setError('');
     } catch (err) {
       setError(err.message);

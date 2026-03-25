@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -14,16 +15,8 @@ export default function AdminDashboard() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/admin/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const data = await response.json();
-      setStats(data.data);
+      const response = await adminAPI.getStats();
+      setStats(response.data.data);
     } catch (err) {
       setError(err.message);
     } finally {

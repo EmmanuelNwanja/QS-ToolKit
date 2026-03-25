@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function PromoCodes() {
   const [promoCodes, setPromoCodes] = useState([]);
@@ -26,18 +28,11 @@ export default function PromoCodes() {
   const fetchPromoCodes = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/admin/promo-codes', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch promo codes');
-      const data = await response.json();
-      setPromoCodes(data.data.promoCodes || []);
+      const response = await adminAPI.getPromoCodes();
+      setPromoCodes(response.data.data.promoCodes || []);
+      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -46,7 +41,6 @@ export default function PromoCodes() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('authToken');
       const payload = {
         ...formData,
         discountPercent: formData.discountType === 'percent' ? parseInt(formData.discountPercent) : 0,
@@ -54,16 +48,8 @@ export default function PromoCodes() {
         maxUses: formData.maxUses ? parseInt(formData.maxUses) : null
       };
 
-      const response = await fetch('/api/admin/promo-codes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error('Failed to create promo code');
+      await adminAPI.createPromoCode(payload);
+      toast.success('Promo code created successfully');
       
       setShowModal(false);
       setFormData({
@@ -80,7 +66,7 @@ export default function PromoCodes() {
       
       fetchPromoCodes();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.response?.data?.message || 'Failed to create promo code');
     }
   };
 
@@ -90,18 +76,11 @@ export default function PromoCodes() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/admin/promo-codes/${codeId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to delete promo code');
+      await adminAPI.deletePromoCode(codeId);
+      toast.success('Promo code archived successfully');
       fetchPromoCodes();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.response?.data?.message || 'Failed to archive promo code');
     }
   };
 

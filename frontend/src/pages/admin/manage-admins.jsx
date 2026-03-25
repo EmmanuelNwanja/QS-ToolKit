@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState([]);
@@ -20,18 +22,11 @@ export default function ManageAdmins() {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/admin/admins', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch admins');
-      const data = await response.json();
-      setAdmins(data.data.admins || []);
+      const response = await adminAPI.getAdmins();
+      setAdmins(response.data.data.admins || []);
+      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -40,28 +35,17 @@ export default function ManageAdmins() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/admin/admins', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) throw new Error('Failed to create admin');
-
+      await adminAPI.createAdmin(formData);
+      toast.success('Admin created successfully');
       setShowModal(false);
       setFormData({
         userId: '',
         adminRole: 'admin',
         permissions: ['manage_promos', 'manage_users', 'view_analytics']
       });
-
       fetchAdmins();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.response?.data?.message || 'Failed to create admin');
     }
   };
 
@@ -71,18 +55,11 @@ export default function ManageAdmins() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/admin/admins/${adminId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to remove admin');
+      await adminAPI.removeAdmin(adminId);
+      toast.success('Admin removed successfully');
       fetchAdmins();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.response?.data?.message || 'Failed to remove admin');
     }
   };
 

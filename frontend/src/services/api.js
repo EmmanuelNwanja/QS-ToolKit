@@ -142,6 +142,25 @@ export const subscriptionAPI = {
   initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle })
 };
 
+// ─── Admin ─────────────────────────────────────────────────────
+export const adminAPI = {
+  verify:                () => api.get('/admin/verify'),
+  getStats:              () => api.get('/admin/stats'),
+  getAdmins:             () => api.get('/admin/admins'),
+  createAdmin:           (data) => api.post('/admin/admins', data),
+  updateAdminPermissions: (adminId, data) => api.patch(`/admin/admins/${adminId}`, data),
+  removeAdmin:           (adminId) => api.delete(`/admin/admins/${adminId}`),
+  getPromoCodes:         () => api.get('/admin/promo-codes'),
+  createPromoCode:       (data) => api.post('/admin/promo-codes', data),
+  getPromoCodeDetail:    (codeId) => api.get(`/admin/promo-codes/${codeId}`),
+  updatePromoCode:       (codeId, data) => api.patch(`/admin/promo-codes/${codeId}`, data),
+  deletePromoCode:       (codeId) => api.delete(`/admin/promo-codes/${codeId}`),
+  getUsers:              (params) => api.get('/admin/users', { params }),
+  getSubscriptions:      (params) => api.get('/admin/subscriptions', { params }),
+  getActivityLogs:       (params) => api.get('/admin/activity-logs', { params }),
+  getAnalytics:          (params) => api.get('/admin/analytics', { params })
+};
+
 // ─── Utilities ─────────────────────────────────────────────────
 export const downloadBlob = (blob, filename) => {
   const url = URL.createObjectURL(new Blob([blob]));

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import { adminAPI } from '../../services/api';
 
 export default function Subscriptions() {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -15,18 +16,11 @@ export default function Subscriptions() {
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/admin/subscriptions?status=${filter}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch subscriptions');
-      const data = await response.json();
-      setSubscriptions(data.data.subscriptions || []);
+      const response = await adminAPI.getSubscriptions({ status: filter });
+      setSubscriptions(response.data.data.subscriptions || []);
+      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }

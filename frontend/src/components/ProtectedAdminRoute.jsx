@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { adminAPI } from '../services/api';
 
 /**
  * ProtectedAdminRoute - Wrapper to ensure only admins can access certain pages
@@ -12,34 +13,16 @@ export default function ProtectedAdminRoute({ children }) {
   useEffect(() => {
     const checkAdminAccess = async () => {
       try {
-        const token = localStorage.getItem('qst_token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        // Verify user is admin by calling an admin endpoint
-        const response = await fetch('/api/admin/verify', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.status === 403) {
-          // User is not admin
+        await adminAPI.verify();
+        setIsAdmin(true);
+        setLoading(false);
+      } catch (err) {
+        console.error('Admin auth check failed:', err);
+        if (err.response?.status === 403) {
           router.push('/dashboard');
-          return;
-        }
-
-        if (response.ok) {
-          setIsAdmin(true);
-          setLoading(false);
         } else {
           router.push('/auth/login');
         }
-      } catch (err) {
-        console.error('Admin auth check failed:', err);
-        router.push('/auth/login');
       }
     };
 

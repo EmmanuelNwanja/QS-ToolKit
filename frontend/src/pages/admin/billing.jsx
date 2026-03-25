@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
+import api from '../../services/api';
 
 export default function BillingAudit() {
   const [activeTab, setActiveTab] = useState('revenue');
@@ -17,17 +18,11 @@ export default function BillingAudit() {
   const fetchRevenueReport = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(
-        `/api/billing/reports/revenue?startDate=${startDate}&endDate=${endDate}`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
+      const response = await api.get(
+        `/billing/reports/revenue`,
+        { params: { startDate, endDate } }
       );
-
-      if (!response.ok) throw new Error('Failed to fetch revenue report');
-      const result = await response.json();
-      setData(result.data);
+      setData(response.data.data);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -41,17 +36,12 @@ export default function BillingAudit() {
   const fetchChurnAnalysis = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(
-        `/api/billing/reports/churn?startDate=${startDate}&endDate=${endDate}`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
+      const response = await api.get(
+        `/billing/reports/churn`,
+        { params: { startDate, endDate } }
       );
 
-      if (!response.ok) throw new Error('Failed to fetch churn analysis');
-      const result = await response.json();
-      setData(result.data);
+      setData(response.data.data);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -70,17 +60,11 @@ export default function BillingAudit() {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(
-        `/api/billing/users/${userId}/transactions?startDate=${startDate}&endDate=${endDate}&limit=100`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
+      const response = await api.get(
+        `/billing/users/${userId}/transactions`,
+        { params: { startDate, endDate, limit: 100 } }
       );
-
-      if (!response.ok) throw new Error('Failed to fetch user transactions');
-      const result = await response.json();
-      setData(result.data);
+      setData(response.data.data);
       setError('');
     } catch (err) {
       setError(err.message);
