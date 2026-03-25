@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -9,12 +10,20 @@ import { projectAPI, feedbackAPI, leaderboardAPI, userAPI } from '../services/ap
 import { formatNaira, formatCompact, formatDate, CALCULATORS } from '../utils/helpers';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, planName } = useAuthStore();
   const [stats, setStats] = useState(null);
   const [rank, setRank]   = useState(null);
   const [usage, setUsage] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Redirect admins to admin dashboard
+  useEffect(() => {
+    if (user?.is_admin) {
+      router.replace('/admin');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     async function load() {

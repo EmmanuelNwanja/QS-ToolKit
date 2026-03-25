@@ -98,11 +98,26 @@ exports.login = async (req, res, next) => {
     const valid = await bcrypt.compare(password, user.password_hash || '');
     if (!valid) return res.status(401).json(error('Invalid email or password'));
 
+    // Check if user is a platform admin
+    const { data: adminUser } = await supabase
+      .from('admin_users')
+      .select('id, admin_role, permissions')
+      .eq('user_id', user.id)
+      .single();
+
     const token = generateToken(user);
+    const sanitized = sanitizeUser(user);
+
+    // Include admin info if user is an admin
+    if (adminUser) {
+      sanitized.is_admin = true;
+      sanitized.admin_role = adminUser.admin_role;
+      sanitized.permissions = adminUser.permissions;
+    }
 
     return res.json(success('Login successful', {
       token,
-      user: sanitizeUser(user)
+      user: sanitized
     }));
   } catch (err) {
     next(err);
@@ -150,11 +165,26 @@ exports.googleCallback = async (req, res, next) => {
       await supabase.from('branding_settings').insert({ user_id: user.id });
     }
 
+    // Check if user is a platform admin
+    const { data: adminUser } = await supabase
+      .from('admin_users')
+      .select('id, admin_role, permissions')
+      .eq('user_id', user.id)
+      .single();
+
     const token = generateToken(user);
+    const sanitized = sanitizeUser(user);
+
+    // Include admin info if user is an admin
+    if (adminUser) {
+      sanitized.is_admin = true;
+      sanitized.admin_role = adminUser.admin_role;
+      sanitized.permissions = adminUser.permissions;
+    }
 
     return res.json(success('Google login successful', {
       token,
-      user: sanitizeUser(user),
+      user: sanitized,
       needs_onboarding: !user.onboarding_completed
     }));
   } catch (err) {
@@ -190,7 +220,23 @@ exports.me = async (req, res, next) => {
       .eq('id', req.user.id)
       .single();
 
-    return res.json(success('User profile', { user: sanitizeUser(user) }));
+    // Check if user is a platform admin
+    const { data: adminUser } = await supabase
+      .from('admin_users')
+      .select('id, admin_role, permissions')
+      .eq('user_id', req.user.id)
+      .single();
+
+    const sanitized = sanitizeUser(user);
+
+    // Include admin info if user is an admin
+    if (adminUser) {
+      sanitized.is_admin = true;
+      sanitized.admin_role = adminUser.admin_role;
+      sanitized.permissions = adminUser.permissions;
+    }
+
+    return res.json(success('User profile', { user: sanitized }));
   } catch (err) {
     next(err);
   }

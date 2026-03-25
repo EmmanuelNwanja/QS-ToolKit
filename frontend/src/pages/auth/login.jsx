@@ -17,10 +17,15 @@ export default function LoginPage() {
     try {
       const user = await login(form.email, form.password);
       toast.success(`Welcome back, ${user.name}!`);
-      // Redirect based on whether onboarding is complete
+      // Redirect based on user type and onboarding status
       if (!user.onboarding_completed) {
         router.push('/auth/onboarding');
+      } else if (user.is_admin) {
+        // Redirect admins to admin dashboard
+        const redirect = router.query.redirect || '/admin';
+        router.push(redirect);
       } else {
+        // Redirect regular users to user dashboard
         const redirect = router.query.redirect || '/dashboard';
         router.push(redirect);
       }
