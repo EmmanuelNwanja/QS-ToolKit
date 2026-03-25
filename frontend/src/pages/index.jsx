@@ -41,7 +41,7 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>QSToolkit — Nigeria's Quantity Surveying Platform</title>
+        <title>QSToolkit — Your Quantity Surveying Toolkit</title>
       </Head>
 
       <div className="min-h-screen bg-white font-sans">
@@ -214,7 +214,8 @@ export default function LandingPage() {
         {/* ── Footer ──────────────────────────────────────── */}
         <footer className="bg-primary-900 text-primary-400 py-10 px-4 text-center text-sm">
           <p className="font-display text-white text-lg mb-2">QSToolkit</p>
-          <p>Nigeria's Quantity Surveying Platform · qstoolkit.com</p>
+          <p>Your Quantity Surveying Toolkit · qs.solnuv.com</p>
+          <p>Built by Fudo Greentech Ltd.</p>
           <div className="flex items-center justify-center gap-4 mt-4 text-xs">
             <Link href="/auth/login" className="hover:text-white">Login</Link>
             <Link href="/auth/register" className="hover:text-white">Register</Link>
