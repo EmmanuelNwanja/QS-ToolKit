@@ -39,21 +39,12 @@ async function sendExpiryReminders() {
       .lt('subscription_expires_at', in4Days.toISOString());
 
     for (const user of users || []) {
-      await emailService.sendEmail?.({
-        to: user.email,
-        subject: '⚠️ Your QSToolkit subscription expires in 3 days',
-        htmlContent: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:32px;">
-            <h2 style="color:#1a3c5e;">Subscription Expiry Reminder</h2>
-            <p>Hello ${user.name},</p>
-            <p>Your <strong>${user.subscription_plans?.name}</strong> plan on QSToolkit expires in 3 days.</p>
-            <p>Renew now to keep access to your tools, BOQs, and project data.</p>
-            <a href="${process.env.FRONTEND_URL}/subscription" 
-               style="background:#f59e0b;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px;font-weight:bold;">
-              Renew My Plan
-            </a>
-          </div>
-        `
+      await emailService.sendExpiryReminder({
+        email:     user.email,
+        name:      user.name,
+        planName:  user.subscription_plans?.name,
+        expiresAt: user.subscription_expires_at,
+        renewUrl:  `${process.env.FRONTEND_URL}/subscription`
       });
     }
 

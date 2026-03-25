@@ -13,7 +13,7 @@ const FEATURES = [
 const PLANS = [
   {
     name: 'Student',
-    price: '₦5',
+    price: '₦5000',
     period: '/month',
     color: 'border-gray-200',
     badge: null,
@@ -90,7 +90,7 @@ export default function LandingPage() {
               <Link href="/auth/register" className="btn-gold text-base px-8 py-3">
                 Start Free — No Credit Card
               </Link>
-              <Link href="/calculators" className="btn-secondary border-white/30 text-white hover:bg-white/10 text-base px-8 py-3">
+              <Link href="/calculators" className="btn-ghost text-base px-8 py-3">
                 Try a Calculator →
               </Link>
             </div>

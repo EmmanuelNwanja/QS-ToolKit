@@ -44,7 +44,13 @@ export default function SubscriptionPage() {
       subscriptionAPI.getPlans(),
       subscriptionAPI.getMy()
     ]).then(([p, s]) => {
-      if (p.status === 'fulfilled') setPlans(p.value.data.plans || []);
+      if (p.status === 'fulfilled') {
+        // Deduplicate by name in case DB has duplicate rows from multiple seed runs
+        const rawPlans = p.value.data.plans || [];
+        const seen = new Set();
+        const unique = rawPlans.filter(p => { if (seen.has(p.name)) return false; seen.add(p.name); return true; });
+        setPlans(unique);
+      }
       if (s.status === 'fulfilled') setMySub(s.value.data);
     }).finally(() => setLoading(false));
 
@@ -61,7 +67,9 @@ export default function SubscriptionPage() {
   // ── Price display helpers ──────────────────────────────────────
   const displayPrice = (plan) => {
     if (plan.price_monthly === 0) return 'Free';
-    const base = billing === 'annual' ? plan.price_annual : plan.price_monthly;
+    // Compute annual from monthly if price_annual column not yet populated in DB
+    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.88);
+    const base = billing === 'annual' ? annualPrice : plan.price_monthly;
     const promo = promoResults[plan.name];
     if (promo?.discount_percent) {
       const discounted = base * (1 - promo.discount_percent / 100);
@@ -84,8 +92,9 @@ export default function SubscriptionPage() {
   };
 
   const annualSavings = (plan) => {
-    if (!plan.price_annual || plan.price_monthly === 0) return null;
-    const saving = (plan.price_monthly * 12) - plan.price_annual;
+    if (plan.price_monthly === 0) return null;
+    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.88);
+    const saving = (plan.price_monthly * 12) - annualPrice;
     return `Save ₦${Math.round(saving).toLocaleString('en-NG')}/yr`;
   };
 

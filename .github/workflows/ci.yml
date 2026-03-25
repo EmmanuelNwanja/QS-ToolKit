@@ -1,4 +1,4 @@
-name: QSToolkit — Daily Jobs & CI
+name: QSToolkit — CI & Daily Jobs
 
 on:
   push:
@@ -6,64 +6,94 @@ on:
   pull_request:
     branches: [main]
   # Daily cron: 8AM WAT = 7AM UTC
+  # NOTE: GitHub disables cron on repos with no activity for 60 days.
+  # Re-enable by pushing any commit if it stops running.
   schedule:
     - cron: '0 7 * * *'
+  # Allow manual trigger from GitHub Actions UI at any time
+  workflow_dispatch:
+    inputs:
+      run_jobs:
+        description: 'Trigger daily jobs manually'
+        required: false
+        default: 'true'
 
 jobs:
-  # ── Lint / CI ──────────────────────────────────────────────
+  # ── CI: runs on push and pull_request ─────────────────────────
   ci:
-    name: 🔍 Lint & Validate
+    name: 🔍 CI — Lint & Build Check
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package.json
 
-      - name: Install backend deps
+      - name: Install backend dependencies
         working-directory: backend
-        run: npm install
+        run: npm install --prefer-offline
 
-      - name: Check backend files exist
+      - name: Verify backend structure
         working-directory: backend
         run: |
-          echo "✅ Backend structure check"
-          ls src/controllers/ src/routes/ src/services/
+          echo "── Backend Controllers ──"
+          ls src/controllers/
+          echo "── Backend Routes ──"
+          ls src/routes/
+          echo "── Backend Services ──"
+          ls src/services/
 
-      - name: Install frontend deps
+      - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install
+        run: npm install --prefer-offline
 
-      - name: Build frontend (type check)
+      - name: Build frontend
         working-directory: frontend
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api.qstoolkit.com/api/v1
+          NEXT_PUBLIC_API_URL: https://server.solnuv.com/api/v1
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: pk_test_placeholder
+          NEXT_PUBLIC_APP_URL: https://qs.solnuv.com
 
-  # ── Daily Cron Jobs ────────────────────────────────────────
+  # ── Daily jobs: runs on schedule OR manual dispatch ───────────
   daily-jobs:
-    name: ⏰ Daily Scheduled Jobs
+    name: ⏰ Daily Scheduled Jobs (8AM WAT)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Trigger scheduler endpoint
+      - name: Wake up Render backend (free tier cold start)
         run: |
-          echo "Triggering QSToolkit daily jobs..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" \
+          echo "Waking up Render backend..."
+          curl -sf https://server.solnuv.com/health --max-time 60 --retry 3 --retry-delay 10 || true
+          echo "Backend is awake."
+
+      - name: Run QSToolkit daily jobs
+        run: |
+          echo "Triggering daily jobs at $(date '+%Y-%m-%d %H:%M:%S UTC')..."
+          HTTP_STATUS=$(curl -s -o /tmp/cron_response.txt -w "%{http_code}" \
+            --max-time 60 \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            https://api.qstoolkit.com/api/v1/cron/run)
-          echo "Response: $response"
-          if [ "$response" != "200" ]; then
-            echo "❌ Cron job failed with status $response"
+            https://server.solnuv.com/api/v1/cron/run)
+
+          RESPONSE=$(cat /tmp/cron_response.txt)
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Daily jobs completed successfully"
+          else
+            echo "❌ Daily jobs failed with HTTP $HTTP_STATUS"
+            echo "Response body: $RESPONSE"
             exit 1
           fi
-          echo "✅ Daily jobs completed successfully"
+
+      - name: Report job time
+        if: always()
+        run: echo "Job ran at $(date '+%Y-%m-%d %H:%M:%S UTC') (WAT = UTC+1)"
