@@ -8,7 +8,7 @@ exports.list = async (req, res, next) => {
 
     let query = supabase
       .from('projects')
-      .select('*, users(name, company_name)', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);

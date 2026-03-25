@@ -67,7 +67,7 @@ exports.getByToken = async (req, res, next) => {
   try {
     const { data: link } = await supabase
       .from('feedback_links')
-      .select('*, projects(title, location), users(name, company_name)')
+      .select('*, projects(title, location)')
       .eq('token', req.params.token)
       .eq('is_active', true)
       .single();
