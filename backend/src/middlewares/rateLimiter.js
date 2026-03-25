@@ -5,11 +5,13 @@ exports.generalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  trustProxy: true,            // Trust X-Forwarded-For header from reverse proxy (Render)
   message: { success: false, message: 'Too many requests, please slow down.' }
 });
 
 exports.authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
+  trustProxy: true,            // Trust X-Forwarded-For header from reverse proxy (Render)
   message: { success: false, message: 'Too many auth attempts, try again later.' }
 });
