@@ -76,8 +76,7 @@ exports.getAdmins = async (req, res, next) => {
       .from('admin_users')
       .select(`
         *,
-        users!admin_users_user_id_fkey(id, email, name, created_at),
-        created_by_admin:admin_users!admin_users_created_by_fkey(users!admin_users_user_id_fkey(email))
+        users!admin_users_user_id_fkey(id, email, name, created_at)
       `)
       .order('created_at', { ascending: false });
 
@@ -227,6 +226,17 @@ exports.createPromoCode = async (req, res, next) => {
       return res.status(400).json(error('Discount percent cannot exceed 100'));
     }
 
+    // Normalize optional dates to null when empty
+    const normalizeDate = (value) => {
+      if (!value || value === '') return null;
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) return null;
+      return new Date(parsed).toISOString();
+    };
+
+    const normalizedValidFrom = normalizeDate(validFrom);
+    const normalizedExpiresAt = normalizeDate(expiresAt);
+
     // Create promo code
     const { data: newPromo, error: dbError } = await supabase
       .from('promo_codes')
@@ -238,8 +248,8 @@ exports.createPromoCode = async (req, res, next) => {
         discount_type: discountType,
         applicable_plans: applicablePlans,
         max_uses: maxUses,
-        valid_from: validFrom,
-        expires_at: expiresAt,
+        valid_from: normalizedValidFrom,
+        expires_at: normalizedExpiresAt,
         is_active: true,
         status: 'active',
         created_by: req.user.id
@@ -590,6 +600,15 @@ exports.sendPushNotification = async (req, res, next) => {
       scheduledFor
     } = req.body;
 
+    const normalizeDate = (value) => {
+      if (!value || value === '') return null;
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) return null;
+      return new Date(parsed).toISOString();
+    };
+
+    const normalizedScheduledFor = normalizeDate(scheduledFor);
+
     const { data: notification, error: dbError } = await supabase
       .from('push_notifications')
       .insert({
@@ -599,9 +618,9 @@ exports.sendPushNotification = async (req, res, next) => {
         image_url: imageUrl,
         action_url: actionUrl,
         target_segment: targetSegment,
-        scheduled_for: scheduledFor,
-        status: scheduledFor ? 'scheduled' : 'sent',
-        sent_at: scheduledFor ? null : new Date().toISOString()
+        scheduled_for: normalizedScheduledFor,
+        status: normalizedScheduledFor ? 'scheduled' : 'sent',
+        sent_at: normalizedScheduledFor ? null : new Date().toISOString()
       })
       .select()
       .single();

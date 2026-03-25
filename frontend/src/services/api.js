@@ -160,7 +160,7 @@ export const adminAPI = {
   getPushNotifications:  () => api.get('/admin/notifications'),
   sendPushNotification:  (data) => api.post('/admin/notifications', data),
   getActivityLogs:       (params) => api.get('/admin/activity-logs', { params }),
-  getAnalytics:          (params) => api.get('/analytics', { params })
+  getAnalytics:          (params) => api.get('/admin/analytics', { params })
 };
 
 // ─── Utilities ─────────────────────────────────────────────────
