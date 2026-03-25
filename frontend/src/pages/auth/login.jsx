@@ -17,8 +17,13 @@ export default function LoginPage() {
     try {
       const user = await login(form.email, form.password);
       toast.success(`Welcome back, ${user.name}!`);
-      const redirect = router.query.redirect || '/dashboard';
-      router.push(redirect);
+      // Redirect based on whether onboarding is complete
+      if (!user.onboarding_completed) {
+        router.push('/auth/onboarding');
+      } else {
+        const redirect = router.query.redirect || '/dashboard';
+        router.push(redirect);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
     } finally {

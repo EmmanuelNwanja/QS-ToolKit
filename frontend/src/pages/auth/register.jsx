@@ -40,7 +40,12 @@ export default function RegisterPage() {
       const { confirmPassword, ...payload } = form;
       const user = await register(payload);
       toast.success(`Welcome to QSToolkit, ${user.name}!`);
-      router.push('/dashboard');
+      // Redirect based on whether onboarding is complete
+      if (!user.onboarding_completed) {
+        router.push('/auth/onboarding');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
