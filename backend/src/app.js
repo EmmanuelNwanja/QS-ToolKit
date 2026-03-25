@@ -9,6 +9,10 @@ const routes = require('./routes');
 
 const app = express();
 
+// ── Trust Proxy ───────────────────────────────────────────────
+// Required for rate limiting and IP identification in production (Render, AWS, etc.)
+app.set('trust proxy', 1);
+
 // ── Security ──────────────────────────────────────────────────
 app.use(helmet());
 
