@@ -1,24 +1,14 @@
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from '../context/authStore';
 import '../styles/globals.css';
 
 export default function App({ Component, pageProps }) {
-  const router = useRouter();
   const init = useAuthStore((s) => s.init);
-  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     init();
   }, [init]);
-
-  useEffect(() => {
-    // Redirect admins to dashboard if they're on the auth pages
-    if (user?.is_admin && router.pathname.startsWith('/auth')) {
-      router.replace('/admin');
-    }
-  }, [user, router]);
 
   const getLayout = Component.getLayout ?? ((page) => page);
 

@@ -20,10 +20,10 @@ export default function DashboardPage() {
 
   // Redirect admins to admin dashboard
   useEffect(() => {
-    if (user?.is_admin) {
+    if (user && user.is_admin) {
       router.replace('/admin');
     }
-  }, [user, router]);
+  }, [user?.id, router]);
 
   useEffect(() => {
     async function load() {

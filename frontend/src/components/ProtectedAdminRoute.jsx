@@ -12,7 +12,7 @@ export default function ProtectedAdminRoute({ children }) {
   useEffect(() => {
     const checkAdminAccess = async () => {
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('qst_token');
         if (!token) {
           router.push('/auth/login');
           return;
