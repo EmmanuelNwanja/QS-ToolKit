@@ -60,7 +60,7 @@ exports.register = async (req, res, next) => {
         plan_id: freePlan?.id,
         subscription_status: 'inactive'
       })
-      .select()
+      .select('*, subscription_plans(*)')
       .single();
 
     if (dbError) throw new Error(dbError.message);
@@ -172,7 +172,7 @@ exports.completeOnboarding = async (req, res, next) => {
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select()
+      .select('*, subscription_plans(*)')
       .single();
 
     return res.json(success('Onboarding complete', { user: sanitizeUser(user) }));

@@ -25,7 +25,7 @@ exports.updateProfile = async (req, res, next) => {
     allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
     updates.updated_at = new Date();
 
-    const { data } = await supabase.from('users').update(updates).eq('id', req.user.id).select().single();
+    const { data } = await supabase.from('users').update(updates).eq('id', req.user.id).select('*, subscription_plans(*)').single();
     const { password_hash, ...safe } = data;
     return res.json(success('Profile updated', { user: safe }));
   } catch (err) { next(err); }
