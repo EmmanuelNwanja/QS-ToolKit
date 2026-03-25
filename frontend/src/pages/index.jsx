@@ -76,7 +76,7 @@ export default function LandingPage() {
           </div>
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm mb-6">
-              <span className="text-gold-400">🇳🇬</span> Built exclusively for Nigerian Quantity Surveyors
+              <span className="text-gold-400">🇳🇬</span> Built for Nigerian Quantity Surveyors
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
               Every QS Tool You Need,<br />
