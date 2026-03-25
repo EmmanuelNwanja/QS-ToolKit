@@ -24,14 +24,9 @@ export default function AnalyticsDashboard() {
         ...(tab !== 'summary' && tab !== 'cohorts' && { groupBy })
       };
 
-      let endpoint = `/admin/analytics/summary`;
-      if (tab === 'growth') endpoint = `/admin/analytics/growth`;
-      if (tab === 'revenue') endpoint = `/admin/analytics/revenue`;
-      if (tab === 'subscriptions') endpoint = `/admin/analytics/subscriptions`;
-      if (tab === 'cohorts') endpoint = `/admin/analytics/cohorts`;
-
+      const endpoint = `/admin/analytics`;
       const response = await api.get(endpoint, { params: queryParams });
-      setData(response.data?.data);
+      setData(response.data?.data || response.data);
       setError('');
     } catch (err) {
       console.error('Analytics error:', err);

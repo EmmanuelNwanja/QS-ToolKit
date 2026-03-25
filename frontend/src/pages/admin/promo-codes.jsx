@@ -29,7 +29,7 @@ export default function PromoCodes() {
     try {
       setLoading(true);
       const response = await adminAPI.getPromoCodes();
-      setPromoCodes(response.data?.data?.promoCodes || []);
+      setPromoCodes(response.data?.promoCodes || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message);

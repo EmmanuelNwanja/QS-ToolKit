@@ -23,7 +23,7 @@ export default function ManageAdmins() {
     try {
       setLoading(true);
       const response = await adminAPI.getAdmins();
-      setAdmins(response.data?.data?.admins || []);
+      setAdmins(response.data?.admins || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch admins');

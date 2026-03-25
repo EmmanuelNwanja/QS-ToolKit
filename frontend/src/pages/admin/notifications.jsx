@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
-import { adminAPI } from '../../services/api';
+import api, { adminAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function PushNotifications() {
@@ -28,7 +28,7 @@ export default function PushNotifications() {
     try {
       setLoading(true);
       const response = await adminAPI.getPushNotifications({ limit: 50 });
-      setNotifications(response.data?.data?.notifications || []);
+      setNotifications(response.data?.notifications || []);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch notifications');
@@ -61,19 +61,11 @@ export default function PushNotifications() {
 
   const handleViewDetails = async (notification) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/push-notifications/admin/${notification.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch details');
-      const data = await response.json();
-      setSelectedNotification(data.data);
+      const response = await api.get(`/push-notifications/admin/${notification.id}`);
+      setSelectedNotification(response.data?.data || response.data);
       setShowDetails(true);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     }
   };
 
@@ -83,19 +75,11 @@ export default function PushNotifications() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/push-notifications/admin/${notificationId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to cancel notification');
+      await api.post(`/push-notifications/admin/${notificationId}/cancel`);
       fetchNotifications();
       setShowDetails(false);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     }
   };
 

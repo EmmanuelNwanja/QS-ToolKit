@@ -16,7 +16,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const response = await adminAPI.getStats();
-      setStats(response.data?.data);
+      setStats(response.data?.data || response.data);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
