@@ -38,7 +38,9 @@ app.use(cors({
     callback(new Error(`CORS blocked: origin ${incomingOrigin} not allowed`));
   },
   credentials: true,
-  methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+  methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  // 👇 THIS IS THE LINE YOU MUST ADD 👇
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id', 'Accept', 'Origin']
 }));
 
 // ── Parsing ───────────────────────────────────────────────────
