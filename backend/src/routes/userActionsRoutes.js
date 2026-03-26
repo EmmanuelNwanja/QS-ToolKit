@@ -88,13 +88,23 @@ router.post(
 );
 
 /**
- * Process refund
+ * Process refund (by subscription ID — legacy)
  */
 router.post(
   '/refund/:subscriptionId',
   requirePermission('manage_billing'),
   trackAdminActivity('processed_refund', 'refund'),
   userActionsController.processRefund
+);
+
+/**
+ * Process refund by user ID
+ */
+router.post(
+  '/:userId/refund',
+  requirePermission('manage_billing'),
+  trackAdminActivity('processed_refund', 'refund'),
+  userActionsController.processRefundByUser
 );
 
 module.exports = router;

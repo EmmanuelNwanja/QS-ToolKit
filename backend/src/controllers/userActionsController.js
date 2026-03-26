@@ -177,14 +177,13 @@ exports.verifyUser = async (req, res, next) => {
 exports.overrideSubscription = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { planId, billingCycle = 'monthly', expiresAt, reason } = req.body;
+    const { planId, plan_name, billingCycle = 'monthly', expiresAt, reason } = req.body;
 
-    // Verify plan exists
-    const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('id, name, price_monthly')
-      .eq('id', planId)
-      .single();
+    // Look up plan by name (preferred) or by UUID
+    const planQuery = supabase.from('subscription_plans').select('id, name, price_monthly');
+    const { data: plan, error: planError } = plan_name
+      ? await planQuery.ilike('name', plan_name).single()
+      : await planQuery.eq('id', planId).single();
 
     if (planError || !plan) {
       return res.status(404).json(error('Plan not found'));
@@ -509,6 +508,82 @@ exports.processRefund = async (req, res, next) => {
     }));
   } catch (err) {
     logger.error('Error processing refund:', err);
+    next(err);
+  }
+};
+
+/**
+ * Process refund by user ID — looks up the user's latest paid subscription automatically
+ */
+exports.processRefundByUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason, method } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json(error('Amount must be greater than 0'));
+    }
+    if (!method) {
+      return res.status(400).json(error('Refund method required: original_payment, credit, or paystack'));
+    }
+
+    // Find the user's most recent paid subscription
+    const { data: subscription, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (subError || !subscription) {
+      return res.status(404).json(error('No subscription found for this user'));
+    }
+
+    // Find the matching payment transaction
+    const { data: originalTx } = await supabase
+      .from('billing_transactions')
+      .select('*')
+      .eq('subscription_id', subscription.id)
+      .eq('type', 'payment')
+      .order('transaction_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!originalTx) {
+      return res.status(404).json(error('No payment transaction found for this user\'s subscription'));
+    }
+
+    const refundTx = await billingAuditService.processRefund(
+      userId,
+      subscription.id,
+      { amount, reason, method, originalTransactionReference: originalTx.paystack_reference }
+    );
+
+    // Send notification email
+    try {
+      const { data: user } = await supabase.from('users').select('email, name').eq('id', userId).single();
+      if (user) await emailService.sendRefundNotification(user, { amount, reason, method });
+    } catch (emailErr) {
+      logger.warn('Failed to send refund notification email:', emailErr);
+    }
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'processed_refund',
+      'subscription',
+      subscription.id,
+      { amount, reason, method, transactionId: refundTx.id },
+      req
+    );
+
+    return res.json(success('Refund processed successfully', {
+      refund: refundTx,
+      subscriptionId: subscription.id,
+      userId
+    }));
+  } catch (err) {
+    logger.error('Error processing refund by user:', err);
     next(err);
   }
 };

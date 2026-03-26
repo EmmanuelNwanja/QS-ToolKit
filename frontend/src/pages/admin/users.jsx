@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
-import { adminAPI } from '../../services/api';
+import { adminAPI, userActionsAPI } from '../../services/api';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -49,25 +49,48 @@ export default function AdminUsers() {
 
     try {
       setSubmitting(true);
-      const token = localStorage.getItem('authToken');
-      const endpoint = `/api/user-actions/${selectedUser.id}/${actionType}`;
-      const payload = {
-        ...actionData,
-        timestamp: new Date().toISOString()
-      };
+      const uid = selectedUser.id;
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Action failed');
+      switch (actionType) {
+        case 'suspend':
+          await userActionsAPI.suspend(uid, { reason: actionData.reason });
+          break;
+        case 'unsuspend':
+          await userActionsAPI.unsuspend(uid);
+          break;
+        case 'verify':
+          await userActionsAPI.verify(uid);
+          break;
+        case 'override_subscription':
+          await userActionsAPI.overrideSubscription(uid, {
+            plan_name: actionData.plan_name,
+            billingCycle: actionData.billing_cycle || 'monthly'
+          });
+          break;
+        case 'extend_subscription':
+          await userActionsAPI.extendSubscription(uid, {
+            days: actionData.days,
+            reason: actionData.reason
+          });
+          break;
+        case 'revoke_subscription':
+          await userActionsAPI.revokeSubscription(uid, { reason: actionData.reason });
+          break;
+        case 'issue_credit':
+          await userActionsAPI.issueCredit(uid, {
+            amount: actionData.amount,
+            reason: actionData.reason
+          });
+          break;
+        case 'process_refund':
+          await userActionsAPI.processRefund(uid, {
+            amount: actionData.amount,
+            reason: actionData.reason,
+            method: actionData.method
+          });
+          break;
+        default:
+          throw new Error(`Unknown action: ${actionType}`);
       }
 
       // Refresh users list
@@ -78,8 +101,9 @@ export default function AdminUsers() {
       setActionType('');
       setActionData({});
       setSelectedUser(null);
+      setError(null);
     } catch (err) {
-      setError(err.message || 'Failed to perform action');
+      setError(err.response?.data?.message || err.message || 'Failed to perform action');
       console.error('Error performing action:', err);
     } finally {
       setSubmitting(false);
@@ -279,8 +303,8 @@ export default function AdminUsers() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">New Plan</label>
                       <select
-                        value={actionData.plan_id || ''}
-                        onChange={(e) => setActionData({ ...actionData, plan_id: e.target.value })}
+                        value={actionData.plan_name || ''}
+                        onChange={(e) => setActionData({ ...actionData, plan_name: e.target.value })}
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >

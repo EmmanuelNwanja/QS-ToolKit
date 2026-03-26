@@ -163,6 +163,18 @@ export const subscriptionAPI = {
   initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle })
 };
 
+// ─── User Actions (admin) ──────────────────────────────────────
+export const userActionsAPI = {
+  suspend:              (userId, data) => api.post(`/user-actions/${userId}/suspend`, data),
+  unsuspend:            (userId)       => api.post(`/user-actions/${userId}/unsuspend`),
+  verify:               (userId)       => api.post(`/user-actions/${userId}/verify`),
+  overrideSubscription: (userId, data) => api.post(`/user-actions/${userId}/subscription/override`, data),
+  extendSubscription:   (userId, data) => api.post(`/user-actions/${userId}/subscription/extend`, data),
+  revokeSubscription:   (userId, data) => api.post(`/user-actions/${userId}/subscription/revoke`, data),
+  issueCredit:          (userId, data) => api.post(`/user-actions/${userId}/credit`, data),
+  processRefund:        (userId, data) => api.post(`/user-actions/${userId}/refund`, data),
+};
+
 // ─── Admin ─────────────────────────────────────────────────────
 export const adminAPI = {
   verify:                () => api.get('/admin/verify'),
