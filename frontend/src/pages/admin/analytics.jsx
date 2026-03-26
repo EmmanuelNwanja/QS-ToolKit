@@ -14,6 +14,10 @@ export default function AnalyticsDashboard() {
   const [groupBy, setGroupBy] = useState('day');
   const [data, setData] = useState(null);
 
+  const lastUpdated = data?.generated_at
+    ? new Date(data.generated_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
+    : '';
+
   // Fetch data based on active tab — each tab uses its own dedicated endpoint
   const fetchData = async (tab) => {
     try {
@@ -315,6 +319,7 @@ export default function AnalyticsDashboard() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Advanced Analytics</h1>
             <p className="text-gray-600">Comprehensive insights into user growth, revenue, and subscriptions</p>
+            {lastUpdated && <p className="text-xs text-gray-500 mt-1">Last refreshed: {lastUpdated}</p>}
           </div>
 
           {/* Error */}

@@ -24,6 +24,10 @@ export default function AdminDashboard() {
     }
   };
 
+  const lastUpdated = stats?.generated_at
+    ? new Date(stats.generated_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
+    : '';
+
   return (
     <ProtectedAdminRoute>
       <AdminLayout>
@@ -44,7 +48,11 @@ export default function AdminDashboard() {
               {error}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <>
+              {lastUpdated && (
+                <p className="text-xs text-gray-500">Last refreshed: {lastUpdated}</p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Total Users */}
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center justify-between">
@@ -97,6 +105,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* Quick Actions */}

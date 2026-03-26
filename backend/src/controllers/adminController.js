@@ -648,23 +648,41 @@ exports.sendPushNotification = async (req, res, next) => {
  */
 exports.getDashboardStats = async (req, res, next) => {
   try {
+    const nowIso = new Date().toISOString();
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     const { count: totalUsers } = await supabase
       .from('users')
       .select('id', { count: 'exact' });
 
-    const { count: activeSubscriptions } = await supabase
+    const { data: activeSubscriptionRows } = await supabase
       .from('users')
-      .select('id', { count: 'exact' })
+      .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
 
-    const { data: revenue } = await supabase
-      .from('users')
-      .select('subscription_plans(price_monthly)')
-      .eq('subscription_status', 'active');
+    const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
+      return !u.subscription_expires_at || u.subscription_expires_at > nowIso;
+    }).length;
 
-    const totalRevenue = (revenue || []).reduce((sum, user) => {
-      return sum + (user.subscription_plans?.price_monthly || 0);
-    }, 0) * 30;
+    const [{ data: payments }, { data: refunds }] = await Promise.all([
+      supabase
+        .from('billing_transactions')
+        .select('amount')
+        .eq('type', 'payment')
+        .eq('status', 'completed'),
+      supabase
+        .from('billing_transactions')
+        .select('amount')
+        .eq('type', 'refund')
+        .eq('status', 'completed')
+    ]);
+
+    const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const totalRefunds = (refunds || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+    const totalRevenue = grossRevenue - totalRefunds;
 
     const { count: activePromoCodes } = await supabase
       .from('promo_codes')
@@ -675,7 +693,8 @@ exports.getDashboardStats = async (req, res, next) => {
       totalUsers,
       activeSubscriptions,
       totalRevenue,
-      activePromoCodes
+      activePromoCodes,
+      generated_at: nowIso
     }));
   } catch (err) {
     next(err);
@@ -687,6 +706,12 @@ exports.getDashboardStats = async (req, res, next) => {
  */
 exports.getAnalytics = async (req, res, next) => {
   try {
+    const nowIso = new Date().toISOString();
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     const { range = '30d' } = req.query;
 
     const now = new Date();
@@ -716,26 +741,41 @@ exports.getAnalytics = async (req, res, next) => {
       .select('id', { count: 'exact' })
       .gte('created_at', startDate.toISOString());
 
-    const { count: activeSubscriptions } = await supabase
+    const { data: activeSubscriptionRows } = await supabase
       .from('users')
-      .select('id', { count: 'exact' })
+      .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
 
-    const { data: revenue } = await supabase
-      .from('users')
-      .select('subscription_plans(price_monthly)')
-      .eq('subscription_status', 'active');
+    const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
+      return !u.subscription_expires_at || u.subscription_expires_at > nowIso;
+    }).length;
 
-    const totalRevenue = (revenue || []).reduce((sum, user) => {
-      return sum + (user.subscription_plans?.price_monthly || 0);
-    }, 0);
+    const [{ data: payments }, { data: refunds }] = await Promise.all([
+      supabase
+        .from('billing_transactions')
+        .select('amount')
+        .eq('type', 'payment')
+        .eq('status', 'completed')
+        .gte('transaction_date', startDate.toISOString()),
+      supabase
+        .from('billing_transactions')
+        .select('amount')
+        .eq('type', 'refund')
+        .eq('status', 'completed')
+        .gte('transaction_date', startDate.toISOString())
+    ]);
+
+    const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const totalRefunds = (refunds || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+    const totalRevenue = grossRevenue - totalRefunds;
 
     return res.json(success('Analytics retrieved', {
       totalUsers,
       newSignups,
       activeSubscriptions,
       totalRevenue,
-      dateRange: range
+      dateRange: range,
+      generated_at: nowIso
     }));
   } catch (err) {
     next(err);

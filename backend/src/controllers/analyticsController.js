@@ -2,11 +2,18 @@ const analyticsService = require('../services/analyticsService');
 const logger = require('../utils/logger');
 const { logAdminActivity } = require('../middlewares/adminMiddleware');
 
+function setNoCache(res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+}
+
 /**
  * Get user growth metrics and trends
  */
 exports.getUserGrowth = async (req, res, next) => {
   try {
+    setNoCache(res);
     const { startDate, endDate, groupBy } = req.query;
 
     const growth = await analyticsService.getUserGrowth({
@@ -43,6 +50,7 @@ exports.getUserGrowth = async (req, res, next) => {
  */
 exports.getRevenueTrend = async (req, res, next) => {
   try {
+    setNoCache(res);
     const { startDate, endDate, groupBy } = req.query;
 
     const trend = await analyticsService.getRevenueTrend({
@@ -79,6 +87,7 @@ exports.getRevenueTrend = async (req, res, next) => {
  */
 exports.getSubscriptionMetrics = async (req, res, next) => {
   try {
+    setNoCache(res);
     const { startDate, endDate } = req.query;
 
     const metrics = await analyticsService.getSubscriptionMetrics({
@@ -114,6 +123,7 @@ exports.getSubscriptionMetrics = async (req, res, next) => {
  */
 exports.getCohortAnalysis = async (req, res, next) => {
   try {
+    setNoCache(res);
     const { startDate, endDate } = req.query;
 
     const cohorts = await analyticsService.getCohortAnalysis({
@@ -149,6 +159,7 @@ exports.getCohortAnalysis = async (req, res, next) => {
  */
 exports.getDashboardSummary = async (req, res, next) => {
   try {
+    setNoCache(res);
     const { startDate, endDate } = req.query;
 
     const summary = await analyticsService.getDashboardSummary({
