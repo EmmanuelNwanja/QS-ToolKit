@@ -27,8 +27,11 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('qst_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
 
-    const deviceId = getOrCreateDeviceId();
-    if (deviceId) config.headers['X-Device-Id'] = deviceId;
+    const url = String(config.url || '');
+    if (url.startsWith('/auth/')) {
+      const deviceId = getOrCreateDeviceId();
+      if (deviceId) config.headers['X-Device-Id'] = deviceId;
+    }
   }
   return config;
 });
