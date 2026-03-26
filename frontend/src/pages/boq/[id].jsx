@@ -325,10 +325,11 @@ export default function BoqDetailPage() {
 
                       <div className="grid sm:grid-cols-12 gap-2 items-center">
                         <input className="input sm:col-span-1" placeholder="No" value={form.item_no} onChange={(e) => setItemField(section.id, 'item_no', e.target.value)} />
-                        <input className="input sm:col-span-4" placeholder="Description" value={form.description} onChange={(e) => setItemField(section.id, 'description', e.target.value)} />
+                        <input className="input sm:col-span-3" placeholder="Description" value={form.description} onChange={(e) => setItemField(section.id, 'description', e.target.value)} />
                         <input className="input sm:col-span-1" placeholder="Unit" value={form.unit} onChange={(e) => setItemField(section.id, 'unit', e.target.value)} />
                         <input type="number" step="0.001" className="input sm:col-span-2" placeholder="Qty" value={form.quantity} onChange={(e) => setItemField(section.id, 'quantity', e.target.value)} />
                         <input type="number" step="0.01" className="input sm:col-span-2" placeholder="Rate (optional)" value={form.rate} onChange={(e) => setItemField(section.id, 'rate', e.target.value)} />
+                        <input className="input sm:col-span-1 bg-gray-50" placeholder="Amount" value={Number(form.quantity || 0) * Number(form.rate || 0)} readOnly />
                         <button
                           type="button"
                           onClick={() => addItem(section.id)}

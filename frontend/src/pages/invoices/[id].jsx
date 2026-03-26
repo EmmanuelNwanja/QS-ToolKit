@@ -11,6 +11,16 @@ function blankItem() {
   return { description: '', unit: '', quantity: 1, unit_price: 0 };
 }
 
+const CURRENCY_OPTS = ['NGN', 'USD', 'GBP', 'EUR'];
+
+function formatMoney(currency, amount) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: currency || 'NGN',
+    maximumFractionDigits: 2
+  }).format(Number(amount || 0));
+}
+
 export default function InvoiceDetailPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -22,6 +32,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState(null);
   const [form, setForm] = useState({
     invoice_type: 'invoice',
+    currency: 'NGN',
     client_name: '',
     client_email: '',
     due_date: '',
@@ -48,6 +59,7 @@ export default function InvoiceDetailPage() {
       setInvoice(inv);
       setForm({
         invoice_type: inv.invoice_type || 'invoice',
+        currency: inv.currency || 'NGN',
         client_name: inv.client_name || '',
         client_email: inv.client_email || '',
         due_date: inv.due_date ? String(inv.due_date).slice(0, 10) : '',
@@ -101,7 +113,9 @@ export default function InvoiceDetailPage() {
 
     setSaving(true);
     try {
-      await invoiceAPI.update(id, { ...form, items: cleanItems });
+      // Backend schema does not currently persist invoice currency.
+      const { currency, ...rest } = form;
+      await invoiceAPI.update(id, { ...rest, items: cleanItems });
       await fetchInvoice();
       toast.success('Invoice updated');
     } catch (err) {
@@ -180,6 +194,14 @@ export default function InvoiceDetailPage() {
           <form className="card space-y-5" onSubmit={saveInvoice}>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
+                <label className="label">Currency</label>
+                <select className="input" value={form.currency} onChange={(e) => setField('currency', e.target.value)}>
+                  {CURRENCY_OPTS.map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="label">Document Type <span className="text-red-500">*</span></label>
                 <select className="input" value={form.invoice_type} onChange={(e) => setField('invoice_type', e.target.value)}>
                   <option value="invoice">Invoice</option>
@@ -233,10 +255,11 @@ export default function InvoiceDetailPage() {
               <div className="space-y-3">
                 {items.map((item, idx) => (
                   <div key={idx} className="grid sm:grid-cols-12 gap-2 items-center">
-                    <input className="input sm:col-span-5" placeholder="Description" value={item.description} onChange={(e) => setItemField(idx, 'description', e.target.value)} />
-                    <input className="input sm:col-span-2" placeholder="Unit" value={item.unit || ''} onChange={(e) => setItemField(idx, 'unit', e.target.value)} />
+                    <input className="input sm:col-span-4" placeholder="Description" value={item.description} onChange={(e) => setItemField(idx, 'description', e.target.value)} />
+                    <input className="input sm:col-span-1" placeholder="Unit" value={item.unit || ''} onChange={(e) => setItemField(idx, 'unit', e.target.value)} />
                     <input type="number" min="1" step="0.001" className="input sm:col-span-2" placeholder="Qty" value={item.quantity} onChange={(e) => setItemField(idx, 'quantity', e.target.value)} />
                     <input type="number" min="0" step="0.01" className="input sm:col-span-2" placeholder="Unit Price" value={item.unit_price} onChange={(e) => setItemField(idx, 'unit_price', e.target.value)} />
+                    <input className="input sm:col-span-2 bg-gray-50" value={formatMoney(form.currency, Number(item.quantity || 0) * Number(item.unit_price || 0))} readOnly />
                     <button type="button" className="btn-secondary sm:col-span-1" onClick={() => removeItem(idx)} disabled={items.length === 1}>X</button>
                   </div>
                 ))}
@@ -249,10 +272,10 @@ export default function InvoiceDetailPage() {
             </div>
 
             <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 grid sm:grid-cols-2 gap-2 text-sm">
-              <p className="text-gray-600">Subtotal: <span className="font-semibold text-gray-900">{formatNaira(totals.subtotal)}</span></p>
-              <p className="text-gray-600">VAT: <span className="font-semibold text-gray-900">{formatNaira(totals.vat)}</span></p>
-              <p className="text-gray-600">Discount: <span className="font-semibold text-gray-900">{formatNaira(totals.discount)}</span></p>
-              <p className="text-gray-900">Total: <span className="font-bold text-primary-700">{formatNaira(totals.total)}</span></p>
+              <p className="text-gray-600">Subtotal: <span className="font-semibold text-gray-900">{formatMoney(form.currency, totals.subtotal)}</span></p>
+              <p className="text-gray-600">VAT: <span className="font-semibold text-gray-900">{formatMoney(form.currency, totals.vat)}</span></p>
+              <p className="text-gray-600">Discount: <span className="font-semibold text-gray-900">{formatMoney(form.currency, totals.discount)}</span></p>
+              <p className="text-gray-900">Total Amount: <span className="font-bold text-primary-700">{formatMoney(form.currency, totals.total)}</span></p>
             </div>
 
             <div className="flex justify-end">

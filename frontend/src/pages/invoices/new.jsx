@@ -10,6 +10,16 @@ function emptyItem() {
   return { description: '', quantity: 1, unit_price: 0 };
 }
 
+const CURRENCY_OPTS = ['NGN', 'USD', 'GBP', 'EUR'];
+
+function formatMoney(currency, amount) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: currency || 'NGN',
+    maximumFractionDigits: 2
+  }).format(Number(amount || 0));
+}
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const { project_id } = router.query;
@@ -19,6 +29,7 @@ export default function NewInvoicePage() {
   const [form, setForm] = useState({
     project_id: '',
     invoice_type: 'invoice',
+    currency: 'NGN',
     client_name: '',
     client_email: '',
     due_date: '',
@@ -49,6 +60,13 @@ export default function NewInvoicePage() {
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
   const removeItem = (index) => setItems((prev) => prev.filter((_, i) => i !== index));
 
+  const subtotal = items.reduce((sum, item) => {
+    return sum + Number(item.quantity || 0) * Number(item.unit_price || 0);
+  }, 0);
+  const vatAmount = subtotal * (Number(form.vat_percent || 0) / 100);
+  const discountAmount = subtotal * (Number(form.discount_percent || 0) / 100);
+  const totalAmount = subtotal + vatAmount - discountAmount;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const cleanItems = items
@@ -71,7 +89,9 @@ export default function NewInvoicePage() {
 
     setLoading(true);
     try {
-      await invoiceAPI.create({ ...form, items: cleanItems });
+      // Backend schema does not currently persist invoice currency.
+      const { currency, ...rest } = form;
+      await invoiceAPI.create({ ...rest, items: cleanItems });
       toast.success('Invoice created successfully');
       router.push(`/projects/${form.project_id}`);
     } catch (err) {
@@ -122,6 +142,14 @@ export default function NewInvoicePage() {
 
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
+                <label className="label">Currency</label>
+                <select className="input" value={form.currency} onChange={(e) => set('currency', e.target.value)}>
+                  {CURRENCY_OPTS.map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="label">Due Date</label>
                 <input type="date" className="input" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
               </div>
@@ -144,7 +172,7 @@ export default function NewInvoicePage() {
                 {items.map((item, idx) => (
                   <div key={idx} className="grid sm:grid-cols-12 gap-2 items-center">
                     <input
-                      className="input sm:col-span-6"
+                      className="input sm:col-span-4"
                       placeholder="Description"
                       value={item.description}
                       onChange={(e) => setItem(idx, 'description', e.target.value)}
@@ -160,10 +188,15 @@ export default function NewInvoicePage() {
                     <input
                       type="number"
                       min="0"
-                      className="input sm:col-span-3"
+                      className="input sm:col-span-2"
                       placeholder="Unit price"
                       value={item.unit_price}
                       onChange={(e) => setItem(idx, 'unit_price', e.target.value)}
+                    />
+                    <input
+                      className="input sm:col-span-3 bg-gray-50"
+                      value={formatMoney(form.currency, Number(item.quantity || 0) * Number(item.unit_price || 0))}
+                      readOnly
                     />
                     <button
                       type="button"
@@ -181,6 +214,13 @@ export default function NewInvoicePage() {
             <div>
               <label className="label">Notes</label>
               <textarea className="input" rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+            </div>
+
+            <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 grid sm:grid-cols-2 gap-2 text-sm">
+              <p className="text-gray-600">Subtotal: <span className="font-semibold text-gray-900">{formatMoney(form.currency, subtotal)}</span></p>
+              <p className="text-gray-600">VAT: <span className="font-semibold text-gray-900">{formatMoney(form.currency, vatAmount)}</span></p>
+              <p className="text-gray-600">Discount: <span className="font-semibold text-gray-900">{formatMoney(form.currency, discountAmount)}</span></p>
+              <p className="text-gray-900">Total Amount: <span className="font-bold text-primary-700">{formatMoney(form.currency, totalAmount)}</span></p>
             </div>
 
             <div className="flex gap-3 pt-2">
