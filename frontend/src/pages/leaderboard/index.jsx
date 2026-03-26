@@ -11,20 +11,44 @@ export default function LeaderboardPage() {
   const [sort, setSort]       = useState('rank_by_projects');
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchLeaderboard = async (forceRefresh = false) => {
+    const params = { sort, limit: 50 };
+    if (category !== 'all') params.category = category;
+    if (forceRefresh) params.force_refresh = 'true';
+
+    const [lb, me] = await Promise.allSettled([
+      leaderboardAPI.get(params),
+      leaderboardAPI.getMe()
+    ]);
+
+    if (lb.status === 'fulfilled') setData(lb.value.data.leaderboard || []);
+    if (me.status === 'fulfilled') setMyRank(me.value.data.rank);
+  };
 
   useEffect(() => {
     setLoading(true);
-    const params = { sort, limit: 50 };
-    if (category !== 'all') params.category = category;
-
-    Promise.allSettled([
-      leaderboardAPI.get(params),
-      leaderboardAPI.getMe()
-    ]).then(([lb, me]) => {
-      if (lb.status === 'fulfilled') setData(lb.value.data.leaderboard || []);
-      if (me.status === 'fulfilled') setMyRank(me.value.data.rank);
-    }).finally(() => setLoading(false));
+    fetchLeaderboard(false).finally(() => setLoading(false));
   }, [sort, category]);
+
+  // Poll once per minute so rankings stay current while user remains on page.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLeaderboard(false);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [sort, category]);
+
+  const handleRefreshNow = async () => {
+    setRefreshing(true);
+    try {
+      await fetchLeaderboard(true);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const SORT_OPTIONS = [
     { value: 'rank_by_projects', label: '📁 By Projects' },
@@ -115,6 +139,14 @@ export default function LeaderboardPage() {
                   {opt.label}
                 </button>
               ))}
+
+              <button
+                onClick={handleRefreshNow}
+                className="px-3 py-2 rounded-lg text-xs font-medium bg-primary-700 text-white hover:bg-primary-800 disabled:opacity-60"
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh Now'}
+              </button>
             </div>
           </div>
 
@@ -185,7 +217,7 @@ export default function LeaderboardPage() {
           </div>
 
           <p className="text-xs text-gray-400 text-center">
-            Leaderboard refreshes daily · Names are anonymised for privacy · Total Value includes estimated and final project values
+            Leaderboard auto-refreshes every 60s and supports manual refresh · Names are anonymised for privacy · Total Value includes estimated and final project values
           </p>
         </div>
       </Layout>
