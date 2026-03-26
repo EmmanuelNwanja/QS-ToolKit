@@ -33,9 +33,19 @@ export default function AdminDashboard() {
       <AdminLayout>
         <div className="space-y-6">
           {/* Page Title */}
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">Welcome to Admin Dashboard</h2>
-            <p className="text-gray-600 mt-1">Manage promo codes, users, subscriptions, and more</p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">Welcome to Admin Dashboard</h2>
+              <p className="text-gray-600 mt-1">Manage promo codes, users, subscriptions, and more</p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchDashboardStats}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-primary-700 text-white hover:bg-primary-800 disabled:opacity-60"
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
           </div>
 
           {/* Quick Stats */}
