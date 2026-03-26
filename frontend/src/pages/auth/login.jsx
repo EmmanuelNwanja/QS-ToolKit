@@ -133,7 +133,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="label">Email address</label>
+                <label className="label">Email address <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   className="input"
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label className="label">Password</label>
+                <label className="label">Password <span className="text-red-500">*</span></label>
                 <input
                   type="password"
                   className="input"

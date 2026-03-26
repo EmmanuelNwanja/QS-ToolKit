@@ -3,10 +3,10 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import Layout from '../../components/Layout';
-import ProtectedRoute from '../../components/ProtectedRoute';
-import { projectAPI, feedbackAPI } from '../../services/api';
-import { formatNaira, formatDate, statusBadge } from '../../utils/helpers';
+import Layout from '../../../components/Layout';
+import ProtectedRoute from '../../../components/ProtectedRoute';
+import { projectAPI, feedbackAPI } from '../../../services/api';
+import { formatNaira, formatDate, statusBadge } from '../../../utils/helpers';
 
 export default function ProjectDetailPage() {
   const router = useRouter();

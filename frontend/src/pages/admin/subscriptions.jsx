@@ -86,8 +86,8 @@ export default function Subscriptions() {
                     {subscriptions.map((sub) => (
                       <tr key={sub.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="text-sm font-medium text-gray-900">{sub.users?.name}</p>
-                          <p className="text-xs text-gray-500">{sub.users?.email}</p>
+                          <p className="text-sm font-medium text-gray-900">{sub.name}</p>
+                          <p className="text-xs text-gray-500">{sub.email}</p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
