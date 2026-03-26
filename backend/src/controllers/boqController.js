@@ -24,7 +24,22 @@ exports.list = async (req, res, next) => {
 // ─── Create BOQ ───────────────────────────────────────────────
 exports.create = async (req, res, next) => {
   try {
-    const { sections = [], ...boqData } = req.body;
+    const { sections = [] } = req.body;
+
+    // Allow only known BOQ document columns to avoid schema-cache errors
+    // when the client sends extra UI-only fields.
+    const boqData = {
+      project_id: req.body.project_id,
+      title: req.body.title,
+      notes: req.body.notes,
+      contract_no: req.body.contract_no,
+      client_name: req.body.client_name,
+      location: req.body.location,
+      prepared_by: req.body.prepared_by,
+      checked_by: req.body.checked_by,
+      date_prepared: req.body.date_prepared,
+      status: req.body.status
+    };
 
     const { data: boq, error: boqErr } = await supabase
       .from('boq_documents')
@@ -67,9 +82,28 @@ exports.get = async (req, res, next) => {
 // ─── Update BOQ ───────────────────────────────────────────────
 exports.update = async (req, res, next) => {
   try {
+    const updatePayload = {
+      project_id: req.body.project_id,
+      title: req.body.title,
+      notes: req.body.notes,
+      contract_no: req.body.contract_no,
+      client_name: req.body.client_name,
+      location: req.body.location,
+      prepared_by: req.body.prepared_by,
+      checked_by: req.body.checked_by,
+      date_prepared: req.body.date_prepared,
+      status: req.body.status,
+      updated_at: new Date()
+    };
+
+    // Remove undefined keys to avoid overwriting columns unintentionally.
+    Object.keys(updatePayload).forEach((key) => {
+      if (updatePayload[key] === undefined) delete updatePayload[key];
+    });
+
     const { data, error: err } = await supabase
       .from('boq_documents')
-      .update({ ...req.body, updated_at: new Date() })
+      .update(updatePayload)
       .eq('id', req.params.id)
       .eq('user_id', req.user.id)
       .select()

@@ -15,8 +15,7 @@ export default function NewBoqPage() {
   const [form, setForm] = useState({
     title: '',
     project_id: '',
-    description: '',
-    currency: 'NGN',
+    notes: '',
     status: 'draft'
   });
 
@@ -86,31 +85,23 @@ export default function NewBoqPage() {
             </div>
 
             <div>
-              <label className="label">Description</label>
+              <label className="label">Notes</label>
               <textarea
                 rows={3}
                 className="input"
                 placeholder="Optional summary of this BOQ"
-                value={form.description}
-                onChange={(e) => set('description', e.target.value)}
+                value={form.notes}
+                onChange={(e) => set('notes', e.target.value)}
               />
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Currency</label>
-                <select className="input" value={form.currency} onChange={(e) => set('currency', e.target.value)}>
-                  <option value="NGN">NGN</option>
-                  <option value="USD">USD</option>
-                </select>
-              </div>
-              <div>
+            <div>
                 <label className="label">Status</label>
                 <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
                   <option value="draft">Draft</option>
-                  <option value="active">Active</option>
+                  <option value="final">Final</option>
+                  <option value="submitted">Submitted</option>
                 </select>
-              </div>
             </div>
 
             <div className="flex gap-3 pt-2">
