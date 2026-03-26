@@ -298,12 +298,15 @@ async function activateSubscription(userId, planId, billingCycle) {
   billingCycle === 'annual'
     ? expiresAt.setFullYear(expiresAt.getFullYear() + 1)
     : expiresAt.setMonth(expiresAt.getMonth() + 1);
-  await supabase.from('users').update({
+
+  const { error } = await supabase.from('users').update({
     plan_id: planId,
     subscription_status: 'active',
     subscription_expires_at: expiresAt.toISOString(),
     billing_cycle: billingCycle
   }).eq('id', userId);
+
+  if (error) throw new Error(`Subscription activation failed: ${error.message}`);
   return expiresAt;
 }
 
@@ -342,6 +345,24 @@ exports.verify = async (req, res, next) => {
       }
     } else {
       const expiresAt = await activateSubscription(meta.user_id, meta.plan_id, meta.billing_cycle || 'monthly');
+
+      // Record billing transaction for audit and admin subscriptions view
+      await supabase.from('billing_transactions').insert({
+        user_id: meta.user_id,
+        amount: txn.amount / 100,
+        currency: txn.currency || 'NGN',
+        type: 'payment',
+        status: 'completed',
+        paystack_reference: reference,
+        description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
+        transaction_date: new Date().toISOString(),
+        metadata: {
+          plan_id: meta.plan_id,
+          plan_name: meta.plan_name,
+          billing_cycle: meta.billing_cycle
+        }
+      });
+
       if (meta.promo_id) {
         await supabase.from('promo_code_uses').upsert(
           { promo_id: meta.promo_id, user_id: meta.user_id, plan_name: meta.plan_name },

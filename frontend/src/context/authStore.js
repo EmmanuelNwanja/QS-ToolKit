@@ -18,10 +18,18 @@ const useAuthStore = create((set, get) => ({
       return;
     }
 
-    set({ token, user: cached ? JSON.parse(cached) : null });
+    // Safely parse cached user — corrupted JSON must not freeze the app.
+    let cachedUser = null;
+    try { cachedUser = cached ? JSON.parse(cached) : null; } catch { /* ignore */ }
+    set({ token, user: cachedUser });
+
+    // Add a 15-second hard timeout so a hanging /auth/me never blocks forever.
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('auth_timeout')), 15000)
+    );
 
     try {
-      const { data } = await authAPI.me();
+      const { data } = await Promise.race([authAPI.me(), timeout]);
       const user = data.user;
       localStorage.setItem('qst_user', JSON.stringify(user));
       set({ user, loading: false, initialized: true });

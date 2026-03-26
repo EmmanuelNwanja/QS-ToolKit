@@ -43,11 +43,10 @@ exports.getUserGrowth = async (filters = {}) => {
       .lte('created_at', endDate);
 
     const { data: activeUsers } = await supabase
-      .from('user_subscriptions')
-      .select('user_id, subscription_status')
+      .from('users')
+      .select('id')
       .eq('subscription_status', 'active')
-      .lte('created_at', endDate)
-      .distinct('user_id');
+      .lte('created_at', endDate);
 
     return {
       period: { start: startDate, end: endDate },
@@ -150,22 +149,23 @@ exports.getSubscriptionMetrics = async (filters = {}) => {
 
     if (error) throw error;
 
-    // Get all subscriptions in period
+    // Get all users with a paid plan in period (subscription data lives on users table)
     const { data: subscriptions, error: subError } = await supabase
-      .from('user_subscriptions')
-      .select('user_id, subscription_plans(name), subscription_status, created_at')
+      .from('users')
+      .select('id, subscription_plans(name), subscription_status, created_at')
+      .not('plan_id', 'is', null)
       .gte('created_at', startDate)
       .lte('created_at', endDate);
 
     if (subError) throw subError;
 
-    // Get all churn events (revoked subscriptions)
+    // Churn events from admin activity log (action column, created_at column)
     const { data: churnEvents, error: churnError } = await supabase
       .from('admin_activity_logs')
-      .select('*')
-      .eq('action_type', 'revoked_subscription')
-      .gte('timestamp', startDate)
-      .lte('timestamp', endDate);
+      .select('id')
+      .eq('action', 'revoked_subscription')
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
 
     if (churnError) throw churnError;
 
@@ -231,15 +231,15 @@ exports.getCohortAnalysis = async (filters = {}) => {
 
     // Get last activity for each user
     const { data: subscriptions, error: subError } = await supabase
-      .from('user_subscriptions')
-      .select('user_id, updated_at, subscription_status');
+      .from('users')
+      .select('id, updated_at, subscription_status, plan_id');
 
     if (subError) throw subError;
 
-    // Create index of subscriptions by user
+    // Create index of subscription data by user id
     const subsByUser = {};
     subscriptions.forEach((sub) => {
-      subsByUser[sub.user_id] = sub;
+      subsByUser[sub.id] = sub;
     });
 
     // Group by signup month
@@ -309,7 +309,7 @@ exports.getDashboardSummary = async (filters = {}) => {
       exports.getRevenueTrend({ startDate, endDate, groupBy: 'day' }),
       exports.getSubscriptionMetrics({ startDate, endDate }),
       supabase.from('users').select('id'),
-      supabase.from('user_subscriptions')
+      supabase.from('users')
         .select('id')
         .eq('subscription_status', 'active')
     ]);

@@ -3,7 +3,7 @@
  * Handles: push notifications, offline caching, app shell caching
  */
 
-const CACHE_NAME = 'qstoolkit-v2';
+const CACHE_NAME = 'qstoolkit-v3';
 const STATIC_ASSETS = [
   '/',
   '/favicon.svg',
@@ -140,9 +140,14 @@ self.addEventListener('fetch', (event) => {
   // Skip chrome-extension and non-http requests
   if (!url.protocol.startsWith('http')) return;
 
-  // Static assets (JS, CSS, fonts, images, icons): cache-first
-  const isStaticAsset = /\.(js|css|woff2?|ttf|svg|png|jpg|ico|webp)(\?.*)?$/.test(url.pathname);
-  if (isStaticAsset) {
+  // Skip Next.js build artifacts — Next.js manages these via HTTP cache headers.
+  // Caching them here causes stale chunk errors after new deployments.
+  if (url.pathname.startsWith('/_next/')) return;
+
+  // Only public/ static assets (icons, manifest, fonts) use cache-first.
+  const isPublicAsset = /\.(woff2?|ttf|svg|png|jpg|ico|webp|json)(\?.*)?$/.test(url.pathname)
+    && !url.pathname.startsWith('/_next/');
+  if (isPublicAsset) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         cache.match(event.request).then((cached) => {

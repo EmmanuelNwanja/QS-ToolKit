@@ -14,7 +14,7 @@ export default function AnalyticsDashboard() {
   const [groupBy, setGroupBy] = useState('day');
   const [data, setData] = useState(null);
 
-  // Fetch data based on active tab
+  // Fetch data based on active tab — each tab uses its own dedicated endpoint
   const fetchData = async (tab) => {
     try {
       setLoading(true);
@@ -24,14 +24,22 @@ export default function AnalyticsDashboard() {
         ...(tab !== 'summary' && tab !== 'cohorts' && { groupBy })
       };
 
-      const endpoint = `/admin/analytics`;
+      const TAB_ENDPOINTS = {
+        summary:       '/analytics/summary',
+        growth:        '/analytics/growth',
+        revenue:       '/analytics/revenue',
+        subscriptions: '/analytics/subscriptions',
+        cohorts:       '/analytics/cohorts'
+      };
+
+      const endpoint = TAB_ENDPOINTS[tab] || '/analytics/summary';
       const response = await api.get(endpoint, { params: queryParams });
       setData(response.data?.data || response.data);
       setError('');
     } catch (err) {
       console.error('Analytics error:', err);
-      if (err.response?.status === 401) {
-        setError('Unauthorized - Admin access required');
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Unauthorized — Admin access with view_analytics permission required');
       } else {
         setError(err.response?.data?.message || err.message);
       }
@@ -381,11 +389,11 @@ export default function AnalyticsDashboard() {
           {/* Content */}
           {!loading && (
             <>
-              {activeTab === 'summary' && renderSummary()}
-              {activeTab === 'growth' && renderGrowth()}
-              {activeTab === 'revenue' && renderRevenue()}
-              {activeTab === 'subscriptions' && renderSubscriptions()}
-              {activeTab === 'cohorts' && renderCohorts()}
+              {activeTab === 'summary' && (renderSummary() || <EmptyState tab="summary" />)}
+              {activeTab === 'growth' && (renderGrowth() || <EmptyState tab="growth" />)}
+              {activeTab === 'revenue' && (renderRevenue() || <EmptyState tab="revenue" />)}
+              {activeTab === 'subscriptions' && (renderSubscriptions() || <EmptyState tab="subscriptions" />)}
+              {activeTab === 'cohorts' && (renderCohorts() || <EmptyState tab="cohorts" />)}
             </>
           )}
         </div>
@@ -395,7 +403,30 @@ export default function AnalyticsDashboard() {
 }
 
 /**
+ * Empty state shown when a tab has no data yet
+ */
+function EmptyState({ tab }) {
+  const DESCRIPTIONS = {
+    summary:       'No summary data yet. Data appears once users register and subscriptions are created.',
+    growth:        'No growth data in the selected date range. Try a wider date range.',
+    revenue:       'No revenue data in the selected date range. Transactions are recorded when subscriptions are activated via Paystack.',
+    subscriptions: 'No subscription data in the selected date range. Subscription metrics appear once users upgrade.',
+    cohorts:       'No cohort data yet. Cohort analysis groups users by the month they signed up and tracks how many retain active subscriptions over time — useful for measuring long-term product health.'
+  };
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+      <p className="text-4xl mb-3">📊</p>
+      <p className="text-gray-500 text-sm max-w-md mx-auto">
+        {DESCRIPTIONS[tab] || 'No data available for the selected date range.'}
+      </p>
+    </div>
+  );
+}
+
+/**
  * Simple line chart component using ASCII visualization
+ * Cohorts explanation: groups of users who signed up in the same month,
+ * tracked to measure retention and active subscription rate over time.
  */
 function SimpleLineChart({ data, valueKey = 'cumulativeUsers' }) {
   if (!data || data.length === 0) {
