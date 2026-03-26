@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const register = useAuthStore((s) => s.register);
   const [step, setStep]   = useState(0);
   const [loading, setLoading] = useState(false);
+  const [emailIssueAlert, setEmailIssueAlert] = useState(false);
   const [form, setForm]   = useState({
     user_type: '', name: '', email: '', phone: '', password: '', confirmPassword: '',
     university_name: '', company_name: '', qs_cert_no: '', company_address: '', business_reg_no: ''
@@ -41,6 +42,13 @@ export default function RegisterPage() {
       const result = await register(payload);
 
       if (result?.requires_verification) {
+        if (result?.email_delivery_failed) {
+          setEmailIssueAlert(true);
+          toast.error('Account created, but activation email could not be delivered. Contact support for manual activation.');
+          router.push(`/auth/login?email=${encodeURIComponent(result.email || form.email)}&verify=1&email_delivery_failed=1`);
+          return;
+        }
+
         toast.success('Account created. Check your email to verify your account before sign-in.');
         router.push(`/auth/login?email=${encodeURIComponent(result.email || form.email)}&verify=1`);
         return;
@@ -89,6 +97,17 @@ export default function RegisterPage() {
           </div>
 
           <div className="card">
+            {emailIssueAlert && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-semibold text-red-800">Activation Email Failed</p>
+                <p className="mt-1 text-sm text-red-700">
+                  Your account was created successfully, but we could not send your activation email.
+                  Please contact support for manual activation at
+                  {' '}
+                  <a href="mailto:support@qs.solnuv.com" className="font-semibold underline">support@qs.solnuv.com</a>.
+                </p>
+              </div>
+            )}
             {step === 0 && (
               <div>
                 <h2 className="font-display text-lg font-bold text-primary-800 mb-4">I am a...</h2>

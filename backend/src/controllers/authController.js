@@ -137,7 +137,20 @@ exports.register = async (req, res, next) => {
     if (signalError) throw new Error(signalError.message);
 
     const verificationToken = await createEmailVerificationToken(user.id, req);
-    await emailService.sendEmailVerification(user, verificationToken);
+    const verificationSent = await emailService.sendEmailVerification(user, verificationToken);
+
+    if (!verificationSent) {
+      logger.error({
+        message: 'Registration completed but verification email failed',
+        user_id: user.id,
+        email: user.email
+      });
+      return res.status(201).json(success('Registration successful, but we could not send your verification email right now. Please use "Resend verification" on login in a few minutes.', {
+        requires_verification: true,
+        email: normalizedEmail,
+        email_delivery_failed: true
+      }));
+    }
 
     return res.status(201).json(success('Registration successful. Verify your email to activate your account.', {
       requires_verification: true,
@@ -366,7 +379,14 @@ exports.verifyEmail = async (req, res, next) => {
       .single();
 
     if (user) {
-      await emailService.sendWelcome(user);
+      const welcomeSent = await emailService.sendWelcome(user);
+      if (!welcomeSent) {
+        logger.warn({
+          message: 'Welcome email failed after successful verification',
+          user_id: user.id,
+          email: user.email
+        });
+      }
     }
 
     return res.json(success('Email verified successfully. You can now sign in.'));
@@ -415,7 +435,16 @@ exports.resendVerification = async (req, res, next) => {
     }
 
     const verificationToken = await createEmailVerificationToken(user.id, req);
-    await emailService.sendEmailVerification(user, verificationToken);
+    const verificationSent = await emailService.sendEmailVerification(user, verificationToken);
+
+    if (!verificationSent) {
+      logger.error({
+        message: 'Resend verification failed',
+        user_id: user.id,
+        email: user.email
+      });
+      return res.status(502).json(error('We could not send the verification email right now. Please try again shortly.'));
+    }
 
     return res.json(success('Verification email sent.'));
   } catch (err) {

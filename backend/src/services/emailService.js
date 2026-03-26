@@ -8,6 +8,9 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 
 const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
+const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || process.env.SENDINBLUE_SENDER_EMAIL;
+const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || process.env.SENDINBLUE_SENDER_NAME;
 const BRAND = {
   primary:    '#1a3c5e',
   gold:       '#f59e0b',
@@ -21,19 +24,60 @@ const BRAND = {
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 
+if (!BREVO_API_KEY) {
+  logger.error('Email service misconfigured: BREVO_API_KEY (or SENDINBLUE_API_KEY) is missing');
+}
+
+if (!BREVO_SENDER_EMAIL) {
+  logger.warn('BREVO_SENDER_EMAIL missing; using fallback sender. Verify sender/domain in Brevo to avoid rejection.');
+}
+
 // ── Core send function ────────────────────────────────────────
 async function send({ to, subject, html, attachments = [] }) {
   try {
-    const recipients = Array.isArray(to) ? to : [{ email: to }];
+    if (!BREVO_API_KEY) {
+      logger.error({
+        message: 'Email send skipped: missing Brevo API key',
+        subject,
+        to
+      });
+      return false;
+    }
+
+    const recipients = (Array.isArray(to) ? to : [to]).map((entry) => {
+      if (typeof entry === 'string') return { email: entry };
+      return entry;
+    }).filter((entry) => entry && entry.email);
+
+    if (!recipients.length) {
+      logger.error({ message: 'Email send skipped: no valid recipients', subject, to });
+      return false;
+    }
+
     await axios.post(BREVO_API, {
-      sender:     { name: BRAND.name, email: process.env.BREVO_SENDER_EMAIL || BRAND.email },
+      sender:     { name: BREVO_SENDER_NAME || BRAND.name, email: BREVO_SENDER_EMAIL || BRAND.email },
       to:         recipients,
       subject,
       htmlContent: html,
       attachment: attachments.length ? attachments : undefined
-    }, { headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' } });
+    }, {
+      headers: {
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
+    });
+
+    return true;
   } catch (err) {
-    logger.error('Email failed:', err.response?.data || err.message);
+    logger.error({
+      message: 'Email delivery failed',
+      subject,
+      to,
+      status: err.response?.status,
+      provider_error: err.response?.data || err.message
+    });
+    return false;
   }
 }
 

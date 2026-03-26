@@ -50,7 +50,8 @@ const useAuthStore = create((set, get) => ({
     if (!data?.token || !data?.user) {
       return {
         requires_verification: data?.requires_verification,
-        email: data?.email
+        email: data?.email,
+        email_delivery_failed: !!data?.email_delivery_failed
       };
     }
 

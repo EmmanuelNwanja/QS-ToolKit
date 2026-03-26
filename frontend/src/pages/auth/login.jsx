@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [emailIssueAlert, setEmailIssueAlert] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -23,7 +24,12 @@ export default function LoginPage() {
     if (router.query.verify === '1') {
       toast.success('Verification email sent. Please verify before signing in.');
     }
-  }, [router.isReady, router.query.email, router.query.verify]);
+
+    if (router.query.email_delivery_failed === '1') {
+      setEmailIssueAlert(true);
+      toast.error('Activation email failed. Contact support for manual activation.');
+    }
+  }, [router.isReady, router.query.email, router.query.verify, router.query.email_delivery_failed]);
 
   const handleResendVerification = async () => {
     if (!form.email) {
@@ -112,6 +118,18 @@ export default function LoginPage() {
 
             <h1 className="font-display text-2xl font-bold text-primary-800 mb-1">Welcome back</h1>
             <p className="text-gray-500 text-sm mb-8">Sign in to your QSToolkit account</p>
+
+            {emailIssueAlert && (
+              <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-semibold text-red-800">Activation Email Delivery Failed</p>
+                <p className="mt-1 text-sm text-red-700">
+                  Your account may already be created, but we could not deliver the activation email.
+                  Contact support for manual activation at
+                  {' '}
+                  <a href="mailto:support@qs.solnuv.com" className="font-semibold underline">support@qs.solnuv.com</a>.
+                </p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
