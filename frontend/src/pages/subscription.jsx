@@ -122,7 +122,19 @@ export default function SubscriptionPage() {
     try {
       const promoCode = promoResults[plan.name]?.code || promoInputs[plan.name] || undefined;
       const { data } = await subscriptionAPI.initiate(plan.name, billing, promoCode);
-      window.location.href = data.authorization_url;
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+        return;
+      }
+
+      if (data.activated) {
+        toast.success('Subscription activated successfully');
+        await fetchMySub();
+        setPaying('');
+        return;
+      }
+
+      throw new Error('Missing payment authorization URL');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initiate payment');
       setPaying('');
@@ -137,7 +149,18 @@ export default function SubscriptionPage() {
       const { data } = await subscriptionAPI.initiatePhilanthropist(
         philForm, philPlan, billing
       );
-      window.location.href = data.authorization_url;
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+        return;
+      }
+
+      if (data.activated) {
+        toast.success('Gift subscription processed successfully');
+        setPhilPaying(false);
+        return;
+      }
+
+      throw new Error('Missing payment authorization URL');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initiate payment');
       setPhilPaying(false);

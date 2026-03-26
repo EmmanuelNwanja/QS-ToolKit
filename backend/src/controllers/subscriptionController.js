@@ -72,6 +72,9 @@ exports.initiate = async (req, res, next) => {
 
     const { data: user } = await supabase
       .from('users').select('email, name').eq('id', req.user.id).single();
+    if (!user?.email) {
+      return res.status(400).json(error('User email is required to initiate payment'));
+    }
 
     let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
     let discountApplied = 0;
@@ -93,26 +96,59 @@ exports.initiate = async (req, res, next) => {
       }
     }
 
+    basePrice = Math.max(0, Number(basePrice) || 0);
     const amountKobo = Math.round(basePrice * 100);
-    const paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
-      email: user.email,
-      amount: amountKobo,
-      currency: 'NGN',
-      metadata: {
-        user_id: req.user.id,
-        plan_id: plan.id,
-        plan_name: plan.name,
-        billing_cycle,
-        promo_id: promoId,
+
+    // 100% promo discounts should activate directly without external payment.
+    if (amountKobo === 0) {
+      const expiresAt = await activateSubscription(req.user.id, plan.id, billing_cycle);
+
+      if (promoId) {
+        await supabase.from('promo_code_uses').upsert(
+          { promo_id: promoId, user_id: req.user.id, plan_name: plan.name },
+          { onConflict: 'promo_id,user_id', ignoreDuplicates: true }
+        );
+        await supabase.rpc('increment_promo_uses', { p_promo_id: promoId });
+      }
+
+      await emailService.sendSubscriptionConfirmation(user, billing_cycle, expiresAt);
+
+      return res.json(success('Subscription activated with promo code', {
+        activated: true,
+        authorization_url: null,
+        reference: null,
+        amount: 0,
         discount_applied: discountApplied,
-        is_philanthropist: false,
-        custom_fields: [
-          { display_name: 'Plan',    variable_name: 'plan',    value: plan.name },
-          { display_name: 'Billing', variable_name: 'billing', value: billing_cycle }
-        ]
-      },
-      callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
-    }, { headers: paystackHeaders() });
+        billing_cycle,
+        expires_at: expiresAt.toISOString()
+      }));
+    }
+
+    let paystackRes;
+    try {
+      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+        email: user.email,
+        amount: amountKobo,
+        currency: 'NGN',
+        metadata: {
+          user_id: req.user.id,
+          plan_id: plan.id,
+          plan_name: plan.name,
+          billing_cycle,
+          promo_id: promoId,
+          discount_applied: discountApplied,
+          is_philanthropist: false,
+          custom_fields: [
+            { display_name: 'Plan',    variable_name: 'plan',    value: plan.name },
+            { display_name: 'Billing', variable_name: 'billing', value: billing_cycle }
+          ]
+        },
+        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
+      }, { headers: paystackHeaders() });
+    } catch (paystackError) {
+      const providerMsg = paystackError?.response?.data?.message || paystackError.message;
+      return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
+    }
 
     return res.json(success('Payment initiated', {
       authorization_url: paystackRes.data.data.authorization_url,
@@ -163,30 +199,88 @@ exports.initiatePhilanthropist = async (req, res, next) => {
                 billing_cycle, payment_status: 'pending', grant_status: 'pending', message_to_beneficiary })
       .select().single();
 
+    basePrice = Math.max(0, Number(basePrice) || 0);
     const amountKobo = Math.round(basePrice * 100);
-    const paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
-      email: donor_email,
-      amount: amountKobo,
-      currency: 'NGN',
-      metadata: {
-        is_philanthropist: true,
-        grant_id: grant.id,
-        beneficiary_email,
-        plan_id: plan.id,
-        plan_name,
-        billing_cycle,
-        promo_id: promoId,
+
+    // 100% promo discounts should finalize the grant immediately.
+    if (amountKobo === 0) {
+      await supabase.from('philanthropist_grants').update({
+        payment_status: 'paid',
+        amount_paid: 0,
+        paystack_reference: `PROMO-${grant.id}`
+      }).eq('id', grant.id);
+
+      if (promoId) {
+        await supabase.rpc('increment_promo_uses', { p_promo_id: promoId });
+      }
+
+      const { data: beneficiary } = await supabase.from('users')
+        .select('id, email, name').eq('email', beneficiary_email).single();
+
+      if (beneficiary) {
+        const expiresAt = await activateSubscription(beneficiary.id, plan.id, billing_cycle);
+        await supabase.from('philanthropist_grants').update({
+          beneficiary_user_id: beneficiary.id,
+          grant_status: 'active',
+          activated_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString()
+        }).eq('id', grant.id);
+        await emailService.sendPhilanthropistGiftNotification?.(beneficiary, {
+          donor_name,
+          donor_email,
+          beneficiary_email,
+          plan_name,
+          billing_cycle
+        });
+      } else {
+        await emailService.sendPhilanthropistDonorConfirmation?.({
+          donor_name,
+          donor_email,
+          beneficiary_email,
+          plan_name,
+          billing_cycle
+        });
+      }
+
+      return res.json(success('Philanthropist grant activated with promo code', {
+        activated: true,
+        authorization_url: null,
+        reference: null,
+        amount: 0,
         discount_applied: discountApplied,
-        donor_name,
-        donor_email,
-        custom_fields: [
-          { display_name: 'Gift for', variable_name: 'for',     value: beneficiary_email },
-          { display_name: 'Plan',     variable_name: 'plan',    value: plan_name },
-          { display_name: 'Billing',  variable_name: 'billing', value: billing_cycle }
-        ]
-      },
-      callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
-    }, { headers: paystackHeaders() });
+        grant_id: grant.id
+      }));
+    }
+
+    let paystackRes;
+    try {
+      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+        email: donor_email,
+        amount: amountKobo,
+        currency: 'NGN',
+        metadata: {
+          is_philanthropist: true,
+          grant_id: grant.id,
+          beneficiary_email,
+          plan_id: plan.id,
+          plan_name,
+          billing_cycle,
+          promo_id: promoId,
+          discount_applied: discountApplied,
+          donor_name,
+          donor_email,
+          custom_fields: [
+            { display_name: 'Gift for', variable_name: 'for',     value: beneficiary_email },
+            { display_name: 'Plan',     variable_name: 'plan',    value: plan_name },
+            { display_name: 'Billing',  variable_name: 'billing', value: billing_cycle }
+          ]
+        },
+        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
+      }, { headers: paystackHeaders() });
+    } catch (paystackError) {
+      const providerMsg = paystackError?.response?.data?.message || paystackError.message;
+      return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
+    }
 
     return res.json(success('Philanthropist payment initiated', {
       authorization_url: paystackRes.data.data.authorization_url,
