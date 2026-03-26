@@ -40,7 +40,23 @@ app.use(cors({
   credentials: true,
   methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   // 👇 THIS IS THE LINE YOU MUST ADD 👇
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id', 'Accept', 'Origin']
+   allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    // Supabase JS client sends these automatically
+    'x-device-id',
+    'x-client-info',
+    'x-supabase-api-version',
+    'apikey',
+    // Common browser / axios headers
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma'
+  ],
+  // Tell browsers which response headers the frontend JS can read
+  exposedHeaders: ['Content-Disposition']
 }));
 
 // ── Parsing ───────────────────────────────────────────────────
