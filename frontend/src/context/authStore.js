@@ -45,6 +45,15 @@ const useAuthStore = create((set, get) => ({
   // ── Register ──────────────────────────────────────────────
   register: async (payload) => {
     const { data } = await authAPI.register(payload);
+
+    // Verification-first flow: no JWT is issued until email is verified.
+    if (!data?.token || !data?.user) {
+      return {
+        requires_verification: data?.requires_verification,
+        email: data?.email
+      };
+    }
+
     const { token, user } = data;
     localStorage.setItem('qst_token', token);
     localStorage.setItem('qst_user', JSON.stringify(user));

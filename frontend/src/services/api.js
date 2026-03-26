@@ -2,6 +2,19 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
+function getOrCreateDeviceId() {
+  if (typeof window === 'undefined') return null;
+  const existing = localStorage.getItem('qst_device_id');
+  if (existing) return existing;
+
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `qst-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+  localStorage.setItem('qst_device_id', id);
+  return id;
+}
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: false,
@@ -13,6 +26,9 @@ api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('qst_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
+
+    const deviceId = getOrCreateDeviceId();
+    if (deviceId) config.headers['X-Device-Id'] = deviceId;
   }
   return config;
 });
@@ -35,6 +51,8 @@ export const authAPI = {
   register:           (data) => api.post('/auth/register', data),
   login:              (data) => api.post('/auth/login', data),
   googleLogin:        (token) => api.post('/auth/google', { access_token: token }),
+  verifyEmail:        (token) => api.post('/auth/verify-email', { token }),
+  resendVerification: (email) => api.post('/auth/resend-verification', { email }),
   me:                 ()     => api.get('/auth/me'),
   completeOnboarding: (data) => api.post('/auth/onboarding', data)
 };

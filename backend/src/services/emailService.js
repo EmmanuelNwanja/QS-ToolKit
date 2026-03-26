@@ -178,6 +178,33 @@ function noteBox(text, type = 'info') {
 }
 
 // ════════════════════════════════════════════════════════════════
+//  EMAIL VERIFICATION
+// ════════════════════════════════════════════════════════════════
+exports.sendEmailVerification = async (user, token) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+  const verifyUrl = `${BRAND.url}/auth/verify-email?token=${token}`;
+
+  const html = layout({
+    preheader: `Verify your QSToolkit account to activate access`,
+    body: `
+      ${heroSection({ emoji: '📧', title: 'Verify Your Email', subtitle: 'One quick step to activate your account.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, thanks for creating your QSToolkit account.`)}
+        ${bodyText(`To activate your account and start using the platform, please verify your email address.`)}
+        ${ctaButton('Verify My Email →', verifyUrl)}
+        ${noteBox('This verification link expires in 30 minutes. If it expires, you can request a new one from the login page.', 'warning')}
+      `)}
+    `
+  });
+
+  await send({
+    to: user.email,
+    subject: 'Verify your QSToolkit email',
+    html
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
 //  WELCOME EMAIL
 // ════════════════════════════════════════════════════════════════
 exports.sendWelcome = async (user) => {

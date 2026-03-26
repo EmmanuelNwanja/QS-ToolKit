@@ -38,14 +38,17 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...payload } = form;
-      const user = await register(payload);
-      toast.success(`Welcome to QSToolkit, ${user.name}!`);
-      // Redirect based on whether onboarding is complete
-      if (!user.onboarding_completed) {
-        router.push('/auth/onboarding');
-      } else {
-        router.push('/dashboard');
+      const result = await register(payload);
+
+      if (result?.requires_verification) {
+        toast.success('Account created. Check your email to verify your account before sign-in.');
+        router.push(`/auth/login?email=${encodeURIComponent(result.email || form.email)}&verify=1`);
+        return;
       }
+
+      toast.success(`Welcome to QSToolkit, ${result.name}!`);
+      if (!result.onboarding_completed) router.push('/auth/onboarding');
+      else router.push('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {

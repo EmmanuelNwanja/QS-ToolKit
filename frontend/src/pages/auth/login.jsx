@@ -1,15 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
+import { authAPI } from '../../services/api';
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    if (router.query.email && !form.email) {
+      setForm((f) => ({ ...f, email: String(router.query.email) }));
+    }
+
+    if (router.query.verify === '1') {
+      toast.success('Verification email sent. Please verify before signing in.');
+    }
+  }, [router.isReady, router.query.email, router.query.verify]);
+
+  const handleResendVerification = async () => {
+    if (!form.email) {
+      toast.error('Enter your email first to resend verification.');
+      return;
+    }
+
+    setResending(true);
+    try {
+      const { data } = await authAPI.resendVerification(form.email);
+      toast.success(data?.message || 'Verification email sent.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to resend verification email.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +66,9 @@ export default function LoginPage() {
       }, 100);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
+      if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        setLoading(false);
+      }
       setLoading(false);
     }
   };
@@ -105,6 +139,15 @@ export default function LoginPage() {
 
               <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign In'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="btn-secondary w-full"
+              >
+                {resending ? 'Sending verification…' : 'Resend Verification Email'}
               </button>
             </form>
 
