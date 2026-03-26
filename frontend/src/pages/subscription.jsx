@@ -54,15 +54,19 @@ export default function SubscriptionPage() {
       if (s.status === 'fulfilled') setMySub(s.value.data);
     }).finally(() => setLoading(false));
 
-    // Handle Paystack redirect back
-    if (router.query.reference) {
-      subscriptionAPI.verify(router.query.reference).then(async () => {
-        toast.success('🎉 Subscription activated!');
-        await refreshUser();
-        router.replace('/subscription');
-      }).catch(() => toast.error('Payment verification failed. Please contact support.'));
-    }
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const reference = router.query.reference;
+    if (!reference || Array.isArray(reference)) return;
+
+    subscriptionAPI.verify(reference).then(async () => {
+      toast.success('🎉 Subscription activated!');
+      await refreshUser();
+      router.replace('/dashboard');
+    }).catch(() => toast.error('Payment verification failed. Please contact support.'));
+  }, [router.isReady, router.query.reference]);
 
   // ── Price display helpers ──────────────────────────────────────
   const displayPrice = (plan) => {

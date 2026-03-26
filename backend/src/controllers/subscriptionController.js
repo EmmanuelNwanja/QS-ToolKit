@@ -143,7 +143,7 @@ exports.initiate = async (req, res, next) => {
             { display_name: 'Billing', variable_name: 'billing', value: billing_cycle }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
+        callback_url: `${process.env.FRONTEND_URL}/subscription`
       }, { headers: paystackHeaders() });
     } catch (paystackError) {
       const providerMsg = paystackError?.response?.data?.message || paystackError.message;
@@ -275,7 +275,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
             { display_name: 'Billing',  variable_name: 'billing', value: billing_cycle }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`
+        callback_url: `${process.env.FRONTEND_URL}/subscription`
       }, { headers: paystackHeaders() });
     } catch (paystackError) {
       const providerMsg = paystackError?.response?.data?.message || paystackError.message;
