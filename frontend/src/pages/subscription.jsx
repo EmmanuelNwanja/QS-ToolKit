@@ -39,6 +39,15 @@ export default function SubscriptionPage() {
   });
   const [philPaying, setPhilPaying]       = useState(false);
 
+  const fetchMySub = async () => {
+    try {
+      const { data } = await subscriptionAPI.getMy();
+      setMySub(data);
+    } catch {
+      // Keep previous state when refresh fails.
+    }
+  };
+
   useEffect(() => {
     Promise.allSettled([
       subscriptionAPI.getPlans(),
@@ -58,15 +67,16 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    const reference = router.query.reference;
+    const reference = router.query.reference || router.query.trxref;
     if (!reference || Array.isArray(reference)) return;
 
     subscriptionAPI.verify(reference).then(async () => {
       toast.success('🎉 Subscription activated!');
       await refreshUser();
+      await fetchMySub();
       router.replace('/dashboard');
     }).catch(() => toast.error('Payment verification failed. Please contact support.'));
-  }, [router.isReady, router.query.reference]);
+  }, [router.isReady, router.query.reference, router.query.trxref]);
 
   // ── Price display helpers ──────────────────────────────────────
   const displayPrice = (plan) => {
@@ -134,6 +144,7 @@ export default function SubscriptionPage() {
       if (data.activated) {
         toast.success('Subscription activated successfully');
         await fetchMySub();
+        await refreshUser();
         setPaying('');
         return;
       }

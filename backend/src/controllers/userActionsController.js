@@ -200,14 +200,22 @@ exports.overrideSubscription = async (req, res, next) => {
       return res.status(404).json(error('User not found'));
     }
 
-    // Calculate expiry date
-    const expiryDate = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    // Calculate expiry date from billing cycle when not explicitly provided.
+    let expiryDate;
+    if (expiresAt) {
+      expiryDate = expiresAt;
+    } else {
+      const dt = new Date();
+      if (billingCycle === 'annual') dt.setFullYear(dt.getFullYear() + 1);
+      else dt.setMonth(dt.getMonth() + 1);
+      expiryDate = dt.toISOString();
+    }
 
     // Update subscription
     const { data: updated, error: dbError } = await supabase
       .from('users')
       .update({
-        plan_id: planId,
+        plan_id: plan.id,
         subscription_status: 'active',
         billing_cycle: billingCycle,
         subscription_expires_at: expiryDate,
