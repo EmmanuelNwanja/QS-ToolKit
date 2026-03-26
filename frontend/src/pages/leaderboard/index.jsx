@@ -8,6 +8,7 @@ import { formatNaira } from '../../utils/helpers';
 export default function LeaderboardPage() {
   const [data, setData]       = useState([]);
   const [myRank, setMyRank]   = useState(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState('');
   const [sort, setSort]       = useState('rank_by_projects');
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,10 @@ export default function LeaderboardPage() {
       leaderboardAPI.getMe()
     ]);
 
-    if (lb.status === 'fulfilled') setData(lb.value.data.leaderboard || []);
+    if (lb.status === 'fulfilled') {
+      setData(lb.value.data.leaderboard || []);
+      setLastUpdatedAt(lb.value.data.last_updated_at || '');
+    }
     if (me.status === 'fulfilled') setMyRank(me.value.data.rank);
   };
 
@@ -49,6 +53,13 @@ export default function LeaderboardPage() {
       setRefreshing(false);
     }
   };
+
+  const formattedLastUpdated = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleString('en-NG', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      })
+    : 'Just now';
 
   const SORT_OPTIONS = [
     { value: 'rank_by_projects', label: '📁 By Projects' },
@@ -218,6 +229,9 @@ export default function LeaderboardPage() {
 
           <p className="text-xs text-gray-400 text-center">
             Leaderboard auto-refreshes every 60s and supports manual refresh · Names are anonymised for privacy · Total Value includes estimated and final project values
+          </p>
+          <p className="text-xs text-gray-400 text-center">
+            Last updated at: {formattedLastUpdated}
           </p>
         </div>
       </Layout>

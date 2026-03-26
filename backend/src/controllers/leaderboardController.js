@@ -18,6 +18,10 @@ async function refreshLeaderboardIfStale(force = false) {
   }
 }
 
+function leaderboardLastUpdatedIso() {
+  return new Date(lastLeaderboardRefreshAt || Date.now()).toISOString();
+}
+
 exports.getLeaderboard = async (req, res, next) => {
   try {
     const { sort = 'rank_by_projects', limit = 50, page = 1, category, force_refresh } = req.query;
@@ -51,6 +55,7 @@ exports.getLeaderboard = async (req, res, next) => {
 
     return res.json(success('Leaderboard', {
       leaderboard: data,
+      last_updated_at: leaderboardLastUpdatedIso(),
       pagination: { total: count, page: +page, limit: +limit }
     }));
   } catch (err) { next(err); }

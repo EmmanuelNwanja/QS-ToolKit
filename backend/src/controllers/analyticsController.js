@@ -1,6 +1,6 @@
 const analyticsService = require('../services/analyticsService');
 const logger = require('../utils/logger');
-const { logAdminActivity } = require('../middlewares/authMiddleware');
+const { logAdminActivity } = require('../middlewares/adminMiddleware');
 
 /**
  * Get user growth metrics and trends
@@ -15,11 +15,15 @@ exports.getUserGrowth = async (req, res, next) => {
       groupBy: groupBy || 'day'
     });
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_user_growth', 'analytics', 'all', {
-      startDate,
-      endDate,
-      groupBy
-    }, req);
+    await logAdminActivity(
+      req.adminUser?.id,
+      'viewed_user_growth',
+      'analytics',
+      'all',
+      { startDate, endDate, groupBy },
+      req.ip,
+      req.get('user-agent')
+    );
 
     res.json({
       success: true,
@@ -47,11 +51,15 @@ exports.getRevenueTrend = async (req, res, next) => {
       groupBy: groupBy || 'day'
     });
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_revenue_trend', 'analytics', 'all', {
-      startDate,
-      endDate,
-      groupBy
-    }, req);
+    await logAdminActivity(
+      req.adminUser?.id,
+      'viewed_revenue_trend',
+      'analytics',
+      'all',
+      { startDate, endDate, groupBy },
+      req.ip,
+      req.get('user-agent')
+    );
 
     res.json({
       success: true,
@@ -78,10 +86,15 @@ exports.getSubscriptionMetrics = async (req, res, next) => {
       endDate
     });
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_subscription_metrics', 'analytics', 'all', {
-      startDate,
-      endDate
-    }, req);
+    await logAdminActivity(
+      req.adminUser?.id,
+      'viewed_subscription_metrics',
+      'analytics',
+      'all',
+      { startDate, endDate },
+      req.ip,
+      req.get('user-agent')
+    );
 
     res.json({
       success: true,
@@ -108,10 +121,15 @@ exports.getCohortAnalysis = async (req, res, next) => {
       endDate
     });
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_cohort_analysis', 'analytics', 'all', {
-      startDate,
-      endDate
-    }, req);
+    await logAdminActivity(
+      req.adminUser?.id,
+      'viewed_cohort_analysis',
+      'analytics',
+      'all',
+      { startDate, endDate },
+      req.ip,
+      req.get('user-agent')
+    );
 
     res.json({
       success: true,
@@ -138,10 +156,15 @@ exports.getDashboardSummary = async (req, res, next) => {
       endDate
     });
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_analytics_dashboard', 'analytics', 'all', {
-      startDate,
-      endDate
-    }, req);
+    await logAdminActivity(
+      req.adminUser?.id,
+      'viewed_analytics_dashboard',
+      'analytics',
+      'all',
+      { startDate, endDate },
+      req.ip,
+      req.get('user-agent')
+    );
 
     res.json({
       success: true,
