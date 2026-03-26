@@ -19,11 +19,27 @@ export default function Layout({ children, title }) {
   const { user, logout, planName } = useAuthStore();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [router.pathname]);
+
+  // PWA install prompt
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstallPrompt(null));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || 'U';
 
@@ -111,6 +127,15 @@ export default function Layout({ children, title }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {installPrompt && (
+              <button
+                onClick={handleInstall}
+                className="hidden sm:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
+                title="Install QSToolkit as an app"
+              >
+                ⬇ Install
+              </button>
+            )}
             <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
               {planName() === 'free' ? '⬆ Upgrade' : `✅ ${planName().charAt(0).toUpperCase() + planName().slice(1)}`}
             </Link>

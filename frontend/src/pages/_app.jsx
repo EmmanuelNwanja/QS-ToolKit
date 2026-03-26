@@ -10,6 +10,15 @@ export default function App({ Component, pageProps }) {
     init();
   }, [init]);
 
+  // Register service worker for PWA support
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/service-worker.js')
+        .catch((err) => console.warn('[SW] Registration failed:', err));
+    }
+  }, []);
+
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (

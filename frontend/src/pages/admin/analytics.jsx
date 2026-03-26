@@ -50,7 +50,7 @@ export default function AnalyticsDashboard() {
     return (
       <div className="space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <p className="text-gray-600 text-sm font-medium">Total Users</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">{data.summary.total_users.toLocaleString()}</p>
@@ -160,7 +160,7 @@ export default function AnalyticsDashboard() {
 
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <p className="text-gray-600 text-sm">Gross Revenue</p>
             <p className="text-2xl font-bold text-gray-900 mt-2">₦{data.total_gross_revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
@@ -243,7 +243,7 @@ export default function AnalyticsDashboard() {
     if (!data?.cohorts) return null;
 
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>

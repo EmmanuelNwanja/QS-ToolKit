@@ -1,16 +1,15 @@
 /**
- * Service Worker for Web Push Notifications
- * Located at: public/service-worker.js
- * 
- * This file handles push notification events and user interactions.
- * Register in your main app with: navigator.serviceWorker.register('/service-worker.js')
+ * Service Worker for QSToolkit PWA
+ * Handles: push notifications, offline caching, app shell caching
  */
 
-const CACHE_NAME = 'qstoolkit-v1';
+const CACHE_NAME = 'qstoolkit-v2';
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
-  '/favicon.ico',
+  '/favicon.svg',
+  '/manifest.json',
+  '/icons/icon.svg',
+  '/icons/maskable-icon.svg',
 ];
 
 // ── INSTALLATION ───────────────────────────────────────────
@@ -131,32 +130,56 @@ self.addEventListener('notificationclose', (event) => {
 // ── FETCH (offline support) ────────────────────────────────
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // Skip API requests — always go network
+  if (url.pathname.startsWith('/api/')) return;
+
+  // Skip chrome-extension and non-http requests
+  if (!url.protocol.startsWith('http')) return;
+
+  // Static assets (JS, CSS, fonts, images, icons): cache-first
+  const isStaticAsset = /\.(js|css|woff2?|ttf|svg|png|jpg|ico|webp)(\?.*)?$/.test(url.pathname);
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request).then((response) => {
+            if (response && response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          });
+        })
+      )
+    );
     return;
   }
 
-  // Skip API requests (don't cache)
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
-
+  // HTML pages: network-first, fall back to cache, then offline shell
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    }).catch(() => {
-      // Return a fallback page for offline
-      return caches.match('/');
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match('/'))
+      )
   );
 });
 
 // ── MESSAGE HANDLER (from main thread) ────────────────────
 self.addEventListener('message', (event) => {
-  console.log('[Service Worker] Message received:', event.data);
-
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-console.log('[Service Worker] Loaded and ready');
+console.log('[Service Worker] QSToolkit PWA service worker loaded');

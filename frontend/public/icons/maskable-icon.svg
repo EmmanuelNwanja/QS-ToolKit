@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full bleed background — covers all mask shapes -->
+  <rect width="512" height="512" fill="#1a3c5e"/>
+  <!-- Content within the safe zone (center 80% = 204px padding) -->
+  <text x="256" y="330" font-family="Arial,Helvetica,sans-serif" font-size="230" font-weight="bold" fill="#f59e0b" text-anchor="middle">QS</text>
+</svg>

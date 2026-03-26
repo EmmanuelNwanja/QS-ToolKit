@@ -360,7 +360,7 @@ export default function SubscriptionPage() {
                   <p className="text-xs text-gray-400 mt-1">The person who will receive the subscription</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Your Name</label>
                     <input className="input" placeholder="Your name"

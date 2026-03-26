@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
@@ -38,6 +39,29 @@ const PLANS = [
 ];
 
 export default function LandingPage() {
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstalled(true));
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstalled(true);
+    setInstallPrompt(null);
+  };
+
   return (
     <>
       <Head>
@@ -55,6 +79,14 @@ export default function LandingPage() {
               <span className="font-display text-xl font-bold text-primary-800">QSToolkit</span>
             </div>
             <div className="flex items-center gap-3">
+              {!installed && installPrompt && (
+                <button
+                  onClick={handleInstall}
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 border border-primary-200 bg-primary-50 px-3 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
+                >
+                  ⬇ Install App
+                </button>
+              )}
               <Link href="/leaderboard" className="text-sm text-gray-600 hover:text-primary-700 hidden md:inline">
                 Leaderboard
               </Link>
