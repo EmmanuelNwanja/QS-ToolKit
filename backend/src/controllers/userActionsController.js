@@ -10,6 +10,48 @@ const { logAdminActivity } = require('../middlewares/adminMiddleware');
 const emailService = require('../services/emailService');
 const billingAuditService = require('../services/billingAuditService');
 
+const PLAN_ALIASES = {
+  free: ['free'],
+  basic: ['basic', 'student'],
+  student: ['student', 'basic'],
+  pro: ['pro'],
+  enterprise: ['enterprise']
+};
+
+function getPlanAliases(name) {
+  const normalized = String(name || '').trim().toLowerCase();
+  return PLAN_ALIASES[normalized] || [normalized];
+}
+
+async function resolvePlan({ planId, planName }) {
+  const byId = String(planId || '').trim();
+  const byName = String(planName || '').trim().toLowerCase();
+
+  if (byId) {
+    const { data: plan, error } = await supabase
+      .from('subscription_plans')
+      .select('id, name, price_monthly')
+      .eq('id', byId)
+      .single();
+    if (!error && plan) return plan;
+  }
+
+  if (!byName) return null;
+
+  const aliases = getPlanAliases(byName);
+  const { data: plans, error } = await supabase
+    .from('subscription_plans')
+    .select('id, name, price_monthly')
+    .in('name', aliases);
+
+  if (error || !plans || plans.length === 0) return null;
+
+  return plans.find((p) => p.name === byName)
+    || plans.find((p) => p.name === 'basic')
+    || plans.find((p) => p.name === 'student')
+    || plans[0];
+}
+
 /**
  * ─── USER ACCOUNT ACTIONS ───
  */
@@ -179,14 +221,14 @@ exports.overrideSubscription = async (req, res, next) => {
     const { userId } = req.params;
     const { planId, plan_name, billingCycle = 'monthly', expiresAt, reason } = req.body;
 
-    // Look up plan by name (preferred) or by UUID
-    const planQuery = supabase.from('subscription_plans').select('id, name, price_monthly');
-    const { data: plan, error: planError } = plan_name
-      ? await planQuery.ilike('name', plan_name).single()
-      : await planQuery.eq('id', planId).single();
+    if (!planId && !plan_name) {
+      return res.status(400).json(error('Either planId or plan_name is required'));
+    }
 
-    if (planError || !plan) {
-      return res.status(404).json(error('Plan not found'));
+    // Resolve plan by name aliases (basic/student) or UUID.
+    const plan = await resolvePlan({ planId, planName: plan_name });
+    if (!plan) {
+      return res.status(404).json(error(`Plan not found for input: ${plan_name || planId}`));
     }
 
     // Get current user subscription info
