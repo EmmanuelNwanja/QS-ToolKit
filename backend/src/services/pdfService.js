@@ -5,7 +5,8 @@
  */
 
 const logger = require('../utils/logger');
-const PDFDocument = require('pdfkit');
+let PDFDocument = null;
+try { PDFDocument = require('pdfkit'); } catch (e) { PDFDocument = null; }
 
 let puppeteerCore;
 let puppeteerFull;
@@ -158,6 +159,9 @@ function safeText(value, fallback = '-') {
 function bufferFromPdfKit(drawFn) {
   return new Promise((resolve, reject) => {
     try {
+      if (!PDFDocument) {
+        throw pdfUnavailableError('PDF fallback runtime is not installed.');
+      }
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const chunks = [];
       doc.on('data', (chunk) => chunks.push(chunk));
