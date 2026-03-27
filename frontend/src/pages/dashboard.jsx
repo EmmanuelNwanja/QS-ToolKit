@@ -185,7 +185,7 @@ export default function DashboardPage() {
                 ))}
               </div>
               <Link href="/calculators" className="btn-secondary w-full text-center mt-3 text-sm">
-                View All 8 Calculators
+                View 10+ Calculators
               </Link>
             </div>
           </div>

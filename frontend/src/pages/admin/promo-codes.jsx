@@ -15,7 +15,7 @@ export default function PromoCodes() {
     discountType: 'percent',
     discountPercent: '',
     discountAmount: '',
-    applicablePlans: ['free', 'student', 'pro', 'enterprise'],
+    applicablePlans: ['free', 'basic', 'pro', 'enterprise'],
     maxUses: '',
     validFrom: '',
     expiresAt: ''
@@ -58,7 +58,7 @@ export default function PromoCodes() {
         discountType: 'percent',
         discountPercent: '',
         discountAmount: '',
-        applicablePlans: ['free', 'student', 'pro', 'enterprise'],
+        applicablePlans: ['free', 'basic', 'pro', 'enterprise'],
         maxUses: '',
         validFrom: '',
         expiresAt: ''

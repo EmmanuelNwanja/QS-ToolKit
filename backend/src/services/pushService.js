@@ -151,7 +151,8 @@ exports.sendToSegment = async (segment, notification) => {
         query = query.in('subscription_status', ['active', 'trial']);
         break;
       case 'student':
-        query = query.eq('plan_id', (await getStudentPlanId()));
+      case 'basic':
+        query = query.eq('plan_id', (await getBasicPlanId()));
         break;
       case 'pro':
         query = query.eq('plan_id', (await getProPlanId()));
@@ -173,13 +174,13 @@ exports.sendToSegment = async (segment, notification) => {
 };
 
 /**
- * Helper: Get student plan ID
+ * Helper: Get basic plan ID
  */
-async function getStudentPlanId() {
+async function getBasicPlanId() {
   const { data: plan } = await supabase
     .from('subscription_plans')
     .select('id')
-    .eq('name', 'student')
+    .eq('name', 'basic')
     .single();
   return plan?.id;
 }

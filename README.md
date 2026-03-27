@@ -40,6 +40,20 @@ qstoolkit/
    - `database/migrations/001_initial_schema.sql`
    - `database/migrations/002_boq_invoices.sql`
    - `database/migrations/003_feedback_leaderboard.sql`
+   - `database/migrations/004_lint_fixes.sql`
+   - `database/migrations/005_lint_fixes_round2.sql`
+   - `database/migrations/006_pricing_promos_philanthropist.sql`
+   - `database/migrations/007_admin_dashboard.sql`
+   - `database/migrations/008_billing_audit_system.sql`
+   - `database/migrations/009_auth_verification_and_identity_controls.sql`
+   - `database/migrations/010_leaderboard_count_active_projects.sql`
+   - `database/migrations/011_leaderboard_privacy_and_value_fix.sql`
+   - `database/migrations/012_project_milestones.sql`
+   - `database/migrations/013_plan_refresh_basic_pro_enterprise.sql`
+   - `database/migrations/014_leaderboard_value_parity_refresh.sql`
+   - `database/migrations/015_rollout_checklist.sql`
+   - `database/migrations/016_boq_invoice_monthly_limits.sql`
+4. Run plan seeds:
    - `database/seeds/001_seed_plans.sql`
 4. Go to **Storage** → Create two buckets:
    - `branding` (private)
@@ -199,6 +213,8 @@ npm run dev
 | Steel Reinforcement | BS 4449, 6mm–32mm bars with unit weights |
 | Earthwork / Excavation | Soil bulking factors (laterite, clay, loam, sandy) |
 | Floor Tiling | 600×600mm, 400×400mm, grout calculation |
+
+Current platform marketing uses **10+ calculators** across all QS categories.
 
 ---
 

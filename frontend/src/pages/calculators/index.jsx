@@ -18,7 +18,7 @@ export default function CalculatorsPage() {
           {/* Intro */}
           <div className="mb-6">
             <p className="text-gray-500 text-sm max-w-2xl">
-              All <strong>13 calculators</strong> use Nigerian construction standards — sandcrete block sizes,
+              All <strong>10+ calculators</strong> use Nigerian construction standards — sandcrete block sizes,
               BS 4449 steel weights, BRC mesh to BS 4483, local mix ratios and material units.
               Results can be saved directly to any project.
             </p>

@@ -263,7 +263,7 @@ exports.sendWelcome = async (user) => {
         ${sectionTitle('Your QSToolkit Features')}
         <table cellpadding="0" cellspacing="0" width="100%">
           ${featureList([
-            '🧮 <strong>13 QS Calculators</strong> — concrete, steel, blockwork, formwork, roofing and more',
+            '🧮 <strong>10+ QS Calculators</strong> — concrete, steel, blockwork, formwork, roofing and more',
             '📋 <strong>Bill of Quantities</strong> — build and export professional BOQs',
             '🧾 <strong>Invoices & Quotations</strong> — branded documents sent to clients',
             '📁 <strong>Project Tracker</strong> — log every job from start to finish',
@@ -291,9 +291,9 @@ exports.sendSubscriptionConfirmation = async (user, billingCycle = 'monthly', ex
     : '—';
 
   const planFeatures = {
-    student:    ['7 project logs/month', '7 calculator uses/month', '1 device'],
-    pro:        ['15 projects', '20 calculator uses/month', 'Invoice & Quotation Maker', 'PDF & Excel exports'],
-    enterprise: ['200 projects', 'Unlimited calculators', 'Team roles & permissions', 'PDF & Excel exports']
+    basic:      ['2 project logs/month', '30 calculator uses/month', '2 BOQ/month', '2 invoices, 2 valuations, 2 quotations/month', 'PDF & Excel exports', '1 user, 1 device', 'Standard support'],
+    pro:        ['5 projects/month', '80 calculator uses/month', '5 BOQ/month', '5 invoices, 5 valuations, 5 quotations/month', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support'],
+    enterprise: ['50 projects/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices, 50 valuations, 50 quotations/month', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles & permissions', 'Top priority support']
   };
 
   const html = layout({

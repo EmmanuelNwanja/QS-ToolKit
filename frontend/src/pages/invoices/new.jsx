@@ -95,6 +95,10 @@ export default function NewInvoicePage() {
       toast.success('Invoice created successfully');
       router.push(`/projects/${form.project_id}`);
     } catch (err) {
+      if (err.response?.data?.message?.toLowerCase().includes('client name')) {
+        toast.error('Client name is required. Enter it here or set it on the project first.');
+        return;
+      }
       toast.error(err.response?.data?.message || 'Could not create invoice');
     } finally {
       setLoading(false);

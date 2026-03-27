@@ -5,7 +5,7 @@ import { adminAPI } from '../services/api';
 /**
  * ProtectedAdminRoute - Wrapper to ensure only admins can access certain pages
  */
-export default function ProtectedAdminRoute({ children }) {
+export default function ProtectedAdminRoute({ children, requiredPermission }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -13,7 +13,14 @@ export default function ProtectedAdminRoute({ children }) {
   useEffect(() => {
     const checkAdminAccess = async () => {
       try {
-        await adminAPI.verify();
+        const { data } = await adminAPI.verify();
+        const permissions = data?.permissions || [];
+        const hasPermission = !requiredPermission || permissions.includes('*') || permissions.includes(requiredPermission);
+        if (!hasPermission) {
+          router.push('/dashboard');
+          setLoading(false);
+          return;
+        }
         setIsAdmin(true);
         setLoading(false);
       } catch (err) {
@@ -23,11 +30,12 @@ export default function ProtectedAdminRoute({ children }) {
         } else {
           router.push('/auth/login');
         }
+        setLoading(false);
       }
     };
 
     checkAdminAccess();
-  }, [router]);
+  }, [router, requiredPermission]);
 
   if (loading) {
     return (

@@ -13,12 +13,12 @@ const FEATURES = [
 
 const PLANS = [
   {
-    name: 'Student',
+    name: 'Basic',
     price: '₦5000',
     period: '/month',
     color: 'border-gray-200',
     badge: null,
-    features: ['7 project logs/month', '7 calculator uses/month', '1 user, 1 device', 'Basic calculators']
+    features: ['2 project logs/month', '30 calculator uses/month', '2 BOQ/month', '2 invoices, 2 valuations, 2 quotations/month', 'PDF & Excel exports', '1 user, 1 device', 'Standard support']
   },
   {
     name: 'Pro',
@@ -26,7 +26,7 @@ const PLANS = [
     period: '/month',
     color: 'border-primary-700',
     badge: 'Most Popular',
-    features: ['15 project logs', '20 calculator uses/month', 'Invoice & Quotation Maker', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support']
+    features: ['5 project logs/month', '80 calculator uses/month', '5 BOQ/month', '5 invoices, 5 valuations, 5 quotations/month', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support']
   },
   {
     name: 'Enterprise',
@@ -34,7 +34,7 @@ const PLANS = [
     period: '/month',
     color: 'border-gold-500',
     badge: 'Teams',
-    features: ['200 project logs (scalable)', 'Unlimited calculators', 'Invoice & Quotation Maker', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles & permissions', 'Top priority support']
+    features: ['50 project logs/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices, 50 valuations, 50 quotations/month', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles & permissions', 'Top priority support']
   }
 ];
 

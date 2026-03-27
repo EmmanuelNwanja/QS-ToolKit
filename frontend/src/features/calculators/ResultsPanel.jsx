@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { calcAPI, projectAPI } from '../../services/api';
+import { calcAPI } from '../../services/api';
 
-export default function ResultsPanel({ result, calculatorId, calculatorLabel }) {
+export default function ResultsPanel({ result, calculatorId, calculatorLabel, onSaved, methodology }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   if (!result) {
     return (
@@ -29,6 +30,7 @@ export default function ResultsPanel({ result, calculatorId, calculatorLabel }) 
         outputs: data
       });
       setSaved(true);
+      if (typeof onSaved === 'function') onSaved();
       toast.success('Calculation saved!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not save');
@@ -41,12 +43,38 @@ export default function ResultsPanel({ result, calculatorId, calculatorLabel }) 
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="section-title">✅ Results</h2>
-        <button onClick={handleSave} disabled={saving || saved} className="btn-secondary text-xs px-3 py-1.5">
-          {saved ? '✓ Saved' : saving ? 'Saving…' : '💾 Save Result'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowRaw((v) => !v)} className="btn-secondary text-xs px-3 py-1.5">
+            {showRaw ? 'Formatted View' : 'Raw Calculation'}
+          </button>
+          <button onClick={handleSave} disabled={saving || saved} className="btn-secondary text-xs px-3 py-1.5">
+            {saved ? '✓ Saved' : saving ? 'Saving…' : '💾 Save Result'}
+          </button>
+        </div>
       </div>
 
-      <ResultBlock data={data} />
+      {showRaw ? (
+        <pre className="bg-gray-900 text-gray-100 rounded-xl p-4 text-xs overflow-auto max-h-[28rem]">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      ) : (
+        <ResultBlock data={data} />
+      )}
+
+      {methodology && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+          <p className="text-sm font-semibold text-blue-900">Calculation Method & Measurement Standard</p>
+          <p className="text-xs text-blue-800 mt-1">{methodology.standard}</p>
+          <p className="text-xs font-semibold text-blue-900 mt-3">Units</p>
+          <p className="text-xs text-blue-800">{(methodology.units || []).join(' | ')}</p>
+          <p className="text-xs font-semibold text-blue-900 mt-3">How result is derived</p>
+          <ol className="list-decimal pl-4 mt-1 space-y-1">
+            {(methodology.steps || []).map((step) => (
+              <li key={step} className="text-xs text-blue-800">{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

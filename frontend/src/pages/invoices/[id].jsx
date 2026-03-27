@@ -132,6 +132,10 @@ export default function InvoiceDetailPage() {
       await fetchInvoice();
       toast.success('Invoice sent to client');
     } catch (err) {
+      if (err.response?.data?.code === 'PDF_UNAVAILABLE') {
+        toast.error('PDF mailer is temporarily unavailable. Please retry sending shortly.');
+        return;
+      }
       toast.error(err.response?.data?.message || 'Could not send invoice');
     } finally {
       setSending(false);
@@ -142,8 +146,12 @@ export default function InvoiceDetailPage() {
     try {
       const res = await invoiceAPI.exportPdf(id);
       downloadBlob(res.data, `${invoice?.invoice_no || 'invoice'}.pdf`);
-    } catch {
-      toast.error('Could not export PDF');
+    } catch (err) {
+      if (err.response?.data?.code === 'PDF_UNAVAILABLE') {
+        toast.error('PDF export is temporarily unavailable. Please retry shortly.');
+        return;
+      }
+      toast.error(err.response?.data?.message || 'Could not export PDF');
     }
   };
 
@@ -151,8 +159,8 @@ export default function InvoiceDetailPage() {
     try {
       const res = await invoiceAPI.exportExcel(id);
       downloadBlob(res.data, `${invoice?.invoice_no || 'invoice'}.xlsx`);
-    } catch {
-      toast.error('Could not export Excel');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not export Excel');
     }
   };
 

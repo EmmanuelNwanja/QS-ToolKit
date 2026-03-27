@@ -26,8 +26,8 @@ exports.validatePromo = async (req, res, next) => {
   try {
     const { code, plan_name } = req.body;
     if (!code || !plan_name) return res.status(400).json(error('code and plan_name required'));
-    if (!['student', 'pro'].includes(plan_name))
-      return res.status(400).json(error('Promo codes are only valid for Student and Pro plans'));
+    if (!['basic', 'student', 'pro'].includes(plan_name))
+      return res.status(400).json(error('Promo codes are only valid for Basic and Pro plans'));
 
     const { data: promo } = await supabase
       .from('promo_codes')
@@ -80,7 +80,7 @@ exports.initiate = async (req, res, next) => {
     let discountApplied = 0;
     let promoId = null;
 
-    if (promo_code && ['student', 'pro'].includes(plan_name)) {
+    if (promo_code && ['basic', 'student', 'pro'].includes(plan_name)) {
       const { data: promo } = await supabase
         .from('promo_codes').select('*').eq('is_active', true).ilike('code', promo_code.trim()).single();
       if (promo && promo.applicable_plans.includes(plan_name)) {
@@ -168,8 +168,8 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 
     if (!beneficiary_email || !plan_name || !donor_email)
       return res.status(400).json(error('beneficiary_email, plan_name and donor_email are required'));
-    if (!['student', 'pro'].includes(plan_name))
-      return res.status(400).json(error('Philanthropist grants are only available for Student and Pro plans'));
+    if (!['basic', 'student', 'pro'].includes(plan_name))
+      return res.status(400).json(error('Philanthropist grants are only available for Basic and Pro plans'));
 
     const { data: plan } = await supabase
       .from('subscription_plans').select('*').eq('name', plan_name).single();

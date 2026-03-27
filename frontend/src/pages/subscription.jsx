@@ -9,13 +9,14 @@ import { subscriptionAPI } from '../services/api';
 
 const FEATURES = {
   free:       ['3 free lifetime calculator uses', 'No project logging', '1 device'],
-  student:    ['7 project logs/month', '7 calculator uses/month', '1 user · 1 device', 'Promo code eligible'],
-  pro:        ['15 projects/month', '20 calculator uses/month', 'Invoice & Quotation Maker', 'PDF & Excel exports', '1 user · 2 devices', 'Priority support', 'Promo code eligible'],
-  enterprise: ['200 projects (scalable)', 'Unlimited calculator uses', 'Invoice & Quotation Maker', 'PDF & Excel exports', '5 users · 15 devices (scalable)', 'Team roles & permissions', 'Top priority support']
+  basic:      ['2 project logs/month', '30 calculator uses/month', '2 BOQ/month', '2 invoices · 2 valuations · 2 quotations/month', 'PDF & Excel exports', '1 user · 1 device', 'Standard support', 'Promo code eligible'],
+  student:    ['2 project logs/month', '30 calculator uses/month', '2 BOQ/month', '2 invoices · 2 valuations · 2 quotations/month', 'PDF & Excel exports', '1 user · 1 device', 'Standard support', 'Promo code eligible'],
+  pro:        ['5 project logs/month', '80 calculator uses/month', '5 BOQ/month', '5 invoices · 5 valuations · 5 quotations/month', 'PDF & Excel exports', '1 user · 2 devices', 'Priority support', 'Promo code eligible'],
+  enterprise: ['50 project logs/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices · 50 valuations · 50 quotations/month', 'PDF & Excel exports', '5 users · 15 devices', 'Team roles & permissions', 'Top priority support']
 };
 
 // Plans eligible for promo codes and philanthropist payment
-const PROMO_ELIGIBLE = ['student', 'pro'];
+const PROMO_ELIGIBLE = ['basic', 'student', 'pro'];
 
 export default function SubscriptionPage() {
   const router                    = useRouter();
@@ -301,7 +302,7 @@ export default function SubscriptionPage() {
                       ))}
                     </ul>
 
-                    {/* Promo code input (student + pro only) */}
+                    {/* Promo code input (basic + pro only) */}
                     {eligible && plan.price_monthly > 0 && !isCurrent && (
                       <div className="mt-3 mb-2">
                         <div className="flex gap-1">

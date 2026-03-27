@@ -25,6 +25,10 @@ exports.list = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const { items = [], ...invoiceData } = req.body;
+    const allowedTypes = ['invoice', 'quotation', 'valuation', 'proforma'];
+    const invoiceType = allowedTypes.includes(invoiceData.invoice_type)
+      ? invoiceData.invoice_type
+      : 'invoice';
 
     // Auto-generate invoice number
     const { count } = await supabase
@@ -34,6 +38,21 @@ exports.create = async (req, res, next) => {
 
     const year = new Date().getFullYear();
     const invoiceNo = `QST-${year}-${String((count || 0) + 1).padStart(4, '0')}`;
+
+    let resolvedClientName = (invoiceData.client_name || '').trim();
+    if (!resolvedClientName && invoiceData.project_id) {
+      const { data: project } = await supabase
+        .from('projects')
+        .select('client_name')
+        .eq('id', invoiceData.project_id)
+        .eq('user_id', req.user.id)
+        .single();
+      resolvedClientName = (project?.client_name || '').trim();
+    }
+
+    if (!resolvedClientName) {
+      return res.status(400).json(error('Client name is required to create this document'));
+    }
 
     // Calculate totals
     const subtotal = items.reduce((s, item) => s + (item.quantity * item.unit_price), 0);
@@ -45,6 +64,8 @@ exports.create = async (req, res, next) => {
       .from('invoices')
       .insert({
         ...invoiceData,
+        invoice_type: invoiceType,
+        client_name: resolvedClientName,
         user_id: req.user.id,
         invoice_no: invoiceNo,
         subtotal,
@@ -129,7 +150,15 @@ exports.exportPdf = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoice_no}.pdf"`);
     res.send(pdfBuffer);
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (pdfService.isPdfUnavailableError?.(err)) {
+      return res.status(503).json(error('PDF export is temporarily unavailable. Please retry later.', {
+        code: 'PDF_UNAVAILABLE',
+        details: err.details || null
+      }));
+    }
+    next(err);
+  }
 };
 
 exports.exportExcel = async (req, res, next) => {
@@ -160,7 +189,15 @@ exports.sendToClient = async (req, res, next) => {
 
     await supabase.from('invoices').update({ status: 'sent' }).eq('id', req.params.id);
     return res.json(success('Invoice sent to client'));
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (pdfService.isPdfUnavailableError?.(err)) {
+      return res.status(503).json(error('Invoice was created but PDF email delivery is temporarily unavailable. Please retry sending later.', {
+        code: 'PDF_UNAVAILABLE',
+        details: err.details || null
+      }));
+    }
+    next(err);
+  }
 };
 
 // ─── Helpers ──────────────────────────────────────────────────

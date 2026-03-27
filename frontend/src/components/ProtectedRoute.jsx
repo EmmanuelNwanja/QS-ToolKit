@@ -17,13 +17,17 @@ export default function ProtectedRoute({ children, requirePlan }) {
       return;
     }
     if (requirePlan) {
-      const hierarchy = ['free', 'student', 'pro', 'enterprise'];
+      const rank = (value) => {
+        const normalized = value === 'student' ? 'basic' : value;
+        const hierarchy = ['free', 'basic', 'pro', 'enterprise'];
+        return hierarchy.indexOf(normalized);
+      };
       const current = planName();
-      if (hierarchy.indexOf(current) < hierarchy.indexOf(requirePlan)) {
+      if (rank(current) < rank(requirePlan)) {
         router.replace('/subscription');
       }
     }
-  }, [initialized, token, user, router, requirePlan]);
+  }, [initialized, token, user, router, requirePlan, planName]);
 
   if (loading || !initialized) {
     return (

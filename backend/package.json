@@ -27,6 +27,7 @@
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.9",
+    "puppeteer": "^24.7.1",
     "puppeteer-core": "^21.7.0",
     "uuid": "^9.0.0",
     "winston": "^3.11.0"

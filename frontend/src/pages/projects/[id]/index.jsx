@@ -13,6 +13,8 @@ export default function ProjectDetailPage() {
   const { id } = router.query;
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [milestoneForm, setMilestoneForm] = useState({ title: '', due_date: '', note: '' });
+  const [savingMilestone, setSavingMilestone] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -21,6 +23,12 @@ export default function ProjectDetailPage() {
       .catch(() => toast.error('Project not found'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const reloadProject = async () => {
+    if (!id) return;
+    const { data } = await projectAPI.get(id);
+    setProject(data.project);
+  };
 
   const createFeedbackLink = async () => {
     try {
@@ -32,6 +40,50 @@ export default function ProjectDetailPage() {
       await navigator.clipboard.writeText(data.link.feedback_url);
       toast.success('Feedback link copied to clipboard!');
     } catch { toast.error('Could not create feedback link'); }
+  };
+
+  const createMilestone = async (e) => {
+    e.preventDefault();
+    if (!milestoneForm.title.trim()) {
+      toast.error('Milestone title is required');
+      return;
+    }
+
+    setSavingMilestone(true);
+    try {
+      await projectAPI.createMilestone(id, {
+        title: milestoneForm.title,
+        due_date: milestoneForm.due_date || null,
+        note: milestoneForm.note || null
+      });
+      setMilestoneForm({ title: '', due_date: '', note: '' });
+      await reloadProject();
+      toast.success('Milestone added');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not add milestone');
+    } finally {
+      setSavingMilestone(false);
+    }
+  };
+
+  const updateMilestoneStatus = async (milestoneId, status) => {
+    try {
+      await projectAPI.updateMilestone(id, milestoneId, { status });
+      await reloadProject();
+      toast.success('Milestone updated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update milestone');
+    }
+  };
+
+  const deleteMilestone = async (milestoneId) => {
+    try {
+      await projectAPI.removeMilestone(id, milestoneId);
+      await reloadProject();
+      toast.success('Milestone removed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not remove milestone');
+    }
   };
 
   if (loading) {
@@ -174,6 +226,69 @@ export default function ProjectDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Milestones */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-bold text-primary-800 text-base">🎯 Milestones</h3>
+              <span className="text-xs text-gray-500">Track progress with notes</span>
+            </div>
+
+            <form onSubmit={createMilestone} className="grid md:grid-cols-12 gap-2 mb-4">
+              <input
+                className="input md:col-span-4"
+                placeholder="Milestone title"
+                value={milestoneForm.title}
+                onChange={(e) => setMilestoneForm((m) => ({ ...m, title: e.target.value }))}
+              />
+              <input
+                type="date"
+                className="input md:col-span-2"
+                value={milestoneForm.due_date}
+                onChange={(e) => setMilestoneForm((m) => ({ ...m, due_date: e.target.value }))}
+              />
+              <input
+                className="input md:col-span-4"
+                placeholder="Side note (optional)"
+                value={milestoneForm.note}
+                onChange={(e) => setMilestoneForm((m) => ({ ...m, note: e.target.value }))}
+              />
+              <button type="submit" className="btn-primary md:col-span-2" disabled={savingMilestone}>
+                {savingMilestone ? 'Saving...' : 'Add'}
+              </button>
+            </form>
+
+            {(project.project_milestones || []).length === 0 ? (
+              <p className="text-sm text-gray-500">No milestones yet. Add one to start tracking project progress.</p>
+            ) : (
+              <div className="space-y-2">
+                {(project.project_milestones || [])
+                  .slice()
+                  .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                  .map((m) => (
+                    <div key={m.id} className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-sm text-gray-900">{m.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Due: {m.due_date ? formatDate(m.due_date) : 'Not set'}</p>
+                        {m.note && <p className="text-xs text-gray-600 mt-1">📝 {m.note}</p>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="input py-1.5 text-xs"
+                          value={m.status}
+                          onChange={(e) => updateMilestoneStatus(m.id, e.target.value)}
+                        >
+                          <option value="planned">Planned</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                        <button type="button" onClick={() => deleteMilestone(m.id)} className="btn-secondary text-xs">Remove</button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
         </div>

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { calcAPI } from '../../services/api';
 import { CALCULATORS } from '../../utils/helpers';
+import { getCalculatorMethod } from '../../features/calculators/methodology';
 
 // ── Original 8 ──────────────────────────────────────────────────
 import ConcreteForm    from '../../features/calculators/ConcreteForm';
@@ -67,9 +69,26 @@ export default function CalculatorPage() {
   const { id }  = router.query;
   const [result, setResult]   = useState(null);
   const [loading, setLoading] = useState(false);
+  const [savedCalculations, setSavedCalculations] = useState([]);
 
   const calc = CALCULATORS.find(c => c.id === id);
   const FormComponent = id ? FORM_MAP[id] : null;
+  const method = id ? getCalculatorMethod(id) : null;
+
+  const loadSaved = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { data } = await calcAPI.getSaved({ calculator_type: id, limit: 10 });
+      setSavedCalculations(data.calculations || []);
+    } catch {
+      setSavedCalculations([]);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    loadSaved();
+  }, [id, loadSaved]);
 
   if (!id || !calc) return null;
 
@@ -100,7 +119,7 @@ export default function CalculatorPage() {
         <div className="max-w-5xl">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <a href="/calculators" className="hover:text-primary-700">Calculators</a>
+            <Link href="/calculators" className="hover:text-primary-700">Calculators</Link>
             <span>/</span>
             <span className="text-gray-900 font-medium">{calc.label}</span>
             <span className="badge-blue ml-2">{calc.category}</span>
@@ -121,7 +140,23 @@ export default function CalculatorPage() {
 
             {/* Results */}
             <div className="lg:col-span-3">
-              <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} />
+              <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} onSaved={loadSaved} methodology={method} />
+
+              <div className="card mt-4">
+                <h3 className="section-title mb-3">Saved Calculations</h3>
+                {savedCalculations.length === 0 ? (
+                  <p className="text-sm text-gray-500">No saved calculations yet for this calculator.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedCalculations.map((item) => (
+                      <div key={item.id} className="border border-gray-100 rounded-lg p-3">
+                        <p className="text-sm font-semibold text-primary-800">{item.title || 'Untitled calculation'}</p>
+                        <p className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleString('en-NG')}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

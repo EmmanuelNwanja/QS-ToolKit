@@ -7,6 +7,28 @@
 let puppeteer;
 try { puppeteer = require('puppeteer-core'); } catch (e) { puppeteer = null; }
 
+if (!puppeteer) {
+  try { puppeteer = require('puppeteer'); } catch (e) { puppeteer = null; }
+}
+
+function pdfUnavailableError(message, details = {}) {
+  const err = new Error(message);
+  err.code = 'PDF_UNAVAILABLE';
+  err.details = details;
+  return err;
+}
+
+function resolveExecutableCandidates() {
+  const candidates = [
+    process.env.CHROMIUM_PATH,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome-stable'
+  ].filter(Boolean);
+  return [...new Set(candidates)];
+}
+
 const formatNaira = (amount) =>
   `₦${Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
@@ -28,15 +50,43 @@ exports.generateInvoicePdf = async (invoice, branding) => {
 
 // ─── HTML → PDF ───────────────────────────────────────────────
 async function htmlToPdf(html) {
-  if (!puppeteer) throw new Error('PDF generation requires puppeteer-core. Install it.');
+  if (!puppeteer) {
+    throw pdfUnavailableError('PDF generation runtime is not installed.');
+  }
 
-  const execPath = process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser';
-
-  const browser = await puppeteer.launch({
-    executablePath: execPath,
+  const launchOptions = {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: 'new'
-  });
+  };
+
+  const candidates = resolveExecutableCandidates();
+
+  let browser = null;
+  let launchError = null;
+  if (candidates.length > 0) {
+    for (const executablePath of candidates) {
+      try {
+        browser = await puppeteer.launch({ ...launchOptions, executablePath });
+        break;
+      } catch (err) {
+        launchError = err;
+      }
+    }
+  }
+
+  if (!browser) {
+    try {
+      browser = await puppeteer.launch(launchOptions);
+    } catch (err) {
+      launchError = err;
+    }
+  }
+
+  if (!browser) {
+    throw pdfUnavailableError('PDF service is temporarily unavailable. Try again later.', {
+      reason: launchError?.message || 'Unable to start browser runtime'
+    });
+  }
 
   try {
     const page = await browser.newPage();
@@ -51,6 +101,8 @@ async function htmlToPdf(html) {
     await browser.close();
   }
 }
+
+exports.isPdfUnavailableError = (err) => err?.code === 'PDF_UNAVAILABLE';
 
 // ─── BOQ HTML Template ────────────────────────────────────────
 function buildBoqHtml(boq, branding) {
@@ -174,6 +226,7 @@ function buildInvoiceHtml(invoice, branding) {
   const secondaryColor = branding?.secondary_color || '#f59e0b';
   const companyName = branding?.brand_name || 'QSToolkit User';
   const docTypeLabel = invoice.invoice_type === 'quotation' ? 'QUOTATION'
+    : invoice.invoice_type === 'valuation' ? 'VALUATION'
     : invoice.invoice_type === 'proforma' ? 'PROFORMA INVOICE'
     : 'INVOICE';
 

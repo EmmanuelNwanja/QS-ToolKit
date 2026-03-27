@@ -1,8 +1,10 @@
 const router = require('express').Router();
 const billingController = require('../controllers/billingController');
+const authMiddleware = require('../middlewares/authMiddleware');
 const { adminAuth, requirePermission } = require('../middlewares/adminMiddleware');
 
 // All billing audit endpoints require admin auth and manage_billing permission
+router.use(authMiddleware.protect);
 router.use(adminAuth);
 
 /**

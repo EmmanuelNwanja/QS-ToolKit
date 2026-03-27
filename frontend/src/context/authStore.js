@@ -101,7 +101,7 @@ const useAuthStore = create((set, get) => ({
   isAuthenticated: () => !!get().token,
   isPro:           () => ['pro', 'enterprise'].includes(get().user?.subscription_plans?.name),
   isEnterprise:    () => get().user?.subscription_plans?.name === 'enterprise',
-  isStudent:       () => get().user?.subscription_plans?.name === 'student',
+  isStudent:       () => ['basic', 'student'].includes(get().user?.subscription_plans?.name),
   planName:        () => get().user?.subscription_plans?.name || 'free',
   isAdmin:         () => ['super_admin', 'admin'].includes(get().user?.org_role),
   isSuperAdmin:    () => get().user?.org_role === 'super_admin'

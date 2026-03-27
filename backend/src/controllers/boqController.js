@@ -194,7 +194,15 @@ exports.exportPdf = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="BOQ-${boq.id.slice(0, 8)}.pdf"`);
     res.send(pdfBuffer);
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (pdfService.isPdfUnavailableError?.(err)) {
+      return res.status(503).json(error('BOQ PDF export is temporarily unavailable. Please retry later.', {
+        code: 'PDF_UNAVAILABLE',
+        details: err.details || null
+      }));
+    }
+    next(err);
+  }
 };
 
 // ─── Export Excel ─────────────────────────────────────────────

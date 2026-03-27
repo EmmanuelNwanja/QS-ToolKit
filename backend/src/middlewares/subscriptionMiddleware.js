@@ -59,7 +59,7 @@ exports.checkCalculatorLimit = async (req, res, next) => {
 };
 
 // ── Require active subscription at a given plan level ─────────
-exports.requireSubscription = (planLevel = 'student') => async (req, res, next) => {
+exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) => {
   try {
     const { data: user } = await supabase
       .from('users')
@@ -75,8 +75,13 @@ exports.requireSubscription = (planLevel = 'student') => async (req, res, next) 
     }
 
     const plan = user.subscription_plans?.name;
-    const hierarchy = ['free', 'student', 'pro', 'enterprise'];
-    if (hierarchy.indexOf(plan) < hierarchy.indexOf(planLevel)) {
+    const rank = (value) => {
+      const normalized = value === 'student' ? 'basic' : value;
+      const hierarchy = ['free', 'basic', 'pro', 'enterprise'];
+      return hierarchy.indexOf(normalized);
+    };
+
+    if (rank(plan) < rank(planLevel)) {
       return res.status(402).json(error(
         `This feature requires a ${planLevel} plan or higher. You are on the ${plan} plan.`,
         { code: 'PLAN_UPGRADE_REQUIRED', required: planLevel, current: plan }
@@ -114,6 +119,102 @@ exports.checkProjectLimit = async (req, res, next) => {
       return res.status(402).json(error(
         `You have reached the ${maxProjects}-project limit on your ${user.subscription_plans.name} plan.`,
         { code: 'PROJECT_LIMIT_REACHED', limit: maxProjects }
+      ));
+    }
+    next();
+  } catch (err) { next(err); }
+};
+
+// ── Check BOQ creation limit (monthly) ────────────────────────
+exports.checkBoqLimit = async (req, res, next) => {
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('subscription_status, subscription_plans(max_boq, name)')
+      .eq('id', req.user.id)
+      .single();
+
+    if (!user?.subscription_plans || user?.subscription_status !== 'active') {
+      return res.status(402).json(error(
+        'An active subscription is required to create BOQ documents.',
+        { code: 'SUBSCRIPTION_REQUIRED' }
+      ));
+    }
+
+    const maxBoq = user.subscription_plans.max_boq;
+    if (maxBoq === null) return next(); // unlimited (enterprise can be set null later)
+    if (maxBoq === 0) {
+      return res.status(402).json(error(
+        `BOQ creation is not available on the ${user.subscription_plans.name} plan.`,
+        { code: 'PLAN_UPGRADE_REQUIRED' }
+      ));
+    }
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count } = await supabase
+      .from('boq_documents')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .gte('created_at', startOfMonth.toISOString());
+
+    if (count >= maxBoq) {
+      return res.status(402).json(error(
+        `You have reached the ${maxBoq} BOQ/month limit on your ${user.subscription_plans.name} plan.`,
+        { code: 'BOQ_LIMIT_REACHED', used: count, limit: maxBoq, plan: user.subscription_plans.name }
+      ));
+    }
+    next();
+  } catch (err) { next(err); }
+};
+
+// ── Check invoice/document creation limit (per type, monthly) ─
+exports.checkInvoiceLimit = async (req, res, next) => {
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('subscription_status, subscription_plans(max_invoices, name)')
+      .eq('id', req.user.id)
+      .single();
+
+    if (!user?.subscription_plans || user?.subscription_status !== 'active') {
+      return res.status(402).json(error(
+        'An active subscription is required to create invoices or documents.',
+        { code: 'SUBSCRIPTION_REQUIRED' }
+      ));
+    }
+
+    const maxInvoices = user.subscription_plans.max_invoices;
+    if (maxInvoices === null) return next();
+    if (maxInvoices === 0) {
+      return res.status(402).json(error(
+        `Invoice/document creation is not available on the ${user.subscription_plans.name} plan.`,
+        { code: 'PLAN_UPGRADE_REQUIRED' }
+      ));
+    }
+
+    const allowedTypes = ['invoice', 'quotation', 'valuation', 'proforma'];
+    const invoiceType = allowedTypes.includes(req.body?.invoice_type)
+      ? req.body.invoice_type
+      : 'invoice';
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('invoice_type', invoiceType)
+      .gte('created_at', startOfMonth.toISOString());
+
+    if (count >= maxInvoices) {
+      return res.status(402).json(error(
+        `You have reached the ${maxInvoices} ${invoiceType}/month limit on your ${user.subscription_plans.name} plan.`,
+        { code: 'INVOICE_LIMIT_REACHED', used: count, limit: maxInvoices, type: invoiceType, plan: user.subscription_plans.name }
       ));
     }
     next();

@@ -45,7 +45,7 @@ exports.get = async (req, res, next) => {
   try {
     const { data, error: err } = await supabase
       .from('projects')
-      .select('*, boq_documents(*), invoices(id, invoice_type, total_amount, status), feedback_links(id, is_active)')
+      .select('*, boq_documents(*), invoices(id, invoice_type, total_amount, status), feedback_links(id, is_active), project_milestones(*)')
       .eq('id', req.params.id)
       .eq('user_id', req.user.id)
       .single();

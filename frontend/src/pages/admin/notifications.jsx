@@ -207,7 +207,7 @@ export default function PushNotifications() {
               Send targeted push notifications to your users' browsers. Users must have subscribed to notifications on your platform first.
             </p>
             <div className="text-sm text-blue-700 space-y-1">
-              <p>✓ Segment by plan type (all, free, paid, student, pro)</p>
+              <p>✓ Segment by plan type (all, free, paid, basic, pro)</p>
               <p>✓ Schedule notifications for future delivery</p>
               <p>✓ Track delivery status and success rates</p>
               <p>✓ Cancel scheduled notifications before they send</p>
@@ -301,7 +301,7 @@ export default function PushNotifications() {
                     <option value="all">All Users</option>
                     <option value="free">Free Plan Users</option>
                     <option value="paid">Paid Plan Users</option>
-                    <option value="student">Student Plan Users</option>
+                    <option value="basic">Basic Plan Users</option>
                     <option value="pro">Pro Plan Users</option>
                   </select>
                 </div>

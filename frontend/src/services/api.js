@@ -83,12 +83,16 @@ export const userAPI = {
 
 // ─── Projects ──────────────────────────────────────────────────
 export const projectAPI = {
-  list:   (params) => api.get('/projects', { params }),
-  stats:  ()       => api.get('/projects/stats'),
-  get:    (id)     => api.get(`/projects/${id}`),
-  create: (data)   => api.post('/projects', data),
-  update: (id, d)  => api.put(`/projects/${id}`, d),
-  remove: (id)     => api.delete(`/projects/${id}`)
+  list:           (params) => api.get('/projects', { params }),
+  stats:          ()       => api.get('/projects/stats'),
+  get:            (id)     => api.get(`/projects/${id}`),
+  create:         (data)   => api.post('/projects', data),
+  update:         (id, d)  => api.put(`/projects/${id}`, d),
+  remove:         (id)     => api.delete(`/projects/${id}`),
+  listMilestones: (id)     => api.get(`/projects/${id}/milestones`),
+  createMilestone:(id, d)  => api.post(`/projects/${id}/milestones`, d),
+  updateMilestone:(id, milestoneId, d) => api.patch(`/projects/${id}/milestones/${milestoneId}`, d),
+  removeMilestone:(id, milestoneId)    => api.delete(`/projects/${id}/milestones/${milestoneId}`)
 };
 
 // ─── Calculators ───────────────────────────────────────────────

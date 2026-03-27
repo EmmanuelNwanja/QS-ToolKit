@@ -386,9 +386,11 @@ exports.save = async (req, res, next) => {
 
 exports.getSaved = async (req, res, next) => {
   try {
-    const { project_id } = req.query;
+    const { project_id, calculator_type, limit } = req.query;
     let query = supabase.from('saved_calculations').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
     if (project_id) query = query.eq('project_id', project_id);
+    if (calculator_type) query = query.eq('calculator_type', calculator_type);
+    if (limit && Number(limit) > 0) query = query.limit(Math.min(Number(limit), 100));
     const { data } = await query;
     return res.json(success('Saved calculations', { calculations: data }));
   } catch (err) { next(err); }

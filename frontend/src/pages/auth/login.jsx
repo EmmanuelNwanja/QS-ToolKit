@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [emailIssueAlert, setEmailIssueAlert] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -53,6 +54,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
+      setShowResendVerification(false);
       toast.success(`Welcome back, ${user.name}!`);
       
       // Small delay to ensure state is updated before redirect
@@ -73,6 +75,7 @@ export default function LoginPage() {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
       if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        setShowResendVerification(true);
         setLoading(false);
       }
       setLoading(false);
@@ -92,12 +95,12 @@ export default function LoginPage() {
               </div>
               <span className="font-display text-2xl font-bold">QSToolkit</span>
             </div>
-            <h2 className="font-display text-3xl font-bold mb-4">Nigeria's #1 QS Platform</h2>
+            <h2 className="font-display text-3xl font-bold mb-4">Nigeria&apos;s #1 QS Platform</h2>
             <p className="text-primary-300 leading-relaxed mb-8">
               Professional tools for Quantity Surveyors — from Lagos to Kano. Calculate, track, invoice, and grow your practice.
             </p>
             <div className="space-y-3">
-              {['8 professional calculators', 'BOQ generator with PDF/Excel export', 'Branded invoices & quotations', 'Client feedback & live leaderboard'].map(f => (
+              {['10+ professional calculators', 'BOQ generator with PDF/Excel export', 'Branded invoices & quotations', 'Client feedback & live leaderboard'].map(f => (
                 <div key={f} className="flex items-center gap-3 text-sm text-primary-200">
                   <span className="text-gold-400">✓</span> {f}
                 </div>
@@ -159,18 +162,20 @@ export default function LoginPage() {
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
 
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                disabled={resending}
-                className="btn-secondary w-full"
-              >
-                {resending ? 'Sending verification…' : 'Resend Verification Email'}
-              </button>
+              {showResendVerification && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resending}
+                  className="btn-secondary w-full"
+                >
+                  {resending ? 'Sending verification…' : 'Resend Verification Email'}
+                </button>
+              )}
             </form>
 
             <p className="text-center text-sm text-gray-500 mt-6">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/auth/register" className="text-primary-700 font-semibold hover:underline">
                 Create one free
               </Link>

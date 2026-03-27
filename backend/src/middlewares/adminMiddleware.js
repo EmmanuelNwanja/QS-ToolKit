@@ -2,6 +2,24 @@ const supabase = require('../config/supabase');
 const { error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 
+const DEFAULT_ADMIN_PERMISSIONS = [
+  'view_analytics',
+  'manage_billing'
+];
+
+function getEffectivePermissions(adminUser = {}) {
+  if (adminUser.admin_role === 'super_admin') {
+    return ['*'];
+  }
+
+  const rawPermissions = Array.isArray(adminUser.permissions) ? adminUser.permissions : [];
+  if (rawPermissions.length > 0) {
+    return rawPermissions;
+  }
+
+  return adminUser.admin_role === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : [];
+}
+
 /**
  * Middleware to verify admin access
  * Checks if user is a platform admin (not org admin)
@@ -17,7 +35,7 @@ const adminAuth = async (req, res, next) => {
     // Check if user is a platform admin
     const { data: adminUser, error: dbError } = await supabase
       .from('admin_users')
-      .select('id, admin_role, permissions')
+      .select('id, user_id, admin_role, permissions')
       .eq('user_id', userId)
       .single();
 
@@ -74,12 +92,12 @@ const requirePermission = (requiredPermissions) => {
       return res.status(403).json(error('Admin access required'));
     }
 
-    const permissions = req.adminUser.permissions || [];
+    const permissions = getEffectivePermissions(req.adminUser);
     const permArray = Array.isArray(requiredPermissions)
       ? requiredPermissions
       : [requiredPermissions];
 
-    const hasPermission = permArray.some(perm => permissions.includes(perm));
+    const hasPermission = permissions.includes('*') || permArray.some(perm => permissions.includes(perm));
 
     if (!hasPermission && !req.isSuperAdmin) {
       return res.status(403).json(error(`Permission required: ${permArray.join(', ')}`));
@@ -128,6 +146,8 @@ module.exports = {
   adminAuth,
   superAdminAuth,
   requirePermission,
+  getEffectivePermissions,
+  DEFAULT_ADMIN_PERMISSIONS,
   logAdminActivity,
   trackAdminActivity
 };

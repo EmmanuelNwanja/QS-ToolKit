@@ -74,7 +74,7 @@ export const PROJECT_TYPES = [
   'Other'
 ];
 
-// Calculator list config — 13 calculators total
+// Calculator list config — 10+ calculators total
 export const CALCULATORS = [
   // ── Original 8 ──────────────────────────────────────────────────
   { id: 'concrete',         label: 'Concrete Volume',          icon: '🏗️', description: 'Slabs, columns, beams, footings',                category: 'Structural'   },

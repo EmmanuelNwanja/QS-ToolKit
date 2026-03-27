@@ -310,7 +310,7 @@ export default function AdminUsers() {
                       >
                         <option value="">Select a plan</option>
                         <option value="free">Free</option>
-                        <option value="student">Student</option>
+                        <option value="basic">Basic</option>
                         <option value="pro">Pro</option>
                         <option value="enterprise">Enterprise</option>
                       </select>

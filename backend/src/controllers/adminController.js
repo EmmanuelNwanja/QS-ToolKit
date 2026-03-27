@@ -2,6 +2,7 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 const { logAdminActivity } = require('../middlewares/adminMiddleware');
+const { getEffectivePermissions, DEFAULT_ADMIN_PERMISSIONS } = require('../middlewares/adminMiddleware');
 const crypto = require('crypto');
 
 // ── ADMIN MANAGEMENT ────────────────────────────────────────
@@ -11,6 +12,9 @@ const crypto = require('crypto');
 exports.createAdmin = async (req, res, next) => {
   try {
     const { userId, adminRole = 'admin', permissions = [] } = req.body;
+    const normalizedPermissions = Array.isArray(permissions) && permissions.length > 0
+      ? permissions
+      : (adminRole === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : []);
 
     // Verify target user exists
     const { data: user, error: userError } = await supabase
@@ -40,7 +44,7 @@ exports.createAdmin = async (req, res, next) => {
       .insert({
         user_id: userId,
         admin_role: adminRole,
-        permissions,
+        permissions: normalizedPermissions,
         created_by: req.adminUser.user_id
       })
       .select()
@@ -649,45 +653,58 @@ exports.sendPushNotification = async (req, res, next) => {
 exports.getDashboardStats = async (req, res, next) => {
   try {
     const nowIso = new Date().toISOString();
+    const scopedUserId = req.isSuperAdmin ? null : req.user.id;
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
 
-    const { count: totalUsers } = await supabase
+    let usersQuery = supabase
       .from('users')
       .select('id', { count: 'exact' });
+    if (scopedUserId) usersQuery = usersQuery.eq('id', scopedUserId);
+    const { count: totalUsers } = await usersQuery;
 
-    const { data: activeSubscriptionRows } = await supabase
+    let activeSubsQuery = supabase
       .from('users')
       .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
+    if (scopedUserId) activeSubsQuery = activeSubsQuery.eq('id', scopedUserId);
+    const { data: activeSubscriptionRows } = await activeSubsQuery;
 
     const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
       return !u.subscription_expires_at || u.subscription_expires_at > nowIso;
     }).length;
 
-    const [{ data: payments }, { data: refunds }] = await Promise.all([
-      supabase
+    const paymentQuery = supabase
         .from('billing_transactions')
         .select('amount')
         .eq('type', 'payment')
-        .eq('status', 'completed'),
-      supabase
+        .eq('status', 'completed');
+
+    const refundQuery = supabase
         .from('billing_transactions')
         .select('amount')
         .eq('type', 'refund')
-        .eq('status', 'completed')
-    ]);
+        .eq('status', 'completed');
+
+    if (scopedUserId) {
+      paymentQuery.eq('user_id', scopedUserId);
+      refundQuery.eq('user_id', scopedUserId);
+    }
+
+    const [{ data: payments }, { data: refunds }] = await Promise.all([paymentQuery, refundQuery]);
 
     const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
     const totalRefunds = (refunds || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
     const totalRevenue = grossRevenue - totalRefunds;
 
-    const { count: activePromoCodes } = await supabase
+    let promosQuery = supabase
       .from('promo_codes')
       .select('id', { count: 'exact' })
       .eq('is_active', true);
+    if (scopedUserId) promosQuery = promosQuery.eq('created_by', scopedUserId);
+    const { count: activePromoCodes } = await promosQuery;
 
     return res.json(success('Dashboard stats retrieved', {
       totalUsers,
@@ -707,6 +724,7 @@ exports.getDashboardStats = async (req, res, next) => {
 exports.getAnalytics = async (req, res, next) => {
   try {
     const nowIso = new Date().toISOString();
+    const scopedUserId = req.isSuperAdmin ? null : req.user.id;
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -732,38 +750,49 @@ exports.getAnalytics = async (req, res, next) => {
         startDate.setDate(now.getDate() - 30);
     }
 
-    const { count: totalUsers } = await supabase
+    let totalUsersQuery = supabase
       .from('users')
       .select('id', { count: 'exact' });
+    if (scopedUserId) totalUsersQuery = totalUsersQuery.eq('id', scopedUserId);
+    const { count: totalUsers } = await totalUsersQuery;
 
-    const { count: newSignups } = await supabase
+    let newSignupsQuery = supabase
       .from('users')
       .select('id', { count: 'exact' })
       .gte('created_at', startDate.toISOString());
+    if (scopedUserId) newSignupsQuery = newSignupsQuery.eq('id', scopedUserId);
+    const { count: newSignups } = await newSignupsQuery;
 
-    const { data: activeSubscriptionRows } = await supabase
+    let activeRowsQuery = supabase
       .from('users')
       .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
+    if (scopedUserId) activeRowsQuery = activeRowsQuery.eq('id', scopedUserId);
+    const { data: activeSubscriptionRows } = await activeRowsQuery;
 
     const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
       return !u.subscription_expires_at || u.subscription_expires_at > nowIso;
     }).length;
 
-    const [{ data: payments }, { data: refunds }] = await Promise.all([
-      supabase
+    const paymentQuery = supabase
         .from('billing_transactions')
         .select('amount')
         .eq('type', 'payment')
         .eq('status', 'completed')
-        .gte('transaction_date', startDate.toISOString()),
-      supabase
+        .gte('transaction_date', startDate.toISOString());
+    const refundQuery = supabase
         .from('billing_transactions')
         .select('amount')
         .eq('type', 'refund')
         .eq('status', 'completed')
-        .gte('transaction_date', startDate.toISOString())
-    ]);
+        .gte('transaction_date', startDate.toISOString());
+
+    if (scopedUserId) {
+      paymentQuery.eq('user_id', scopedUserId);
+      refundQuery.eq('user_id', scopedUserId);
+    }
+
+    const [{ data: payments }, { data: refunds }] = await Promise.all([paymentQuery, refundQuery]);
 
     const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
     const totalRefunds = (refunds || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
@@ -794,6 +823,8 @@ exports.verifyAdmin = async (req, res, next) => {
     return res.json(success('Admin verified', {
       isAdmin: true,
       isSuperAdmin: req.isSuperAdmin,
+      adminRole: req.adminUser.admin_role,
+      permissions: getEffectivePermissions(req.adminUser),
       user: {
         id: req.user.id,
         email: req.user.email,

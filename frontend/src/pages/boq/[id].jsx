@@ -152,8 +152,12 @@ export default function BoqDetailPage() {
     try {
       const res = await boqAPI.exportPdf(id);
       downloadBlob(res.data, `BOQ-${String(boq?.title || 'document').replace(/\s+/g, '-')}.pdf`);
-    } catch {
-      toast.error('Could not export PDF');
+    } catch (err) {
+      if (err.response?.data?.code === 'PDF_UNAVAILABLE') {
+        toast.error('PDF export is temporarily unavailable. Please retry shortly.');
+        return;
+      }
+      toast.error(err.response?.data?.message || 'Could not export PDF');
     }
   };
 
@@ -161,8 +165,8 @@ export default function BoqDetailPage() {
     try {
       const res = await boqAPI.exportExcel(id);
       downloadBlob(res.data, `BOQ-${String(boq?.title || 'document').replace(/\s+/g, '-')}.xlsx`);
-    } catch {
-      toast.error('Could not export Excel');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not export Excel');
     }
   };
 
