@@ -53,6 +53,7 @@ qstoolkit/
    - `database/migrations/014_leaderboard_value_parity_refresh.sql`
    - `database/migrations/015_rollout_checklist.sql`
    - `database/migrations/016_boq_invoice_monthly_limits.sql`
+   - `database/migrations/017_leaderboard_aggregation_fix.sql`
 4. Run plan seeds:
    - `database/seeds/001_seed_plans.sql`
 4. Go to **Storage** → Create two buckets:

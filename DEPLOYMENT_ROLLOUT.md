@@ -19,6 +19,7 @@
 14. database/migrations/014_leaderboard_value_parity_refresh.sql
 15. database/migrations/015_rollout_checklist.sql
 16. database/migrations/016_boq_invoice_monthly_limits.sql
+17. database/migrations/017_leaderboard_aggregation_fix.sql
 3. Run seed refresh:
 1. database/seeds/001_seed_plans.sql
 4. Deploy backend.

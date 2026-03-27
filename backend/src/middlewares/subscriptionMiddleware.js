@@ -4,6 +4,26 @@ const { error } = require('../utils/responseHelper');
 // New users with no active plan get this many LIFETIME calculator uses free
 const FREE_TIER_USES = 3;
 
+function normalizePlanName(planName) {
+  return planName === 'student' ? 'basic' : planName;
+}
+
+function getDefaultBoqLimit(planName) {
+  const plan = normalizePlanName(planName);
+  if (plan === 'basic') return 2;
+  if (plan === 'pro') return 5;
+  if (plan === 'enterprise') return 50;
+  return 0;
+}
+
+function getDefaultInvoiceLimit(planName) {
+  const plan = normalizePlanName(planName);
+  if (plan === 'basic') return 2;
+  if (plan === 'pro') return 5;
+  if (plan === 'enterprise') return 50;
+  return 0;
+}
+
 // ── Check calculator usage limit ──────────────────────────────
 exports.checkCalculatorLimit = async (req, res, next) => {
   try {
@@ -128,11 +148,26 @@ exports.checkProjectLimit = async (req, res, next) => {
 // ── Check BOQ creation limit (monthly) ────────────────────────
 exports.checkBoqLimit = async (req, res, next) => {
   try {
-    const { data: user } = await supabase
+    let user = null;
+
+    // New-schema path (after migration 016).
+    const { data: userWithLimit, error: withLimitErr } = await supabase
       .from('users')
       .select('subscription_status, subscription_plans(max_boq, name)')
       .eq('id', req.user.id)
       .single();
+
+    if (!withLimitErr) {
+      user = userWithLimit;
+    } else {
+      // Backward-compatible fallback for environments where max_boq does not exist yet.
+      const { data: fallbackUser } = await supabase
+        .from('users')
+        .select('subscription_status, subscription_plans(name)')
+        .eq('id', req.user.id)
+        .single();
+      user = fallbackUser;
+    }
 
     if (!user?.subscription_plans || user?.subscription_status !== 'active') {
       return res.status(402).json(error(
@@ -141,7 +176,7 @@ exports.checkBoqLimit = async (req, res, next) => {
       ));
     }
 
-    const maxBoq = user.subscription_plans.max_boq;
+    const maxBoq = user.subscription_plans.max_boq ?? getDefaultBoqLimit(user.subscription_plans.name);
     if (maxBoq === null) return next(); // unlimited (enterprise can be set null later)
     if (maxBoq === 0) {
       return res.status(402).json(error(
@@ -173,11 +208,26 @@ exports.checkBoqLimit = async (req, res, next) => {
 // ── Check invoice/document creation limit (per type, monthly) ─
 exports.checkInvoiceLimit = async (req, res, next) => {
   try {
-    const { data: user } = await supabase
+    let user = null;
+
+    // New-schema path (after migration 016).
+    const { data: userWithLimit, error: withLimitErr } = await supabase
       .from('users')
       .select('subscription_status, subscription_plans(max_invoices, name)')
       .eq('id', req.user.id)
       .single();
+
+    if (!withLimitErr) {
+      user = userWithLimit;
+    } else {
+      // Backward-compatible fallback for environments where max_invoices does not exist yet.
+      const { data: fallbackUser } = await supabase
+        .from('users')
+        .select('subscription_status, subscription_plans(name)')
+        .eq('id', req.user.id)
+        .single();
+      user = fallbackUser;
+    }
 
     if (!user?.subscription_plans || user?.subscription_status !== 'active') {
       return res.status(402).json(error(
@@ -186,7 +236,7 @@ exports.checkInvoiceLimit = async (req, res, next) => {
       ));
     }
 
-    const maxInvoices = user.subscription_plans.max_invoices;
+    const maxInvoices = user.subscription_plans.max_invoices ?? getDefaultInvoiceLimit(user.subscription_plans.name);
     if (maxInvoices === null) return next();
     if (maxInvoices === 0) {
       return res.status(402).json(error(

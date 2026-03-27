@@ -26,7 +26,7 @@ export default function BoqListPage() {
     : boqs.filter((b) => b.status === filter);
 
   return (
-    <ProtectedRoute requirePlan="pro">
+    <ProtectedRoute requirePlan="basic">
       <Head><title>Bill of Quantities — QSToolkit</title></Head>
       <Layout title="📋 Bill of Quantities">
         <div className="max-w-5xl space-y-5">

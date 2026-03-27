@@ -4,12 +4,10 @@
  * Falls back to a simple HTML response if browser not available
  */
 
-let puppeteer;
-try { puppeteer = require('puppeteer-core'); } catch (e) { puppeteer = null; }
-
-if (!puppeteer) {
-  try { puppeteer = require('puppeteer'); } catch (e) { puppeteer = null; }
-}
+let puppeteerCore;
+let puppeteerFull;
+try { puppeteerCore = require('puppeteer-core'); } catch (e) { puppeteerCore = null; }
+try { puppeteerFull = require('puppeteer'); } catch (e) { puppeteerFull = null; }
 
 function pdfUnavailableError(message, details = {}) {
   const err = new Error(message);
@@ -24,9 +22,30 @@ function resolveExecutableCandidates() {
     process.env.PUPPETEER_EXECUTABLE_PATH,
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
-    '/usr/bin/google-chrome-stable'
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome'
   ].filter(Boolean);
   return [...new Set(candidates)];
+}
+
+async function launchWithCandidates(engine, baseOptions, candidates) {
+  let launchError = null;
+
+  for (const executablePath of candidates) {
+    try {
+      return await engine.launch({ ...baseOptions, executablePath });
+    } catch (err) {
+      launchError = err;
+    }
+  }
+
+  try {
+    return await engine.launch(baseOptions);
+  } catch (err) {
+    launchError = err;
+  }
+
+  throw launchError || new Error('Unable to start browser runtime');
 }
 
 const formatNaira = (amount) =>
@@ -50,7 +69,7 @@ exports.generateInvoicePdf = async (invoice, branding) => {
 
 // ─── HTML → PDF ───────────────────────────────────────────────
 async function htmlToPdf(html) {
-  if (!puppeteer) {
+  if (!puppeteerCore && !puppeteerFull) {
     throw pdfUnavailableError('PDF generation runtime is not installed.');
   }
 
@@ -60,23 +79,18 @@ async function htmlToPdf(html) {
   };
 
   const candidates = resolveExecutableCandidates();
+  const launchers = [
+    { engine: puppeteerFull, candidates: [] },
+    { engine: puppeteerCore, candidates }
+  ].filter((entry) => !!entry.engine);
 
   let browser = null;
   let launchError = null;
-  if (candidates.length > 0) {
-    for (const executablePath of candidates) {
-      try {
-        browser = await puppeteer.launch({ ...launchOptions, executablePath });
-        break;
-      } catch (err) {
-        launchError = err;
-      }
-    }
-  }
 
-  if (!browser) {
+  for (const launcher of launchers) {
     try {
-      browser = await puppeteer.launch(launchOptions);
+      browser = await launchWithCandidates(launcher.engine, launchOptions, launcher.candidates);
+      break;
     } catch (err) {
       launchError = err;
     }

@@ -9,6 +9,40 @@ const paystackHeaders = () => ({
   'Content-Type': 'application/json'
 });
 
+const PLAN_ALIASES = {
+  free: ['free'],
+  basic: ['basic', 'student'],
+  student: ['student', 'basic'],
+  pro: ['pro'],
+  enterprise: ['enterprise']
+};
+
+function getPlanAliases(name) {
+  return PLAN_ALIASES[name] || [name];
+}
+
+function isPlanAllowedByPromo(promo, requestedPlan) {
+  const applicablePlans = Array.isArray(promo?.applicable_plans) ? promo.applicable_plans : [];
+  return getPlanAliases(requestedPlan).some((alias) => applicablePlans.includes(alias));
+}
+
+async function resolveSubscriptionPlanByName(planName) {
+  const aliases = getPlanAliases(planName);
+  const { data: plans, error: planErr } = await supabase
+    .from('subscription_plans')
+    .select('*')
+    .in('name', aliases)
+    .eq('is_active', true);
+
+  if (planErr) throw planErr;
+  if (!plans || plans.length === 0) return null;
+
+  return plans.find((p) => p.name === planName)
+    || plans.find((p) => p.name === 'basic')
+    || plans.find((p) => p.name === 'student')
+    || plans[0];
+}
+
 // ── Get all plans ─────────────────────────────────────────────
 exports.getPlans = async (req, res, next) => {
   try {
@@ -41,7 +75,7 @@ exports.validatePromo = async (req, res, next) => {
       return res.status(410).json(error('This promo code has expired'));
     if (promo.max_uses !== null && promo.uses_count >= promo.max_uses)
       return res.status(410).json(error('This promo code has reached its usage limit'));
-    if (!promo.applicable_plans.includes(plan_name))
+    if (!isPlanAllowedByPromo(promo, plan_name))
       return res.status(400).json(error(`This promo code is not valid for the ${plan_name} plan`));
 
     const { data: alreadyUsed } = await supabase
@@ -65,8 +99,7 @@ exports.initiate = async (req, res, next) => {
     if (!['monthly', 'annual'].includes(billing_cycle))
       return res.status(400).json(error('billing_cycle must be monthly or annual'));
 
-    const { data: plan } = await supabase
-      .from('subscription_plans').select('*').eq('name', plan_name).single();
+    const plan = await resolveSubscriptionPlanByName(plan_name);
     if (!plan || plan.price_monthly === 0)
       return res.status(400).json(error('Invalid plan for payment'));
 
@@ -83,7 +116,7 @@ exports.initiate = async (req, res, next) => {
     if (promo_code && ['basic', 'student', 'pro'].includes(plan_name)) {
       const { data: promo } = await supabase
         .from('promo_codes').select('*').eq('is_active', true).ilike('code', promo_code.trim()).single();
-      if (promo && promo.applicable_plans.includes(plan_name)) {
+      if (promo && isPlanAllowedByPromo(promo, plan_name)) {
         const expired = promo.expires_at && new Date(promo.expires_at) < new Date();
         const maxed   = promo.max_uses !== null && promo.uses_count >= promo.max_uses;
         const { data: used } = await supabase.from('promo_code_uses')
@@ -171,8 +204,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
     if (!['basic', 'student', 'pro'].includes(plan_name))
       return res.status(400).json(error('Philanthropist grants are only available for Basic and Pro plans'));
 
-    const { data: plan } = await supabase
-      .from('subscription_plans').select('*').eq('name', plan_name).single();
+    const plan = await resolveSubscriptionPlanByName(plan_name);
     if (!plan) return res.status(400).json(error('Invalid plan'));
 
     let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
@@ -182,7 +214,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
     if (promo_code) {
       const { data: promo } = await supabase
         .from('promo_codes').select('*').eq('is_active', true).ilike('code', promo_code.trim()).single();
-      if (promo && promo.applicable_plans.includes(plan_name)) {
+      if (promo && isPlanAllowedByPromo(promo, plan_name)) {
         const expired = promo.expires_at && new Date(promo.expires_at) < new Date();
         const maxed   = promo.max_uses !== null && promo.uses_count >= promo.max_uses;
         if (!expired && !maxed) {
