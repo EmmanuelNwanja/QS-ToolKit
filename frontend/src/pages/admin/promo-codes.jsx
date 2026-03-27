@@ -85,7 +85,7 @@ export default function PromoCodes() {
   };
 
   return (
-    <ProtectedAdminRoute>
+    <ProtectedAdminRoute requiredPermission="manage_promos">
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}

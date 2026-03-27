@@ -2,27 +2,42 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
+import { adminAPI } from '../services/api';
 
 const NAV_ITEMS = [
   { label: 'Dashboard',          href: '/admin',                icon: '📊' },
   { label: 'Promo Codes',        href: '/admin/promo-codes',    icon: '🎟️' },
   { label: 'Users',              href: '/admin/users',          icon: '👥' },
-  { label: 'Subscriptions',      href: '/admin/subscriptions',  icon: '💳' },
+  { label: 'Subscriptions',      href: '/admin/subscriptions',  icon: '💳', superAdminOnly: true },
   { label: 'Push Notifications', href: '/admin/notifications',  icon: '🔔' },
   { label: 'Analytics',          href: '/admin/analytics',      icon: '📈' },
-  { label: 'Activity Log',       href: '/admin/activity-logs',  icon: '📋' },
-  { label: 'Admins',             href: '/admin/manage-admins',  icon: '🔐' },
+  { label: 'Activity Log',       href: '/admin/activity-logs',  icon: '📋', superAdminOnly: true },
+  { label: 'Admins',             href: '/admin/manage-admins',  icon: '🔐', superAdminOnly: true },
 ];
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [router.pathname]);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      try {
+        const { data } = await adminAPI.verify();
+        setIsSuperAdmin(!!data?.isSuperAdmin);
+      } catch {
+        setIsSuperAdmin(false);
+      }
+    };
+
+    checkRole();
+  }, []);
 
   const isActive = (href) =>
     router.pathname === href || (href !== '/admin' && router.pathname.startsWith(href + '/'));
@@ -61,7 +76,9 @@ export default function AdminLayout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS
+            .filter((item) => !item.superAdminOnly || isSuperAdmin)
+            .map((item) => (
             <Link
               key={item.href}
               href={item.href}

@@ -499,9 +499,11 @@ exports.getUsers = async (req, res, next) => {
     // Apply filters
     if (status !== 'all') {
       if (status === 'active') {
-        query = query.eq('is_verified', true);
+        query = query.eq('is_verified', true).neq('subscription_status', 'suspended');
       } else if (status === 'inactive') {
-        query = query.eq('is_verified', false);
+        query = query.or('is_verified.eq.false,subscription_status.eq.inactive,subscription_status.eq.expired,subscription_status.eq.cancelled');
+      } else if (status === 'suspended') {
+        query = query.eq('subscription_status', 'suspended');
       }
     }
 
@@ -541,7 +543,9 @@ exports.getSubscriptions = async (req, res, next) => {
     `, { count: 'exact' });
 
     // Filter by status
-    query = query.eq('subscription_status', status);
+    if (status && status !== 'all') {
+      query = query.eq('subscription_status', status);
+    }
 
     if (plan) {
       query = query.eq('plan_id', plan);
@@ -653,7 +657,6 @@ exports.sendPushNotification = async (req, res, next) => {
 exports.getDashboardStats = async (req, res, next) => {
   try {
     const nowIso = new Date().toISOString();
-    const scopedUserId = req.isSuperAdmin ? null : req.user.id;
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -662,14 +665,12 @@ exports.getDashboardStats = async (req, res, next) => {
     let usersQuery = supabase
       .from('users')
       .select('id', { count: 'exact' });
-    if (scopedUserId) usersQuery = usersQuery.eq('id', scopedUserId);
     const { count: totalUsers } = await usersQuery;
 
     let activeSubsQuery = supabase
       .from('users')
       .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
-    if (scopedUserId) activeSubsQuery = activeSubsQuery.eq('id', scopedUserId);
     const { data: activeSubscriptionRows } = await activeSubsQuery;
 
     const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
@@ -688,11 +689,6 @@ exports.getDashboardStats = async (req, res, next) => {
         .eq('type', 'refund')
         .eq('status', 'completed');
 
-    if (scopedUserId) {
-      paymentQuery.eq('user_id', scopedUserId);
-      refundQuery.eq('user_id', scopedUserId);
-    }
-
     const [{ data: payments }, { data: refunds }] = await Promise.all([paymentQuery, refundQuery]);
 
     const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
@@ -703,7 +699,6 @@ exports.getDashboardStats = async (req, res, next) => {
       .from('promo_codes')
       .select('id', { count: 'exact' })
       .eq('is_active', true);
-    if (scopedUserId) promosQuery = promosQuery.eq('created_by', scopedUserId);
     const { count: activePromoCodes } = await promosQuery;
 
     return res.json(success('Dashboard stats retrieved', {
@@ -724,7 +719,6 @@ exports.getDashboardStats = async (req, res, next) => {
 exports.getAnalytics = async (req, res, next) => {
   try {
     const nowIso = new Date().toISOString();
-    const scopedUserId = req.isSuperAdmin ? null : req.user.id;
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -753,21 +747,18 @@ exports.getAnalytics = async (req, res, next) => {
     let totalUsersQuery = supabase
       .from('users')
       .select('id', { count: 'exact' });
-    if (scopedUserId) totalUsersQuery = totalUsersQuery.eq('id', scopedUserId);
     const { count: totalUsers } = await totalUsersQuery;
 
     let newSignupsQuery = supabase
       .from('users')
       .select('id', { count: 'exact' })
       .gte('created_at', startDate.toISOString());
-    if (scopedUserId) newSignupsQuery = newSignupsQuery.eq('id', scopedUserId);
     const { count: newSignups } = await newSignupsQuery;
 
     let activeRowsQuery = supabase
       .from('users')
       .select('id, subscription_expires_at')
       .eq('subscription_status', 'active');
-    if (scopedUserId) activeRowsQuery = activeRowsQuery.eq('id', scopedUserId);
     const { data: activeSubscriptionRows } = await activeRowsQuery;
 
     const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
@@ -786,11 +777,6 @@ exports.getAnalytics = async (req, res, next) => {
         .eq('type', 'refund')
         .eq('status', 'completed')
         .gte('transaction_date', startDate.toISOString());
-
-    if (scopedUserId) {
-      paymentQuery.eq('user_id', scopedUserId);
-      refundQuery.eq('user_id', scopedUserId);
-    }
 
     const [{ data: payments }, { data: refunds }] = await Promise.all([paymentQuery, refundQuery]);
 

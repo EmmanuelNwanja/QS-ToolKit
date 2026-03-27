@@ -64,7 +64,7 @@ export default function ManageAdmins() {
   };
 
   return (
-    <ProtectedAdminRoute>
+    <ProtectedAdminRoute superAdminOnly>
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}

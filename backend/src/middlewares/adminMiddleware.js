@@ -4,6 +4,9 @@ const logger = require('../utils/logger');
 
 const DEFAULT_ADMIN_PERMISSIONS = [
   'view_analytics',
+  'manage_users',
+  'manage_promos',
+  'send_notifications',
   'manage_billing'
 ];
 
@@ -13,11 +16,11 @@ function getEffectivePermissions(adminUser = {}) {
   }
 
   const rawPermissions = Array.isArray(adminUser.permissions) ? adminUser.permissions : [];
-  if (rawPermissions.length > 0) {
-    return rawPermissions;
-  }
+  if (adminUser.admin_role !== 'admin') return [];
 
-  return adminUser.admin_role === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : [];
+  // Regular admins always inherit baseline operational permissions.
+  const merged = [...new Set([...DEFAULT_ADMIN_PERMISSIONS, ...rawPermissions])];
+  return merged;
 }
 
 /**

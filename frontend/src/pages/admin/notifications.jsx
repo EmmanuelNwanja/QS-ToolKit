@@ -99,7 +99,7 @@ export default function PushNotifications() {
   };
 
   return (
-    <ProtectedAdminRoute>
+    <ProtectedAdminRoute requiredPermission="send_notifications">
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}

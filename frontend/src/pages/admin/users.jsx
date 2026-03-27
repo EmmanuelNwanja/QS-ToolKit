@@ -132,7 +132,7 @@ export default function AdminUsers() {
   );
 
   return (
-    <ProtectedAdminRoute>
+    <ProtectedAdminRoute requiredPermission="manage_users">
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}
