@@ -178,16 +178,7 @@ export default function CalculatorPage() {
                             
                             <div>
                               <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Results</p>
-                              <div className="bg-white rounded p-2 text-xs text-gray-700 space-y-1 max-h-40 overflow-y-auto">
-                                {Object.entries(item.outputs || {}).map(([key, val]) => (
-                                  <div key={key} className="flex justify-between gap-2">
-                                    <span className="text-gray-600">{formatKey(key)}:</span>
-                                    <span className="font-mono font-semibold text-gray-900">
-                                      {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                              <SavedOutputPreview outputs={item.outputs} />
                             </div>
 
                             <div className="flex gap-2 pt-2">
@@ -234,4 +225,55 @@ function formatKey(key) {
     .split(' ')
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
+}
+
+function SavedOutputPreview({ outputs }) {
+  if (!outputs || typeof outputs !== 'object') {
+    return <p className="text-xs text-gray-500">No output details available.</p>;
+  }
+
+  const summary = outputs.summary && typeof outputs.summary === 'object'
+    ? outputs.summary
+    : outputs;
+
+  const summaryEntries = Object.entries(summary || {});
+
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-3 space-y-3 max-h-72 overflow-y-auto">
+      <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide">Summary</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {summaryEntries.map(([key, value]) => {
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            return (
+              <div key={key} className="rounded-lg bg-white border border-gray-100 p-2.5 sm:col-span-2">
+                <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide mb-2">{formatKey(key)}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.entries(value).map(([nestedKey, nestedValue]) => (
+                    <div key={nestedKey} className="rounded-md bg-gray-50 px-2 py-1.5">
+                      <p className="text-[11px] text-gray-500">{formatKey(nestedKey)}</p>
+                      <p className="text-sm font-bold text-indigo-700 break-words">{String(nestedValue)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={key} className="rounded-lg bg-white border border-gray-100 p-2.5">
+              <p className="text-[11px] text-gray-500">{formatKey(key)}</p>
+              <p className="text-sm font-bold text-indigo-700 break-words">{String(value)}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {outputs.note && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+          {outputs.note}
+        </div>
+      )}
+    </div>
+  );
 }
