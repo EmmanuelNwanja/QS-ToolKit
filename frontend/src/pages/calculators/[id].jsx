@@ -70,6 +70,7 @@ export default function CalculatorPage() {
   const [result, setResult]   = useState(null);
   const [loading, setLoading] = useState(false);
   const [savedCalculations, setSavedCalculations] = useState([]);
+  const [expandedCalcId, setExpandedCalcId] = useState(null);
 
   const calc = CALCULATORS.find(c => c.id === id);
   const FormComponent = id ? FORM_MAP[id] : null;
@@ -143,15 +144,66 @@ export default function CalculatorPage() {
               <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} onSaved={loadSaved} methodology={method} />
 
               <div className="card mt-4">
-                <h3 className="section-title mb-3">Saved Calculations</h3>
+                <h3 className="section-title mb-3">📋 Saved Calculations</h3>
                 {savedCalculations.length === 0 ? (
                   <p className="text-sm text-gray-500">No saved calculations yet for this calculator.</p>
                 ) : (
                   <div className="space-y-2">
                     {savedCalculations.map((item) => (
-                      <div key={item.id} className="border border-gray-100 rounded-lg p-3">
-                        <p className="text-sm font-semibold text-primary-800">{item.title || 'Untitled calculation'}</p>
-                        <p className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleString('en-NG')}</p>
+                      <div key={item.id} className="border border-gray-100 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setExpandedCalcId(expandedCalcId === item.id ? null : item.id)}
+                          className="w-full text-left p-3 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-primary-800">{item.title || 'Untitled calculation'}</p>
+                            <p className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleString('en-NG')}</p>
+                          </div>
+                          <span className="text-gray-400">{expandedCalcId === item.id ? '▼' : '▶'}</span>
+                        </button>
+                        
+                        {expandedCalcId === item.id && (
+                          <div className="bg-gray-50 border-t border-gray-100 p-4 space-y-3">
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Inputs</p>
+                              <div className="bg-white rounded p-2 text-xs text-gray-700 space-y-1 max-h-40 overflow-y-auto">
+                                {Object.entries(item.inputs || {}).map(([key, val]) => (
+                                  <div key={key} className="flex justify-between gap-2">
+                                    <span className="text-gray-600">{formatKey(key)}:</span>
+                                    <span className="font-mono text-gray-900">{String(val)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Results</p>
+                              <div className="bg-white rounded p-2 text-xs text-gray-700 space-y-1 max-h-40 overflow-y-auto">
+                                {Object.entries(item.outputs || {}).map(([key, val]) => (
+                                  <div key={key} className="flex justify-between gap-2">
+                                    <span className="text-gray-600">{formatKey(key)}:</span>
+                                    <span className="font-mono font-semibold text-gray-900">
+                                      {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                onClick={() => {
+                                  setResult({ inputs: item.inputs, outputs: item.outputs, calculator_type: id });
+                                  setExpandedCalcId(null);
+                                  toast.success('Calculation loaded!');
+                                }}
+                                className="btn-secondary text-xs flex-1"
+                              >
+                                ↻ Reload
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -172,4 +224,14 @@ export async function getStaticPaths() {
 
 export async function getStaticProps() {
   return { props: {} };
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function formatKey(key) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
