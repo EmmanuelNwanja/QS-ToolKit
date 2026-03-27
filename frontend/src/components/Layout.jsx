@@ -8,8 +8,8 @@ const NAV_ITEMS = [
   { href: '/dashboard',     icon: '📊', label: 'Dashboard' },
   { href: '/projects',      icon: '📁', label: 'Projects' },
   { href: '/calculators',   icon: '🧮', label: 'Calculators' },
-  { href: '/boq',           icon: '📋', label: 'Bill of Quantities',  plans: ['pro', 'enterprise'] },
-  { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes',   plans: ['pro', 'enterprise'] },
+  { href: '/boq',           icon: '📋', label: 'Bill of Quantities' },
+  { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes' },
   { href: '/feedback',      icon: '⭐', label: 'Client Feedback' },
   { href: '/leaderboard',   icon: '🏆', label: 'Leaderboard' },
   { href: '/settings',      icon: '⚙️', label: 'Settings' }
@@ -42,6 +42,10 @@ export default function Layout({ children, title }) {
   };
 
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const normalizePlan = (value) => {
+    const raw = String(value || '').toLowerCase();
+    return raw === 'student' ? 'basic' : raw;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -68,7 +72,9 @@ export default function Layout({ children, title }) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            const locked = item.plans && !item.plans.includes(planName());
+            const currentPlan = normalizePlan(planName());
+            const allowedPlans = (item.plans || []).map(normalizePlan);
+            const locked = item.plans && !allowedPlans.includes(currentPlan);
             const active = router.pathname.startsWith(item.href);
             return (
               <Link
@@ -81,7 +87,7 @@ export default function Layout({ children, title }) {
                 <span className="flex-1">{item.label}</span>
                 {locked && (
                   <span className="text-[10px] font-semibold bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded-full uppercase">
-                    Pro
+                    Locked
                   </span>
                 )}
               </Link>
