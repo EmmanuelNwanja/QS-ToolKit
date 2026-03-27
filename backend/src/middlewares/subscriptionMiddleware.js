@@ -34,19 +34,24 @@ function getDefaultProjectLimit(planName) {
 }
 
 function normalizeSubscriptionStatus(value) {
-  return String(value || '').toLowerCase();
+  return String(value || '').trim().toLowerCase();
 }
 
 function isSubscriptionCurrentlyValid(user, planName) {
   const status = normalizeSubscriptionStatus(user?.subscription_status);
-  if (status === 'active' || status === 'trial') return true;
+  const hasPaidPlan = !!planName && planName !== 'free';
+
+  if (status === 'active' || status === 'trial' || status === 'paid') return true;
+  if (!hasPaidPlan) return false;
+  if (status === 'cancelled' || status === 'expired') return false;
 
   // Some environments have legacy status data while plan + expiry is valid.
-  if (planName && planName !== 'free' && user?.subscription_expires_at) {
+  if (user?.subscription_expires_at) {
     return new Date(user.subscription_expires_at) > new Date();
   }
 
-  return false;
+  // Final compatibility fallback: paid plan assigned, no explicit expiry and no terminal status.
+  return true;
 }
 
 async function fetchUserWithPlan(userId, planSelect) {

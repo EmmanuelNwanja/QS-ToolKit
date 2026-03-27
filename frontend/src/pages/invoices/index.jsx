@@ -34,7 +34,7 @@ export default function InvoicesListPage() {
   const TYPE_OPTS   = ['all', 'invoice', 'quotation', 'valuation'];
 
   return (
-    <ProtectedRoute requirePlan="basic">
+    <ProtectedRoute>
       <Head><title>Invoices & Quotes — QSToolkit</title></Head>
       <Layout title="🧾 Invoices & Quotes">
         <div className="max-w-5xl space-y-5">
