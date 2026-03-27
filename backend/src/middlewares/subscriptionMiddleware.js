@@ -5,7 +5,8 @@ const { error } = require('../utils/responseHelper');
 const FREE_TIER_USES = 3;
 
 function normalizePlanName(planName) {
-  return planName === 'student' ? 'basic' : planName;
+  const normalized = String(planName || '').toLowerCase();
+  return normalized === 'student' ? 'basic' : normalized;
 }
 
 function getDefaultBoqLimit(planName) {
@@ -17,6 +18,14 @@ function getDefaultBoqLimit(planName) {
 }
 
 function getDefaultInvoiceLimit(planName) {
+  const plan = normalizePlanName(planName);
+  if (plan === 'basic') return 2;
+  if (plan === 'pro') return 5;
+  if (plan === 'enterprise') return 50;
+  return 0;
+}
+
+function getDefaultProjectLimit(planName) {
   const plan = normalizePlanName(planName);
   if (plan === 'basic') return 2;
   if (plan === 'pro') return 5;
@@ -94,9 +103,9 @@ exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) =>
       ));
     }
 
-    const plan = user.subscription_plans?.name;
+    const plan = normalizePlanName(user.subscription_plans?.name) || 'basic';
     const rank = (value) => {
-      const normalized = value === 'student' ? 'basic' : value;
+      const normalized = normalizePlanName(value);
       const hierarchy = ['free', 'basic', 'pro', 'enterprise'];
       return hierarchy.indexOf(normalized);
     };
@@ -120,14 +129,15 @@ exports.checkProjectLimit = async (req, res, next) => {
       .eq('id', req.user.id)
       .single();
 
-    if (!user?.subscription_plans || user?.subscription_status !== 'active') {
+    if (user?.subscription_status !== 'active') {
       return res.status(402).json(error(
         'An active subscription is required to log projects.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const maxProjects = user.subscription_plans.max_projects;
+    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
+    const maxProjects = user.subscription_plans?.max_projects ?? getDefaultProjectLimit(planName);
     if (maxProjects === null) return next();
 
     const { count } = await supabase
@@ -137,8 +147,8 @@ exports.checkProjectLimit = async (req, res, next) => {
 
     if (count >= maxProjects) {
       return res.status(402).json(error(
-        `You have reached the ${maxProjects}-project limit on your ${user.subscription_plans.name} plan.`,
-        { code: 'PROJECT_LIMIT_REACHED', limit: maxProjects }
+        `You have reached the ${maxProjects}-project limit on your ${planName} plan.`,
+        { code: 'PROJECT_LIMIT_REACHED', limit: maxProjects, plan: planName }
       ));
     }
     next();
@@ -169,18 +179,19 @@ exports.checkBoqLimit = async (req, res, next) => {
       user = fallbackUser;
     }
 
-    if (!user?.subscription_plans || user?.subscription_status !== 'active') {
+    if (user?.subscription_status !== 'active') {
       return res.status(402).json(error(
         'An active subscription is required to create BOQ documents.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const maxBoq = user.subscription_plans.max_boq ?? getDefaultBoqLimit(user.subscription_plans.name);
+    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
+    const maxBoq = user.subscription_plans?.max_boq ?? getDefaultBoqLimit(planName);
     if (maxBoq === null) return next(); // unlimited (enterprise can be set null later)
     if (maxBoq === 0) {
       return res.status(402).json(error(
-        `BOQ creation is not available on the ${user.subscription_plans.name} plan.`,
+        `BOQ creation is not available on the ${planName} plan.`,
         { code: 'PLAN_UPGRADE_REQUIRED' }
       ));
     }
@@ -197,8 +208,8 @@ exports.checkBoqLimit = async (req, res, next) => {
 
     if (count >= maxBoq) {
       return res.status(402).json(error(
-        `You have reached the ${maxBoq} BOQ/month limit on your ${user.subscription_plans.name} plan.`,
-        { code: 'BOQ_LIMIT_REACHED', used: count, limit: maxBoq, plan: user.subscription_plans.name }
+        `You have reached the ${maxBoq} BOQ/month limit on your ${planName} plan.`,
+        { code: 'BOQ_LIMIT_REACHED', used: count, limit: maxBoq, plan: planName }
       ));
     }
     next();
@@ -229,18 +240,19 @@ exports.checkInvoiceLimit = async (req, res, next) => {
       user = fallbackUser;
     }
 
-    if (!user?.subscription_plans || user?.subscription_status !== 'active') {
+    if (user?.subscription_status !== 'active') {
       return res.status(402).json(error(
         'An active subscription is required to create invoices or documents.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const maxInvoices = user.subscription_plans.max_invoices ?? getDefaultInvoiceLimit(user.subscription_plans.name);
+    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
+    const maxInvoices = user.subscription_plans?.max_invoices ?? getDefaultInvoiceLimit(planName);
     if (maxInvoices === null) return next();
     if (maxInvoices === 0) {
       return res.status(402).json(error(
-        `Invoice/document creation is not available on the ${user.subscription_plans.name} plan.`,
+        `Invoice/document creation is not available on the ${planName} plan.`,
         { code: 'PLAN_UPGRADE_REQUIRED' }
       ));
     }
@@ -263,8 +275,8 @@ exports.checkInvoiceLimit = async (req, res, next) => {
 
     if (count >= maxInvoices) {
       return res.status(402).json(error(
-        `You have reached the ${maxInvoices} ${invoiceType}/month limit on your ${user.subscription_plans.name} plan.`,
-        { code: 'INVOICE_LIMIT_REACHED', used: count, limit: maxInvoices, type: invoiceType, plan: user.subscription_plans.name }
+        `You have reached the ${maxInvoices} ${invoiceType}/month limit on your ${planName} plan.`,
+        { code: 'INVOICE_LIMIT_REACHED', used: count, limit: maxInvoices, type: invoiceType, plan: planName }
       ));
     }
     next();

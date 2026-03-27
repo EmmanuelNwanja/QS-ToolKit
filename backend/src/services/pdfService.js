@@ -1,8 +1,11 @@
 /**
  * PDF Service — QSToolkit
- * Uses puppeteer-core with Chromium (on Render.com) or html-pdf-node
- * Falls back to a simple HTML response if browser not available
+ * Uses Puppeteer where available.
+ * Falls back to lightweight PDFKit generation when browser runtime is unavailable.
  */
+
+const logger = require('../utils/logger');
+const PDFDocument = require('pdfkit');
 
 let puppeteerCore;
 let puppeteerFull;
@@ -58,13 +61,33 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-NG', {
 // ─── Generate BOQ PDF ─────────────────────────────────────────
 exports.generateBoqPdf = async (boq, branding) => {
   const html = buildBoqHtml(boq, branding);
-  return htmlToPdf(html);
+  try {
+    return await htmlToPdf(html);
+  } catch (err) {
+    logger.warn({
+      message: 'HTML PDF render failed for BOQ. Falling back to PDFKit.',
+      code: err?.code,
+      reason: err?.details?.reason || err?.message || null,
+      boq_id: boq?.id
+    });
+    return buildBoqFallbackPdf(boq, branding);
+  }
 };
 
 // ─── Generate Invoice PDF ─────────────────────────────────────
 exports.generateInvoicePdf = async (invoice, branding) => {
   const html = buildInvoiceHtml(invoice, branding);
-  return htmlToPdf(html);
+  try {
+    return await htmlToPdf(html);
+  } catch (err) {
+    logger.warn({
+      message: 'HTML PDF render failed for invoice. Falling back to PDFKit.',
+      code: err?.code,
+      reason: err?.details?.reason || err?.message || null,
+      invoice_id: invoice?.id
+    });
+    return buildInvoiceFallbackPdf(invoice, branding);
+  }
 };
 
 // ─── HTML → PDF ───────────────────────────────────────────────
@@ -89,7 +112,16 @@ async function htmlToPdf(html) {
 
   for (const launcher of launchers) {
     try {
-      browser = await launchWithCandidates(launcher.engine, launchOptions, launcher.candidates);
+      try {
+        browser = await launchWithCandidates(launcher.engine, launchOptions, launcher.candidates);
+      } catch {
+        // Older runtime combinations may fail with "headless: new"; retry with classic headless mode.
+        browser = await launchWithCandidates(
+          launcher.engine,
+          { ...launchOptions, headless: true },
+          launcher.candidates
+        );
+      }
       break;
     } catch (err) {
       launchError = err;
@@ -117,6 +149,120 @@ async function htmlToPdf(html) {
 }
 
 exports.isPdfUnavailableError = (err) => err?.code === 'PDF_UNAVAILABLE';
+
+function safeText(value, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+function bufferFromPdfKit(drawFn) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 40 });
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      drawFn(doc);
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function buildInvoiceFallbackPdf(invoice, branding) {
+  const docTypeLabel = invoice.invoice_type === 'quotation' ? 'QUOTATION'
+    : invoice.invoice_type === 'valuation' ? 'VALUATION'
+    : invoice.invoice_type === 'proforma' ? 'PROFORMA INVOICE'
+    : 'INVOICE';
+
+  return bufferFromPdfKit((doc) => {
+    doc.fontSize(18).text(safeText(branding?.brand_name, 'QSToolkit User'));
+    doc.moveDown(0.3);
+    doc.fontSize(10).fillColor('#555').text(safeText(branding?.contact_info, ''));
+    doc.fillColor('#000');
+    doc.moveDown(1);
+
+    doc.fontSize(16).text(docTypeLabel, { align: 'right' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).text(`No: ${safeText(invoice.invoice_no)}`, { align: 'right' });
+    doc.text(`Date: ${formatDate(invoice.issue_date || invoice.created_at)}`, { align: 'right' });
+
+    doc.moveDown(1);
+    doc.fontSize(11).text(`Client: ${safeText(invoice.client_name)}`);
+    doc.text(`Project: ${safeText(invoice.projects?.title || invoice.project_title, 'N/A')}`);
+    doc.text(`Status: ${safeText(invoice.status, 'draft')}`);
+
+    doc.moveDown(1);
+    doc.fontSize(12).text('Items', { underline: true });
+    doc.moveDown(0.4);
+
+    const items = Array.isArray(invoice.invoice_items) ? invoice.invoice_items : [];
+    if (items.length === 0) {
+      doc.fontSize(10).text('No line items provided.');
+    } else {
+      items.forEach((item, index) => {
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.unit_price || 0);
+        const amount = Number(item.amount ?? qty * rate);
+        doc.fontSize(10).text(
+          `${index + 1}. ${safeText(item.description)}  |  Qty: ${qty.toFixed(2)}  |  Rate: ${formatNaira(rate)}  |  Amount: ${formatNaira(amount)}`
+        );
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(11).text(`Subtotal: ${formatNaira(invoice.subtotal)}`, { align: 'right' });
+    doc.text(`VAT: ${formatNaira(invoice.vat_amount)}`, { align: 'right' });
+    doc.fontSize(12).text(`Total: ${formatNaira(invoice.total_amount)}`, { align: 'right' });
+  });
+}
+
+function buildBoqFallbackPdf(boq, branding) {
+  return bufferFromPdfKit((doc) => {
+    doc.fontSize(18).text(safeText(branding?.brand_name, 'QSToolkit User'));
+    doc.moveDown(0.3);
+    doc.fontSize(10).fillColor('#555').text(safeText(branding?.contact_info, ''));
+    doc.fillColor('#000');
+    doc.moveDown(1);
+
+    doc.fontSize(16).text('BILL OF QUANTITIES', { align: 'right' });
+    doc.moveDown(0.6);
+    doc.fontSize(11).text(`Title: ${safeText(boq.title)}`);
+    doc.text(`Client: ${safeText(boq.client_name)}`);
+    doc.text(`Project: ${safeText(boq.projects?.title, 'N/A')}`);
+    doc.text(`Status: ${safeText(boq.status, 'draft')}`);
+    doc.moveDown(1);
+
+    const sections = Array.isArray(boq.boq_sections) ? boq.boq_sections : [];
+    if (sections.length === 0) {
+      doc.fontSize(10).text('No BOQ sections provided.');
+    } else {
+      sections.forEach((section, sectionIndex) => {
+        const letter = String.fromCharCode(65 + sectionIndex);
+        doc.fontSize(12).text(`${letter}. ${safeText(section.title)}`, { underline: true });
+        const items = Array.isArray(section.boq_items) ? section.boq_items : [];
+        if (items.length === 0) {
+          doc.fontSize(10).text('No items in this section.');
+        } else {
+          items.forEach((item, itemIndex) => {
+            const qty = Number(item.quantity || 0);
+            const rate = Number(item.rate || 0);
+            const amount = Number(item.amount ?? qty * rate);
+            doc.fontSize(10).text(
+              `${letter}${itemIndex + 1} ${safeText(item.description)}  |  ${qty.toFixed(2)} ${safeText(item.unit, '')}  |  ${formatNaira(rate)}  |  ${formatNaira(amount)}`
+            );
+          });
+        }
+        doc.moveDown(0.5);
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(12).text(`Grand Total: ${formatNaira(boq.total_amount)}`, { align: 'right' });
+  });
+}
 
 // ─── BOQ HTML Template ────────────────────────────────────────
 function buildBoqHtml(boq, branding) {

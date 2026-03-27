@@ -18,7 +18,8 @@ export default function ProtectedRoute({ children, requirePlan }) {
     }
     if (requirePlan) {
       const rank = (value) => {
-        const normalized = value === 'student' ? 'basic' : value;
+        const normalizedRaw = String(value || '').toLowerCase();
+        const normalized = normalizedRaw === 'student' ? 'basic' : normalizedRaw;
         const hierarchy = ['free', 'basic', 'pro', 'enterprise'];
         return hierarchy.indexOf(normalized);
       };
