@@ -33,17 +33,55 @@ function getDefaultProjectLimit(planName) {
   return 0;
 }
 
+function normalizeSubscriptionStatus(value) {
+  return String(value || '').toLowerCase();
+}
+
+function isSubscriptionCurrentlyValid(user, planName) {
+  const status = normalizeSubscriptionStatus(user?.subscription_status);
+  if (status === 'active' || status === 'trial') return true;
+
+  // Some environments have legacy status data while plan + expiry is valid.
+  if (planName && planName !== 'free' && user?.subscription_expires_at) {
+    return new Date(user.subscription_expires_at) > new Date();
+  }
+
+  return false;
+}
+
+async function fetchUserWithPlan(userId, planSelect) {
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select(`plan_id, subscription_status, subscription_expires_at, subscription_plans(${planSelect})`)
+    .eq('id', userId)
+    .single();
+
+  if (userError) return null;
+
+  let plan = user?.subscription_plans || null;
+  if (!plan && user?.plan_id) {
+    const { data: byId } = await supabase
+      .from('subscription_plans')
+      .select(planSelect)
+      .eq('id', user.plan_id)
+      .single();
+    plan = byId || null;
+  }
+
+  return {
+    ...user,
+    subscription_plans: plan
+  };
+}
+
 // ── Check calculator usage limit ──────────────────────────────
 exports.checkCalculatorLimit = async (req, res, next) => {
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .select('id, subscription_status, subscription_plans(max_calculator_uses, name)')
-      .eq('id', req.user.id)
-      .single();
+    const user = await fetchUserWithPlan(req.user.id, 'max_calculator_uses, name');
 
     const plan = user?.subscription_plans;
-    const isActiveSubscriber = user?.subscription_status === 'active' && plan;
+    const planName = normalizePlanName(plan?.name);
+    const isActiveSubscriber = isSubscriptionCurrentlyValid(user, planName) && plan;
 
     // ── Active subscriber ────────────────────────────────────────
     if (isActiveSubscriber) {
@@ -90,20 +128,17 @@ exports.checkCalculatorLimit = async (req, res, next) => {
 // ── Require active subscription at a given plan level ─────────
 exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) => {
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .select('subscription_status, subscription_plans(name)')
-      .eq('id', req.user.id)
-      .single();
+    const user = await fetchUserWithPlan(req.user.id, 'name');
 
-    if (user?.subscription_status !== 'active') {
+    const plan = normalizePlanName(user?.subscription_plans?.name) || 'free';
+
+    if (!isSubscriptionCurrentlyValid(user, plan)) {
       return res.status(402).json(error(
         'An active subscription is required for this feature.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const plan = normalizePlanName(user.subscription_plans?.name) || 'basic';
     const rank = (value) => {
       const normalized = normalizePlanName(value);
       const hierarchy = ['free', 'basic', 'pro', 'enterprise'];
@@ -123,20 +158,17 @@ exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) =>
 // ── Check project logging limit ───────────────────────────────
 exports.checkProjectLimit = async (req, res, next) => {
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .select('subscription_status, subscription_plans(max_projects, name)')
-      .eq('id', req.user.id)
-      .single();
+    const user = await fetchUserWithPlan(req.user.id, 'max_projects, name');
 
-    if (user?.subscription_status !== 'active') {
+    const planName = normalizePlanName(user?.subscription_plans?.name) || 'free';
+
+    if (!isSubscriptionCurrentlyValid(user, planName)) {
       return res.status(402).json(error(
         'An active subscription is required to log projects.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
     const maxProjects = user.subscription_plans?.max_projects ?? getDefaultProjectLimit(planName);
     if (maxProjects === null) return next();
 
@@ -158,35 +190,17 @@ exports.checkProjectLimit = async (req, res, next) => {
 // ── Check BOQ creation limit (monthly) ────────────────────────
 exports.checkBoqLimit = async (req, res, next) => {
   try {
-    let user = null;
+    const user = await fetchUserWithPlan(req.user.id, 'max_boq, name');
 
-    // New-schema path (after migration 016).
-    const { data: userWithLimit, error: withLimitErr } = await supabase
-      .from('users')
-      .select('subscription_status, subscription_plans(max_boq, name)')
-      .eq('id', req.user.id)
-      .single();
+    const planName = normalizePlanName(user?.subscription_plans?.name) || 'free';
 
-    if (!withLimitErr) {
-      user = userWithLimit;
-    } else {
-      // Backward-compatible fallback for environments where max_boq does not exist yet.
-      const { data: fallbackUser } = await supabase
-        .from('users')
-        .select('subscription_status, subscription_plans(name)')
-        .eq('id', req.user.id)
-        .single();
-      user = fallbackUser;
-    }
-
-    if (user?.subscription_status !== 'active') {
+    if (!isSubscriptionCurrentlyValid(user, planName)) {
       return res.status(402).json(error(
         'An active subscription is required to create BOQ documents.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
     const maxBoq = user.subscription_plans?.max_boq ?? getDefaultBoqLimit(planName);
     if (maxBoq === null) return next(); // unlimited (enterprise can be set null later)
     if (maxBoq === 0) {
@@ -219,35 +233,17 @@ exports.checkBoqLimit = async (req, res, next) => {
 // ── Check invoice/document creation limit (per type, monthly) ─
 exports.checkInvoiceLimit = async (req, res, next) => {
   try {
-    let user = null;
+    const user = await fetchUserWithPlan(req.user.id, 'max_invoices, name');
 
-    // New-schema path (after migration 016).
-    const { data: userWithLimit, error: withLimitErr } = await supabase
-      .from('users')
-      .select('subscription_status, subscription_plans(max_invoices, name)')
-      .eq('id', req.user.id)
-      .single();
+    const planName = normalizePlanName(user?.subscription_plans?.name) || 'free';
 
-    if (!withLimitErr) {
-      user = userWithLimit;
-    } else {
-      // Backward-compatible fallback for environments where max_invoices does not exist yet.
-      const { data: fallbackUser } = await supabase
-        .from('users')
-        .select('subscription_status, subscription_plans(name)')
-        .eq('id', req.user.id)
-        .single();
-      user = fallbackUser;
-    }
-
-    if (user?.subscription_status !== 'active') {
+    if (!isSubscriptionCurrentlyValid(user, planName)) {
       return res.status(402).json(error(
         'An active subscription is required to create invoices or documents.',
         { code: 'SUBSCRIPTION_REQUIRED' }
       ));
     }
 
-    const planName = normalizePlanName(user.subscription_plans?.name) || 'basic';
     const maxInvoices = user.subscription_plans?.max_invoices ?? getDefaultInvoiceLimit(planName);
     if (maxInvoices === null) return next();
     if (maxInvoices === 0) {

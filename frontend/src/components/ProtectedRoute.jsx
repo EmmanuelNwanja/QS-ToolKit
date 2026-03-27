@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
 
 export default function ProtectedRoute({ children, requirePlan }) {
-  const { user, token, loading, initialized, planName } = useAuthStore();
+  const { user, token, loading, initialized, planName, refreshUser } = useAuthStore();
   const router = useRouter();
+  const refreshedPlanCheckRef = useRef(false);
 
   useEffect(() => {
     if (!initialized) return;
@@ -25,10 +26,16 @@ export default function ProtectedRoute({ children, requirePlan }) {
       };
       const current = planName();
       if (rank(current) < rank(requirePlan)) {
+        // A stale cached user payload can briefly report an older plan.
+        if (!refreshedPlanCheckRef.current) {
+          refreshedPlanCheckRef.current = true;
+          refreshUser();
+          return;
+        }
         router.replace('/subscription');
       }
     }
-  }, [initialized, token, user, router, requirePlan, planName]);
+  }, [initialized, token, user, router, requirePlan, planName, refreshUser]);
 
   if (loading || !initialized) {
     return (
