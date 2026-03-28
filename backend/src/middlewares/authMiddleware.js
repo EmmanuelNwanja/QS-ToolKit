@@ -14,11 +14,15 @@ exports.protect = async (req, res, next) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, user_type, plan_id, subscription_status, org_role, organization_id')
+      .select('id, email, user_type, plan_id, subscription_status, org_role, organization_id, account_status')
       .eq('id', decoded.id)
       .single();
 
     if (!user) return res.status(401).json(error('User not found'));
+
+    if (user.account_status === 'deleted') {
+      return res.status(401).json(error('This account has been deleted'));
+    }
 
     req.user = user;
     next();

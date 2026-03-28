@@ -35,12 +35,14 @@ export default function SettingsPage() {
     }
 
     try {
+      // init() only fetches the VAPID key and checks SW — does NOT request permission
       await pushNotificationService.init();
       const res = await pushAPI.getSubscriptionStatus();
+      // success() spreads flat: { success, message, isSubscribed, subscriptionCount }
       setNotifState({
         supported,
         permission,
-        isSubscribed: !!res.data?.data?.isSubscribed
+        isSubscribed: !!res.data?.isSubscribed
       });
     } catch {
       setNotifState({ supported, permission, isSubscribed: false });
@@ -50,7 +52,8 @@ export default function SettingsPage() {
   const loadSubscription = async () => {
     try {
       const res = await subscriptionAPI.getMy();
-      const data = res.data?.data || {};
+      // success() spreads flat: { success, message, status, plan, expires_at, ... }
+      const data = res.data || {};
       setSubscription({
         status: data.status || 'inactive',
         plan: data.plan || null,

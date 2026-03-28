@@ -44,11 +44,16 @@ class PushNotificationService {
       }
 
       // Fetch VAPID public key
+      // NOTE: success() utility spreads fields flat: { success, message, key }
       try {
         const response = await fetch(`${API_URL}/push-notifications/keys`);
         const data = await response.json();
-        this.vapidPublicKey = data.data?.key;
-        console.log('[Push] VAPID key loaded');
+        this.vapidPublicKey = data.key || data.data?.key || null;
+        if (this.vapidPublicKey) {
+          console.log('[Push] VAPID key loaded');
+        } else {
+          console.warn('[Push] VAPID key not available — push may not be configured on server');
+        }
       } catch (err) {
         console.warn('[Push] Failed to fetch VAPID key:', err);
         // Push notifications may not be available
