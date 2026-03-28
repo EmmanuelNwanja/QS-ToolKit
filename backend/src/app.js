@@ -79,6 +79,12 @@ app.get('/health', (req, res) => {
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/v1', routes);
 
+// Temporary Mailjet Domain Validation Route
+app.get('/781acd2d89510a5183db97367002c640.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('');
+});
+
 // ── 404 ───────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
