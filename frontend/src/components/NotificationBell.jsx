@@ -41,12 +41,13 @@ export default function NotificationBell() {
         pushAPI.getActivity({ limit: 30 }),
       ]);
 
+      // success() spreads fields flat: { success, message, notifications, pagination }
       const pushData = pushRes.status === 'fulfilled'
-        ? (pushRes.value.data?.data?.notifications || [])
+        ? (pushRes.value.data?.notifications || [])
         : [];
 
       const activityData = activityRes.status === 'fulfilled'
-        ? (activityRes.value.data?.data?.notifications || [])
+        ? (activityRes.value.data?.notifications || [])
         : [];
 
       const pushItems = pushData.map((d) => ({
