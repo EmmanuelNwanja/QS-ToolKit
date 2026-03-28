@@ -241,7 +241,7 @@ exports.sendEmailVerification = async (user, token) => {
     `
   });
 
-  await send({
+  return send({
     to: user.email,
     subject: 'Verify your QSToolkit email',
     html
@@ -276,7 +276,7 @@ exports.sendWelcome = async (user) => {
       `)}
     `
   });
-  await send({ to: user.email, subject: `Welcome to QSToolkit, ${firstName}!`, html });
+  return send({ to: user.email, subject: `Welcome to QSToolkit, ${firstName}!`, html });
 };
 
 // ════════════════════════════════════════════════════════════════

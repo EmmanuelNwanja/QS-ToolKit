@@ -119,8 +119,15 @@ exports.register = async (req, res, next) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Create empty branding record
-    await supabase.from('branding_settings').insert({ user_id: user.id });
+    // Create empty branding record (best-effort)
+    const { error: brandingError } = await supabase.from('branding_settings').insert({ user_id: user.id });
+    if (brandingError) {
+      logger.warn({
+        message: 'Branding settings seed failed after registration',
+        user_id: user.id,
+        error: brandingError.message
+      });
+    }
 
     // Record signup identity binding for abuse analysis
     const { error: signalError } = await supabase.from('signup_identity_signals').insert({
@@ -134,10 +141,27 @@ exports.register = async (req, res, next) => {
       reason: 'register'
     });
 
-    if (signalError) throw new Error(signalError.message);
+    if (signalError) {
+      logger.warn({
+        message: 'Signup identity signal insert failed after registration',
+        user_id: user.id,
+        error: signalError.message
+      });
+    }
 
-    const verificationToken = await createEmailVerificationToken(user.id, req);
-    const verificationSent = await emailService.sendEmailVerification(user, verificationToken);
+    let verificationSent = false;
+    try {
+      const verificationToken = await createEmailVerificationToken(user.id, req);
+      verificationSent = await emailService.sendEmailVerification(user, verificationToken);
+    } catch (verificationErr) {
+      logger.error({
+        message: 'Registration completed but verification pipeline failed',
+        user_id: user.id,
+        email: user.email,
+        error: verificationErr.message
+      });
+      verificationSent = false;
+    }
 
     if (!verificationSent) {
       logger.error({
@@ -148,7 +172,8 @@ exports.register = async (req, res, next) => {
       return res.status(201).json(success('Registration successful, but we could not send your verification email right now. Please use "Resend verification" on login in a few minutes.', {
         requires_verification: true,
         email: normalizedEmail,
-        email_delivery_failed: true
+        email_delivery_failed: true,
+        registration_completed: true
       }));
     }
 
