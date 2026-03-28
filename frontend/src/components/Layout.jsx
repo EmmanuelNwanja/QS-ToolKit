@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
+import NotificationBell from './NotificationBell';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
@@ -142,6 +143,7 @@ export default function Layout({ children, title }) {
                 ⬇ Install
               </button>
             )}
+            <NotificationBell />
             <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
               {planName() === 'free' ? '⬆ Upgrade' : `✅ ${planName().charAt(0).toUpperCase() + planName().slice(1)}`}
             </Link>

@@ -200,6 +200,17 @@ export const adminAPI = {
   getAnalytics:          (params) => api.get('/admin/analytics', { params })
 };
 
+// ─── Push Notifications ────────────────────────────────────────
+export const pushAPI = {
+  getSubscriptionStatus: ()     => api.get('/push-notifications/subscription-status'),
+  subscribe:             (data) => api.post('/push-notifications/subscribe', data),
+  unsubscribe:           (data) => api.post('/push-notifications/unsubscribe', data),
+  getInbox:              (params) => api.get('/push-notifications/inbox', { params }),
+  markDeliveryRead:      (id)   => api.patch(`/push-notifications/inbox/${id}/read`),
+  getActivity:           (params) => api.get('/push-notifications/activity', { params }),
+  markActivityRead:      (id)   => api.patch(`/push-notifications/activity/${id}/read`)
+};
+
 // ─── Utilities ─────────────────────────────────────────────────
 export const downloadBlob = (blob, filename) => {
   const url = URL.createObjectURL(new Blob([blob]));

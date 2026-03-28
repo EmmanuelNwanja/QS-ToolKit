@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { logAdminActivity } = require('../middlewares/adminMiddleware');
 const { getEffectivePermissions, DEFAULT_ADMIN_PERMISSIONS } = require('../middlewares/adminMiddleware');
 const crypto = require('crypto');
+const pushService = require('../services/pushService');
 
 // ── ADMIN MANAGEMENT ────────────────────────────────────────
 /**
@@ -644,6 +645,13 @@ exports.sendPushNotification = async (req, res, next) => {
       req.ip,
       req.get('user-agent')
     );
+
+    // Dispatch web push to subscribed users immediately (skip for scheduled)
+    if (!normalizedScheduledFor) {
+      pushService.sendToSegment(targetSegment, notification).catch((err) =>
+        logger.error('Background push delivery failed:', err)
+      );
+    }
 
     return res.status(201).json(success('Notification created', { notification }));
   } catch (err) {

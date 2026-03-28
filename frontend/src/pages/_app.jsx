@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from '../context/authStore';
+import pushNotificationService from '../services/pushNotificationService';
 import '../styles/globals.css';
 
 export default function App({ Component, pageProps }) {
   const init = useAuthStore((s) => s.init);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     init();
@@ -18,6 +20,16 @@ export default function App({ Component, pageProps }) {
         .catch((err) => console.warn('[SW] Registration failed:', err));
     }
   }, []);
+
+  // Initialize push notifications once the user is authenticated
+  useEffect(() => {
+    if (!user?.id) return;
+    pushNotificationService.init().then((ok) => {
+      if (ok && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        pushNotificationService.subscribe().catch(() => {});
+      }
+    });
+  }, [user?.id]);
 
   const getLayout = Component.getLayout ?? ((page) => page);
 

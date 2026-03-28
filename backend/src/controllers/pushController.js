@@ -259,3 +259,65 @@ exports.cancelNotification = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─── MARK PUSH DELIVERY AS READ ──────────────────────────────
+
+exports.markDeliveryRead = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { deliveryId } = req.params;
+
+    const { error: dbError } = await supabase
+      .from('notification_deliveries')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('id', deliveryId)
+      .eq('user_id', userId); // enforce ownership
+
+    if (dbError) throw new Error(dbError.message);
+    return res.json(success('Notification marked as read'));
+  } catch (err) { next(err); }
+};
+
+// ─── IN-APP ACTIVITY NOTIFICATIONS ───────────────────────────
+
+/**
+ * Get user's in-app / system notifications (notifications table)
+ */
+exports.getUserActivityNotifications = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 30, offset = 0 } = req.query;
+
+    const { data: notifications, count, error: dbError } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    if (dbError) throw new Error(dbError.message);
+    return res.json(success('Activity notifications retrieved', {
+      notifications,
+      pagination: { count, limit, offset }
+    }));
+  } catch (err) { next(err); }
+};
+
+/**
+ * Mark an in-app activity notification as read
+ */
+exports.markActivityRead = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { notificationId } = req.params;
+
+    const { error: dbError } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('user_id', userId); // enforce ownership
+
+    if (dbError) throw new Error(dbError.message);
+    return res.json(success('Notification marked as read'));
+  } catch (err) { next(err); }
+};

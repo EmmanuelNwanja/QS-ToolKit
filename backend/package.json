@@ -32,6 +32,7 @@
     "puppeteer": "^24.7.1",
     "puppeteer-core": "^21.7.0",
     "uuid": "^9.0.0",
+    "web-push": "^3.6.7",
     "winston": "^3.11.0"
   },
   "devDependencies": {

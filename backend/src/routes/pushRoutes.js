@@ -32,6 +32,21 @@ router.post('/unsubscribe', pushController.unsubscribe);
 router.get('/inbox', pushController.getUserNotifications);
 
 /**
+ * Mark a push delivery as read
+ */
+router.patch('/inbox/:deliveryId/read', pushController.markDeliveryRead);
+
+/**
+ * Get user's in-app activity notifications
+ */
+router.get('/activity', pushController.getUserActivityNotifications);
+
+/**
+ * Mark an in-app activity notification as read
+ */
+router.patch('/activity/:notificationId/read', pushController.markActivityRead);
+
+/**
  * Check if user is subscribed
  */
 router.get('/subscription-status', pushController.getSubscriptionStatus);

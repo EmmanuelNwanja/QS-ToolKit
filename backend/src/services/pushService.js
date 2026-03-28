@@ -1,6 +1,6 @@
+const webpush = require('web-push');
 const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
-const { success, error } = require('../utils/responseHelper');
 
 /**
  * Web Push Notifications Service
@@ -10,6 +10,12 @@ const { success, error } = require('../utils/responseHelper');
 // VAPID public/private keys (should be in env)
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const vapidEmail = process.env.VAPID_EMAIL || 'mailto:support@qs.solnuv.com';
+
+// Configure web-push with VAPID keys when both are available
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+}
 
 /**
  * Save or update push subscription for a user
@@ -81,11 +87,15 @@ exports.getVapidPublicKey = () => {
 };
 
 /**
- * Send notification to specific users
+ * Send notification to specific users via web-push
  */
 exports.sendToUsers = async (userIds, notification) => {
   try {
-    // Get push subscriptions for users
+    if (!userIds || userIds.length === 0) {
+      return { successful: 0, failed: 0, total: 0 };
+    }
+
+    // Get active push subscriptions for the target users
     const { data: subscriptions, error: subError } = await supabase
       .from('push_subscriptions')
       .select('*')
@@ -94,32 +104,61 @@ exports.sendToUsers = async (userIds, notification) => {
 
     if (subError) throw new Error(subError.message);
 
+    const payload = JSON.stringify({
+      title: notification.title,
+      body: notification.message,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      data: {
+        actionUrl: notification.action_url || '/',
+        notificationId: notification.id
+      }
+    });
+
     let successful = 0;
     let failed = 0;
 
-    // Send to each subscription
     for (const sub of subscriptions || []) {
-      try {
-        // In production, use web-push library here
-        // For now, just track the delivery attempt
-        const { data: delivery } = await supabase
-          .from('notification_deliveries')
-          .insert({
-            notification_id: notification.id,
-            user_id: sub.user_id,
-            status: 'sent'
-          })
-          .select()
-          .single();
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: { auth: sub.auth_key, p256dh: sub.p256dh_key }
+      };
 
-        if (delivery) successful++;
+      try {
+        if (vapidPublicKey && vapidPrivateKey) {
+          await webpush.sendNotification(pushSubscription, payload);
+        }
+
+        await supabase.from('notification_deliveries').insert({
+          notification_id: notification.id,
+          user_id: sub.user_id,
+          status: 'sent',
+          sent_at: new Date().toISOString()
+        });
+
+        successful++;
       } catch (err) {
+        // HTTP 410 Gone means the subscription was deleted on the browser side — deactivate it
+        if (err.statusCode === 410) {
+          await supabase
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .eq('id', sub.id);
+        }
+
+        await supabase.from('notification_deliveries').insert({
+          notification_id: notification.id,
+          user_id: sub.user_id,
+          status: 'failed',
+          error_message: err.message?.substring(0, 255)
+        });
+
         failed++;
-        logger.error(`Failed to send notification to user ${sub.user_id}:`, err);
+        logger.error(`Push delivery failed for user ${sub.user_id}:`, err.message);
       }
     }
 
-    // Update notification stats
+    // Update campaign stats
     await supabase
       .from('push_notifications')
       .update({

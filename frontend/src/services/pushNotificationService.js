@@ -96,7 +96,7 @@ class PushNotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${localStorage.getItem('qst_token')}`
         },
         body: JSON.stringify(this.subscription)
       });
@@ -130,7 +130,7 @@ class PushNotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${localStorage.getItem('qst_token')}`
         },
         body: JSON.stringify({ endpoint })
       });
