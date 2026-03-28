@@ -1,16 +1,16 @@
 /**
  * QSToolkit Email Service
- * Beautiful, brand-consistent HTML emails via Brevo
- * Every email is humanly written, clear, and mobile-responsive
+ * Brand-consistent transactional email delivery via Mailjet.
+ * Includes HTML + plain-text multipart delivery to reduce spam risk.
  */
 
-const axios = require('axios');
+const Mailjet = require('node-mailjet');
 const logger = require('../utils/logger');
 
-const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
-const BREVO_API_KEY = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
-const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || process.env.SENDINBLUE_SENDER_EMAIL;
-const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || process.env.SENDINBLUE_SENDER_NAME;
+const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
+const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET;
+const MAILJET_SENDER_EMAIL = process.env.MAILJET_SENDER_EMAIL;
+const MAILJET_SENDER_NAME = process.env.MAILJET_SENDER_NAME;
 const BRAND = {
   primary:    '#1a3c5e',
   gold:       '#f59e0b',
@@ -24,20 +24,24 @@ const BRAND = {
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 
-if (!BREVO_API_KEY) {
-  logger.error('Email service misconfigured: BREVO_API_KEY (or SENDINBLUE_API_KEY) is missing');
+if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
+  logger.error('Email service misconfigured: MAILJET_API_KEY or MAILJET_API_SECRET is missing');
 }
 
-if (!BREVO_SENDER_EMAIL) {
-  logger.warn('BREVO_SENDER_EMAIL missing; using fallback sender. Verify sender/domain in Brevo to avoid rejection.');
+if (!MAILJET_SENDER_EMAIL) {
+  logger.warn('MAILJET_SENDER_EMAIL missing; using fallback sender. Verify sender/domain in Mailjet to avoid rejection.');
 }
+
+const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
+  ? Mailjet.apiConnect(MAILJET_API_KEY, MAILJET_API_SECRET)
+  : null;
 
 // ── Core send function ────────────────────────────────────────
-async function send({ to, subject, html, attachments = [] }) {
+async function send({ to, subject, html, text, attachments = [] }) {
   try {
-    if (!BREVO_API_KEY) {
+    if (!mailjetClient) {
       logger.error({
-        message: 'Email send skipped: missing Brevo API key',
+        message: 'Email send skipped: missing Mailjet credentials',
         subject,
         to
       });
@@ -45,28 +49,45 @@ async function send({ to, subject, html, attachments = [] }) {
     }
 
     const recipients = (Array.isArray(to) ? to : [to]).map((entry) => {
-      if (typeof entry === 'string') return { email: entry };
-      return entry;
-    }).filter((entry) => entry && entry.email);
+      if (typeof entry === 'string') return { Email: entry };
+      if (!entry?.email) return null;
+      return {
+        Email: entry.email,
+        ...(entry.name ? { Name: entry.name } : {})
+      };
+    }).filter((entry) => entry && entry.Email);
 
     if (!recipients.length) {
       logger.error({ message: 'Email send skipped: no valid recipients', subject, to });
       return false;
     }
 
-    await axios.post(BREVO_API, {
-      sender:     { name: BREVO_SENDER_NAME || BRAND.name, email: BREVO_SENDER_EMAIL || BRAND.email },
-      to:         recipients,
-      subject,
-      htmlContent: html,
-      attachment: attachments.length ? attachments : undefined
-    }, {
-      headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
-    });
+    const htmlPart = sanitizeHtmlDocument(html);
+    const textPart = normalizePlainText(text || htmlToText(htmlPart));
+    const mailjetAttachments = attachments.map((attachment) => {
+      if (!attachment?.content || !attachment?.name) return null;
+      return {
+        Filename: attachment.name,
+        ContentType: attachment.contentType || 'application/octet-stream',
+        Base64Content: attachment.content
+      };
+    }).filter(Boolean);
+
+    await mailjetClient
+      .post('send', { version: 'v3.1' })
+      .request({
+        Messages: [{
+          From: {
+            Email: MAILJET_SENDER_EMAIL || BRAND.email,
+            Name: MAILJET_SENDER_NAME || BRAND.name
+          },
+          To: recipients,
+          Subject: subject,
+          TextPart: textPart,
+          HTMLPart: htmlPart,
+          ...(mailjetAttachments.length ? { Attachments: mailjetAttachments } : {})
+        }]
+      });
 
     return true;
   } catch (err) {
@@ -74,11 +95,54 @@ async function send({ to, subject, html, attachments = [] }) {
       message: 'Email delivery failed',
       subject,
       to,
-      status: err.response?.status,
-      provider_error: err.response?.data || err.message
+      status: err.statusCode || err.response?.status,
+      provider_error: err.response?.body || err.response?.data || err.message
     });
     return false;
   }
+}
+
+function sanitizeHtmlDocument(html) {
+  return String(html || '')
+    .replace(/>\s+</g, '><')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function htmlToText(html) {
+  const withLinks = String(html || '').replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, (_, href, label) => {
+    const textLabel = stripTags(label).trim() || href;
+    return `${textLabel} (${href})`;
+  });
+
+  const withBreaks = withLinks
+    .replace(/<(br|\/p|\/div|\/tr|\/table|\/h[1-6]|\/li)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<(p|div|table|tr|h[1-6])\b[^>]*>/gi, '\n');
+
+  return decodeHtmlEntities(stripTags(withBreaks));
+}
+
+function stripTags(value) {
+  return String(value || '').replace(/<[^>]+>/g, ' ');
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function normalizePlainText(value) {
+  return String(value || '')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 // ── Layout wrapper — every email uses this ────────────────────
@@ -316,7 +380,7 @@ exports.sendSubscriptionConfirmation = async (user, billingCycle = 'monthly', ex
       `)}
     `
   });
-  await send({ to: user.email, subject: `Your QSToolkit ${planName} plan is active`, html });
+  return send({ to: user.email, subject: `Your QSToolkit ${planName} plan is active`, html });
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -344,7 +408,7 @@ exports.sendFeedbackRequest = async (clientEmail, clientName, feedbackUrl, proje
       `)}
     `
   });
-  await send({
+  return send({
     to: clientEmail,
     subject: `${surveyorName} wants your feedback on "${projectTitle}"`,
     html
@@ -373,7 +437,7 @@ exports.notifyNewFeedback = async (surveyor, rating) => {
       `)}
     `
   });
-  await send({ to: surveyor.email, subject: `New client rating: ${rating}/10 ⭐`, html });
+  return send({ to: surveyor.email, subject: `New client rating: ${rating}/10 ⭐`, html });
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -417,7 +481,7 @@ exports.sendInvoiceToClient = async (invoice, branding, pdfBuffer) => {
     name:    `${invoice.invoice_no}.pdf`
   }] : [];
 
-  await send({
+  return send({
     to:          invoice.client_email,
     subject:     `${docType} ${invoice.invoice_no} from ${senderName} — ${amount}`,
     html,
@@ -450,7 +514,7 @@ exports.sendInvite = async (email, inviteUrl, role, orgName = '') => {
     `
   });
 
-  await send({
+  return send({
     to:      email,
     subject: `You're invited to join ${orgName || 'a team'} on QSToolkit`,
     html
@@ -480,7 +544,7 @@ exports.sendExpiryReminder = async ({ email, name, planName, expiresAt, renewUrl
     `
   });
 
-  await send({ to: email, subject: `Your QSToolkit ${planName} plan expires in 3 days`, html });
+  return send({ to: email, subject: `Your QSToolkit ${planName} plan expires in 3 days`, html });
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -510,7 +574,7 @@ exports.sendPhilanthropistDonorConfirmation = async (meta) => {
     `
   });
 
-  await send({
+  return send({
     to:      meta.donor_email,
     subject: `Your gift subscription for ${meta.beneficiary_email} is confirmed`,
     html
@@ -540,7 +604,7 @@ exports.sendPhilanthropistGiftNotification = async (beneficiary, meta) => {
     `
   });
 
-  await send({
+  return send({
     to:      beneficiary.email,
     subject: `🎁 ${donorLabel} gifted you a QSToolkit ${meta.plan_name} subscription!`,
     html
