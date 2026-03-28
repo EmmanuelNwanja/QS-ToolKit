@@ -236,3 +236,68 @@ exports.usageSummary = async (req, res, next) => {
     }));
   } catch (err) { next(err); }
 };
+
+// ─── Hibernate account ───────────────────────────────────────
+exports.hibernateAccount = async (req, res, next) => {
+  try {
+    const nowIso = new Date().toISOString();
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({
+        account_status: 'hibernated',
+        account_hibernated_at: nowIso,
+        auto_renew: false,
+        updated_at: nowIso
+      })
+      .eq('id', req.user.id);
+
+    if (dbError) throw new Error(dbError.message);
+
+    // Stop push notifications for a hibernated account
+    await supabase
+      .from('push_subscriptions')
+      .update({ is_active: false })
+      .eq('user_id', req.user.id);
+
+    return res.json(success('Account hibernated'));
+  } catch (err) { next(err); }
+};
+
+// ─── Soft delete account ─────────────────────────────────────
+exports.deleteAccount = async (req, res, next) => {
+  try {
+    const nowIso = new Date().toISOString();
+    const tombstoneEmail = `deleted+${req.user.id}@deleted.local`;
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({
+        account_status: 'deleted',
+        deleted_at: nowIso,
+        auto_renew: false,
+        subscription_status: 'inactive',
+        plan_id: null,
+        organization_id: null,
+        org_role: 'member',
+        name: 'Deleted User',
+        phone: null,
+        company_name: null,
+        company_address: null,
+        qs_cert_no: null,
+        university_name: null,
+        email: tombstoneEmail,
+        updated_at: nowIso
+      })
+      .eq('id', req.user.id);
+
+    if (dbError) throw new Error(dbError.message);
+
+    await supabase
+      .from('push_subscriptions')
+      .update({ is_active: false })
+      .eq('user_id', req.user.id);
+
+    return res.json(success('Account deleted successfully'));
+  } catch (err) { next(err); }
+};

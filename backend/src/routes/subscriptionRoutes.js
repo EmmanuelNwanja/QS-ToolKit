@@ -13,5 +13,8 @@ router.post('/initiate',       ctrl.initiate);
 router.get('/verify',          ctrl.verify);
 router.post('/validate-promo', ctrl.validatePromo);
 router.post('/philanthropist', ctrl.initiatePhilanthropist);
+router.post('/cancel',         ctrl.cancelMySubscription);
+router.post('/renew',          ctrl.renewMySubscription);
+router.patch('/auto-renew',    ctrl.setAutoRenew);
 
 module.exports = router;

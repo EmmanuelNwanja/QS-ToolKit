@@ -448,7 +448,7 @@ exports.mySubscription = async (req, res, next) => {
   try {
     const { data: user } = await supabase
       .from('users')
-      .select('subscription_status, subscription_expires_at, billing_cycle, email, subscription_plans(*)')
+      .select('subscription_status, subscription_expires_at, billing_cycle, auto_renew, email, subscription_plans(*)')
       .eq('id', req.user.id)
       .single();
 
@@ -464,7 +464,99 @@ exports.mySubscription = async (req, res, next) => {
       plan:          user.subscription_plans,
       expires_at:    user.subscription_expires_at,
       billing_cycle: user.billing_cycle || 'monthly',
+      auto_renew:    user.auto_renew !== false,
       pending_gift:  pendingGrant || null
+    }));
+  } catch (err) { next(err); }
+};
+
+// ── Cancel my subscription ───────────────────────────────────
+exports.cancelMySubscription = async (req, res, next) => {
+  try {
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({
+        subscription_status: 'cancelled',
+        auto_renew: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.user.id);
+
+    if (dbError) throw new Error(dbError.message);
+    return res.json(success('Subscription cancelled. Access remains until current expiry date.'));
+  } catch (err) { next(err); }
+};
+
+// ── Toggle auto-renew ────────────────────────────────────────
+exports.setAutoRenew = async (req, res, next) => {
+  try {
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json(error('enabled must be a boolean'));
+    }
+
+    const { data: updated, error: dbError } = await supabase
+      .from('users')
+      .update({ auto_renew: enabled, updated_at: new Date().toISOString() })
+      .eq('id', req.user.id)
+      .select('id, auto_renew')
+      .single();
+
+    if (dbError) throw new Error(dbError.message);
+    return res.json(success(`Auto-renew ${enabled ? 'enabled' : 'disabled'}`, { auto_renew: updated.auto_renew }));
+  } catch (err) { next(err); }
+};
+
+// ── Renew my subscription ────────────────────────────────────
+exports.renewMySubscription = async (req, res, next) => {
+  try {
+    const { billing_cycle } = req.body;
+
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('email, plan_id, subscription_plans(name, price_monthly, price_annual)')
+      .eq('id', req.user.id)
+      .single();
+
+    if (userErr || !user) return res.status(404).json(error('User not found'));
+    if (!user.plan_id || !user.subscription_plans) {
+      return res.status(400).json(error('No active plan to renew. Please choose a subscription plan.'));
+    }
+
+    const cycle = billing_cycle || 'monthly';
+    if (!['monthly', 'annual'].includes(cycle)) {
+      return res.status(400).json(error('billing_cycle must be monthly or annual'));
+    }
+
+    const plan = user.subscription_plans;
+    const basePrice = cycle === 'annual' ? plan.price_annual : plan.price_monthly;
+    if (!basePrice || Number(basePrice) <= 0) {
+      return res.status(400).json(error('Current plan is not payable. Choose a paid plan to renew.'));
+    }
+
+    const paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+      email: user.email,
+      amount: Math.round(Number(basePrice) * 100),
+      currency: 'NGN',
+      metadata: {
+        user_id: req.user.id,
+        plan_id: user.plan_id,
+        plan_name: plan.name,
+        billing_cycle: cycle,
+        is_philanthropist: false,
+        custom_fields: [
+          { display_name: 'Plan', variable_name: 'plan', value: plan.name },
+          { display_name: 'Billing', variable_name: 'billing', value: cycle }
+        ]
+      },
+      callback_url: `${process.env.FRONTEND_URL}/subscription`
+    }, { headers: paystackHeaders() });
+
+    return res.json(success('Renewal initiated', {
+      authorization_url: paystackRes.data.data.authorization_url,
+      reference: paystackRes.data.data.reference,
+      amount: Number(basePrice),
+      billing_cycle: cycle
     }));
   } catch (err) { next(err); }
 };

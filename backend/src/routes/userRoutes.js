@@ -30,4 +30,8 @@ router.post('/team/join/:token',    ctrl.acceptInvite);
 router.delete('/team/:memberId',    ctrl.removeMember);
 router.patch('/team/:memberId/role', ctrl.updateMemberRole);
 
+// Account management
+router.post('/account/hibernate',   ctrl.hibernateAccount);
+router.delete('/account',           ctrl.deleteAccount);
+
 module.exports = router;
