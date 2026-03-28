@@ -1,3 +1,9 @@
+// Temporary Mailjet Domain Validation Route
+app.get('/781acd2d89510a5183db97367002c640.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('');
+});
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
