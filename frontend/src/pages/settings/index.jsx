@@ -4,20 +4,64 @@ import toast from 'react-hot-toast';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import useAuthStore from '../../context/authStore';
-import { userAPI } from '../../services/api';
+import pushNotificationService from '../../services/pushNotificationService';
+import { userAPI, pushAPI, subscriptionAPI } from '../../services/api';
 
-const TABS = ['Profile', 'Branding', 'Team'];
+const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Account'];
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuthStore();
+  const { user, refreshUser, logout } = useAuthStore();
   const [tab, setTab]         = useState('Profile');
   const [profile, setProfile] = useState({ name: '', phone: '', company_name: '', qs_cert_no: '', company_address: '' });
   const [branding, setBranding] = useState({ brand_name: '', company_details: '', contact_info: '', primary_color: '#1a3c5e', secondary_color: '#f59e0b' });
   const [team, setTeam]       = useState({ members: [], pending_invites: [] });
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'manager' });
+  const [subscription, setSubscription] = useState({ status: 'inactive', plan: null, expires_at: null, billing_cycle: 'monthly', auto_renew: true });
+  const [notifState, setNotifState] = useState({ supported: false, permission: 'default', isSubscribed: false });
   const [saving, setSaving]   = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
   const logoRef      = useRef();
   const signatureRef = useRef();
+
+  const loadNotificationState = async () => {
+    const supported = typeof window !== 'undefined' && pushNotificationService.isSupported();
+    const permission = typeof Notification !== 'undefined' ? Notification.permission : 'denied';
+
+    if (!supported) {
+      setNotifState({ supported: false, permission, isSubscribed: false });
+      return;
+    }
+
+    try {
+      await pushNotificationService.init();
+      const res = await pushAPI.getSubscriptionStatus();
+      setNotifState({
+        supported,
+        permission,
+        isSubscribed: !!res.data?.data?.isSubscribed
+      });
+    } catch {
+      setNotifState({ supported, permission, isSubscribed: false });
+    }
+  };
+
+  const loadSubscription = async () => {
+    try {
+      const res = await subscriptionAPI.getMy();
+      const data = res.data?.data || {};
+      setSubscription({
+        status: data.status || 'inactive',
+        plan: data.plan || null,
+        expires_at: data.expires_at || null,
+        billing_cycle: data.billing_cycle || 'monthly',
+        auto_renew: data.auto_renew !== false
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -36,6 +80,8 @@ export default function SettingsPage() {
       }
     }).catch(() => {});
     userAPI.getTeam().then(res => setTeam(res.data)).catch(() => {});
+    loadSubscription();
+    loadNotificationState();
   }, [user]);
 
   const saveProfile = async (e) => {
@@ -88,6 +134,98 @@ export default function SettingsPage() {
       setTeam(res.data);
       toast.success('Member removed');
     } catch { toast.error('Could not remove member'); }
+  };
+
+  const enableNotifications = async () => {
+    setNotifBusy(true);
+    try {
+      await pushNotificationService.init();
+      const permission = await pushNotificationService.requestPermission();
+      if (permission !== 'granted') {
+        toast.error('Notification permission was not granted');
+        return;
+      }
+      await pushNotificationService.subscribe();
+      await loadNotificationState();
+      toast.success('Notifications enabled');
+    } catch {
+      toast.error('Could not enable notifications');
+    } finally { setNotifBusy(false); }
+  };
+
+  const disableNotifications = async () => {
+    setNotifBusy(true);
+    try {
+      await pushNotificationService.init();
+      await pushNotificationService.unsubscribe();
+      await loadNotificationState();
+      toast.success('Notifications disabled');
+    } catch {
+      toast.error('Could not disable notifications');
+    } finally { setNotifBusy(false); }
+  };
+
+  const toggleAutoRenew = async (enabled) => {
+    setSubscriptionBusy(true);
+    try {
+      await subscriptionAPI.setAutoRenew(enabled);
+      setSubscription((prev) => ({ ...prev, auto_renew: enabled }));
+      toast.success(`Auto-renew ${enabled ? 'enabled' : 'disabled'}`);
+    } catch {
+      toast.error('Could not update auto-renew');
+    } finally { setSubscriptionBusy(false); }
+  };
+
+  const cancelSubscription = async () => {
+    if (!confirm('Cancel your subscription? You will keep access until current expiry date.')) return;
+    setSubscriptionBusy(true);
+    try {
+      await subscriptionAPI.cancel();
+      await loadSubscription();
+      toast.success('Subscription cancelled');
+    } catch {
+      toast.error('Could not cancel subscription');
+    } finally { setSubscriptionBusy(false); }
+  };
+
+  const renewSubscription = async () => {
+    setSubscriptionBusy(true);
+    try {
+      const res = await subscriptionAPI.renew(subscription.billing_cycle || 'monthly');
+      const url = res.data?.data?.authorization_url;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      toast.success('Renewal initiated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not start renewal');
+    } finally { setSubscriptionBusy(false); }
+  };
+
+  const hibernateAccount = async () => {
+    if (!confirm('Hibernate account? This will pause notifications and auto-renew.')) return;
+    setAccountBusy(true);
+    try {
+      await userAPI.hibernateAccount();
+      toast.success('Account hibernated. You will be logged out.');
+      logout();
+    } catch {
+      toast.error('Could not hibernate account');
+    } finally { setAccountBusy(false); }
+  };
+
+  const deleteAccount = async () => {
+    const phrase = prompt('Type DELETE to permanently delete your account:');
+    if (phrase !== 'DELETE') return;
+    setAccountBusy(true);
+    try {
+      await userAPI.deleteAccount();
+      toast.success('Account deleted.');
+      logout();
+    } catch {
+      toast.error('Could not delete account');
+    } finally { setAccountBusy(false); }
   };
 
   return (
@@ -246,6 +384,121 @@ export default function SettingsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Notifications tab */}
+          {tab === 'Notifications' && (
+            <div className="card space-y-4">
+              <h2 className="section-title">🔔 Notification Preferences</h2>
+              <p className="text-sm text-gray-500">Manage browser push notifications and in-app bell alerts.</p>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500">Support</p>
+                  <p className="font-semibold text-sm text-gray-800">{notifState.supported ? 'Supported' : 'Not supported'}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500">Permission</p>
+                  <p className="font-semibold text-sm text-gray-800 capitalize">{notifState.permission}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500">Subscription</p>
+                  <p className="font-semibold text-sm text-gray-800">{notifState.isSubscribed ? 'Active' : 'Inactive'}</p>
+                </div>
+              </div>
+
+              {notifState.permission === 'denied' && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  Browser permission is blocked. Enable notifications for this site in your browser settings, then click Refresh Status.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button onClick={enableNotifications} disabled={notifBusy || !notifState.supported} className="btn-primary text-sm">
+                  {notifBusy ? 'Please wait…' : 'Enable Notifications'}
+                </button>
+                <button onClick={disableNotifications} disabled={notifBusy || !notifState.supported} className="btn-secondary text-sm">
+                  Disable Notifications
+                </button>
+                <button onClick={loadNotificationState} disabled={notifBusy} className="btn-secondary text-sm">
+                  Refresh Status
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Subscription tab */}
+          {tab === 'Subscription' && (
+            <div className="space-y-4">
+              <div className="card space-y-4">
+                <h2 className="section-title">💳 Subscription Management</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs text-gray-500">Current Plan</p>
+                    <p className="font-semibold text-sm text-gray-800 capitalize">{subscription.plan?.name || 'Free'}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs text-gray-500">Status</p>
+                    <p className="font-semibold text-sm text-gray-800 capitalize">{subscription.status || 'inactive'}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs text-gray-500">Billing Cycle</p>
+                    <p className="font-semibold text-sm text-gray-800 capitalize">{subscription.billing_cycle}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs text-gray-500">Expires</p>
+                    <p className="font-semibold text-sm text-gray-800">
+                      {subscription.expires_at ? new Date(subscription.expires_at).toLocaleString() : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={!!subscription.auto_renew}
+                    onChange={(e) => toggleAutoRenew(e.target.checked)}
+                    disabled={subscriptionBusy}
+                  />
+                  Enable auto-renewal
+                </label>
+
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={renewSubscription} disabled={subscriptionBusy} className="btn-primary text-sm">
+                    {subscriptionBusy ? 'Please wait…' : 'Renew Subscription'}
+                  </button>
+                  <button onClick={cancelSubscription} disabled={subscriptionBusy} className="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
+                    Cancel Subscription
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account tab */}
+          {tab === 'Account' && (
+            <div className="space-y-4">
+              <div className="card space-y-4">
+                <h2 className="section-title">🧾 Account Management</h2>
+                <p className="text-sm text-gray-500">Hibernate pauses account activity. Delete permanently anonymizes account data.</p>
+
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800">Hibernate Account</p>
+                  <p className="text-xs text-amber-700 mt-1">Stops push notifications and disables auto-renew. You can return later.</p>
+                  <button onClick={hibernateAccount} disabled={accountBusy} className="btn-secondary text-sm mt-3">
+                    {accountBusy ? 'Please wait…' : 'Hibernate Account'}
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                  <p className="text-sm font-medium text-red-800">Delete Account</p>
+                  <p className="text-xs text-red-700 mt-1">This is irreversible. Your profile is anonymized and access removed.</p>
+                  <button onClick={deleteAccount} disabled={accountBusy} className="btn-secondary text-sm mt-3 text-red-600 border-red-300 hover:bg-red-100">
+                    {accountBusy ? 'Please wait…' : 'Delete Account'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

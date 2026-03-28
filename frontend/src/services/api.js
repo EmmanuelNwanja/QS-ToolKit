@@ -78,7 +78,9 @@ export const userAPI = {
   inviteMember:        (data) => api.post('/users/team/invite', data),
   acceptInvite:        (token)=> api.post(`/users/team/join/${token}`),
   removeMember:        (id)   => api.delete(`/users/team/${id}`),
-  updateMemberRole:    (id, role) => api.patch(`/users/team/${id}/role`, { role })
+  updateMemberRole:    (id, role) => api.patch(`/users/team/${id}/role`, { role }),
+  hibernateAccount:    ()     => api.post('/users/account/hibernate'),
+  deleteAccount:       ()     => api.delete('/users/account')
 };
 
 // ─── Projects ──────────────────────────────────────────────────
@@ -164,7 +166,10 @@ export const subscriptionAPI = {
   initiate:             (plan, billing, promoCode) => api.post('/subscriptions/initiate', { plan_name: plan, billing_cycle: billing, promo_code: promoCode }),
   verify:               (ref)                      => api.get(`/subscriptions/verify?reference=${ref}`),
   validatePromo:        (code, plan_name)          => api.post('/subscriptions/validate-promo', { code, plan_name }),
-  initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle })
+  initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle }),
+  cancel:               ()                         => api.post('/subscriptions/cancel'),
+  renew:                (billing_cycle)            => api.post('/subscriptions/renew', { billing_cycle }),
+  setAutoRenew:         (enabled)                  => api.patch('/subscriptions/auto-renew', { enabled })
 };
 
 // ─── User Actions (admin) ──────────────────────────────────────

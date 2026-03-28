@@ -36,12 +36,20 @@ export default function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const [pushRes, activityRes] = await Promise.all([
+      const [pushRes, activityRes] = await Promise.allSettled([
         pushAPI.getInbox({ limit: 30 }),
         pushAPI.getActivity({ limit: 30 }),
       ]);
 
-      const pushItems = (pushRes.data?.data?.notifications || []).map((d) => ({
+      const pushData = pushRes.status === 'fulfilled'
+        ? (pushRes.value.data?.data?.notifications || [])
+        : [];
+
+      const activityData = activityRes.status === 'fulfilled'
+        ? (activityRes.value.data?.data?.notifications || [])
+        : [];
+
+      const pushItems = pushData.map((d) => ({
         id: d.id,
         source: 'push',
         icon: '📢',
@@ -52,7 +60,7 @@ export default function NotificationBell() {
         action_url: d.push_notifications?.action_url || null,
       }));
 
-      const activityItems = (activityRes.data?.data?.notifications || []).map((n) => ({
+      const activityItems = activityData.map((n) => ({
         id: n.id,
         source: 'activity',
         icon: TYPE_ICON[n.type] || '🔔',

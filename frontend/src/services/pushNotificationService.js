@@ -8,6 +8,8 @@
  * - Call unsubscribe() to disable push notifications
  */
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+
 class PushNotificationService {
   constructor() {
     this.registration = null;
@@ -43,7 +45,7 @@ class PushNotificationService {
 
       // Fetch VAPID public key
       try {
-        const response = await fetch('/api/push-notifications/keys');
+        const response = await fetch(`${API_URL}/push-notifications/keys`);
         const data = await response.json();
         this.vapidPublicKey = data.data?.key;
         console.log('[Push] VAPID key loaded');
@@ -83,16 +85,23 @@ class PushNotificationService {
         throw new Error('VAPID key not loaded');
       }
 
-      // Create push subscription
-      this.subscription = await this.registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
-      });
+      // Reuse existing browser subscription when available
+      if (!this.subscription) {
+        this.subscription = await this.registration.pushManager.getSubscription();
+      }
+
+      // Create push subscription only when none exists yet
+      if (!this.subscription) {
+        this.subscription = await this.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
+        });
+      }
 
       console.log('[Push] Subscribe successful');
 
       // Send subscription to server
-      const response = await fetch('/api/push-notifications/subscribe', {
+      const response = await fetch(`${API_URL}/push-notifications/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +135,7 @@ class PushNotificationService {
       const endpoint = this.subscription.endpoint;
 
       // Notify server
-      await fetch('/api/push-notifications/unsubscribe', {
+      await fetch(`${API_URL}/push-notifications/unsubscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
