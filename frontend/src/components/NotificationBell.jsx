@@ -29,6 +29,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
   const dropdownRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -129,14 +130,18 @@ export default function NotificationBell() {
 
   const handleToggle = () => {
     setIsOpen((prev) => {
-      if (!prev) fetchNotifications();
+      if (!prev) {
+        fetchNotifications();
+      } else {
+        setSelectedNotification(null);
+      }
       return !prev;
     });
   };
 
   const handleItemClick = (notif) => {
     markRead(notif);
-    if (notif.action_url) window.open(notif.action_url, '_blank', 'noopener');
+    setSelectedNotification(notif);
   };
 
   return (
@@ -163,6 +168,39 @@ export default function NotificationBell() {
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+          {selectedNotification ? (
+            <div className="border-b border-gray-100 bg-gray-50/60">
+              <div className="px-4 py-3 flex items-start gap-3">
+                <span className="text-lg leading-none mt-0.5">{selectedNotification.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 break-words">{selectedNotification.title}</p>
+                  {selectedNotification.message && (
+                    <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words">
+                      {selectedNotification.message}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-gray-400 mt-2">{relativeTime(selectedNotification.created_at)}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    {selectedNotification.action_url && (
+                      <button
+                        onClick={() => window.open(selectedNotification.action_url, '_blank', 'noopener')}
+                        className="text-xs px-2.5 py-1 rounded-md bg-primary-600 text-white hover:bg-primary-700"
+                      >
+                        Open linked page
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedNotification(null)}
+                      className="text-xs px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100"
+                    >
+                      Back to list
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="font-semibold text-sm text-gray-900">
