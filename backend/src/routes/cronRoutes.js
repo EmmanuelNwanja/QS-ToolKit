@@ -5,9 +5,15 @@ const logger = require('../utils/logger');
 // Secured cron endpoint - called by GitHub Actions
 router.post('/run', async (req, res) => {
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET;
+  const providedToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length).trim()
+    : null;
+  const validSecrets = (process.env.CRON_SECRETS || process.env.CRON_SECRET || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!providedToken || validSecrets.length === 0 || !validSecrets.includes(providedToken)) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
