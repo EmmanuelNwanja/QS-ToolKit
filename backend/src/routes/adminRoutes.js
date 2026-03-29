@@ -120,6 +120,13 @@ router.post(
   adminController.sendPushNotification
 );
 
+router.post(
+  '/email/test',
+  adminAuth,
+  requirePermission('send_notifications'),
+  adminController.sendTestEmail
+);
+
 // ── ACTIVITY LOGS ──────────────────────────────────────────────
 router.get(
   '/activity-logs',

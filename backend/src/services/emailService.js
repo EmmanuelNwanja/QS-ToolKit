@@ -20,6 +20,13 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME;
+const SMTP_HOSTS = (process.env.SMTP_HOSTS || '')
+  .split(',')
+  .map((h) => h.trim())
+  .filter(Boolean);
+const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT || 15000);
+const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
+const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT || 20000);
 const BRAND = {
   primary:    '#1a3c5e',
   gold:       '#f59e0b',
@@ -45,16 +52,9 @@ const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
   ? Mailjet.apiConnect(MAILJET_API_KEY, MAILJET_API_SECRET)
   : null;
 
-const smtpTransport = SMTP_HOST && SMTP_USER && SMTP_PASS
-  ? nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE,
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  })
-  : null;
+const smtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
-if (!mailjetClient && !smtpTransport) {
+if (!mailjetClient && !smtpConfigured) {
   logger.error('Email service misconfigured: no Mailjet or SMTP provider is configured');
 }
 
@@ -87,7 +87,7 @@ async function send({ to, subject, html, text, attachments = [] }) {
       if (ok) return true;
     }
 
-    if (provider === 'smtp' && smtpTransport) {
+    if (provider === 'smtp' && smtpConfigured) {
       const ok = await sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments });
       if (ok) return true;
     }
@@ -142,6 +142,9 @@ async function sendViaMailjet({ recipients, subject, htmlPart, textPart, attachm
 }
 
 async function sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments }) {
+  const endpoints = buildSmtpEndpoints();
+  let lastError = null;
+
   try {
     const to = recipients.map((r) => (r.name ? `${r.name} <${r.email}>` : r.email)).join(', ');
     const smtpAttachments = attachments.map((attachment) => {
@@ -153,24 +156,83 @@ async function sendViaSmtp({ recipients, subject, htmlPart, textPart, attachment
       };
     }).filter(Boolean);
 
-    await smtpTransport.sendMail({
-      from: `${SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name} <${SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email}>`,
-      to,
-      subject,
-      text: textPart,
-      html: htmlPart,
-      ...(smtpAttachments.length ? { attachments: smtpAttachments } : {})
-    });
+    for (const endpoint of endpoints) {
+      try {
+        const transport = nodemailer.createTransport({
+          host: endpoint.host,
+          port: endpoint.port,
+          secure: endpoint.secure,
+          requireTLS: endpoint.port === 587,
+          auth: { user: SMTP_USER, pass: SMTP_PASS },
+          connectionTimeout: SMTP_CONNECTION_TIMEOUT,
+          greetingTimeout: SMTP_GREETING_TIMEOUT,
+          socketTimeout: SMTP_SOCKET_TIMEOUT,
+          tls: {
+            servername: endpoint.host,
+            minVersion: 'TLSv1.2'
+          }
+        });
 
-    return true;
+        await transport.sendMail({
+          from: `${SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name} <${SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email}>`,
+          to,
+          subject,
+          text: textPart,
+          html: htmlPart,
+          ...(smtpAttachments.length ? { attachments: smtpAttachments } : {})
+        });
+
+        return true;
+      } catch (err) {
+        lastError = err;
+        logger.warn({
+          message: 'SMTP endpoint attempt failed',
+          host: endpoint.host,
+          port: endpoint.port,
+          secure: endpoint.secure,
+          provider_error: err.message
+        });
+      }
+    }
   } catch (err) {
+    lastError = err;
+  }
+
+  if (lastError) {
     logger.error({
       message: 'SMTP email delivery failed',
       subject,
-      provider_error: err.message
+      provider_error: lastError.message
     });
-    return false;
   }
+
+  return false;
+}
+
+function buildSmtpEndpoints() {
+  const hosts = [...new Set([SMTP_HOST, ...SMTP_HOSTS].filter(Boolean))];
+  const lowerHosts = hosts.map((h) => h.toLowerCase());
+
+  // Zoho fallback host variants help when account is provisioned in another region.
+  if (lowerHosts.includes('smtp.zoho.com') && !lowerHosts.includes('smtp.zoho.eu')) {
+    hosts.push('smtp.zoho.eu');
+  }
+  if (lowerHosts.includes('smtp.zoho.eu') && !lowerHosts.includes('smtp.zoho.com')) {
+    hosts.push('smtp.zoho.com');
+  }
+
+  const ports = [...new Set([SMTP_PORT, 465, 587].filter(Boolean))];
+  const endpoints = [];
+  for (const host of hosts) {
+    for (const port of ports) {
+      endpoints.push({
+        host,
+        port,
+        secure: port === 465 ? true : SMTP_SECURE
+      });
+    }
+  }
+  return endpoints;
 }
 
 function sanitizeHtmlDocument(html) {
@@ -678,6 +740,38 @@ exports.sendPhilanthropistGiftNotification = async (beneficiary, meta) => {
   return send({
     to:      beneficiary.email,
     subject: `🎁 ${donorLabel} gifted you a QSToolkit ${meta.plan_name} subscription!`,
+    html
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN TEST EMAIL (TRANSPORT VERIFICATION)
+// ════════════════════════════════════════════════════════════════
+exports.sendAdminTestEmail = async ({ to, adminName = 'Admin', subject, note }) => {
+  const ts = new Date().toISOString();
+  const provider = (process.env.EMAIL_PROVIDER || 'auto').toLowerCase();
+
+  const html = layout({
+    preheader: 'QSToolkit test email for provider verification',
+    body: `
+      ${heroSection({ emoji: '🧪', title: 'Email Delivery Test', subtitle: 'Provider connectivity check passed.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${adminName}, this is a successful test email from QSToolkit.`)}
+        ${bodyText('If you received this message, outbound email delivery is currently working for your configured provider path.')}
+        ${sectionTitle('Diagnostics')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Timestamp (UTC)', ts)}
+          ${infoRow('Configured Provider', provider)}
+          ${infoRow('Application', BRAND.name)}
+        </table>
+        ${note ? noteBox(`Admin note: ${note}`, 'info') : ''}
+      `)}
+    `
+  });
+
+  return send({
+    to,
+    subject: subject || `QSToolkit Email Test (${provider})`,
     html
   });
 };

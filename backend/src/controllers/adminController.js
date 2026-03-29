@@ -5,6 +5,7 @@ const { logAdminActivity } = require('../middlewares/adminMiddleware');
 const { getEffectivePermissions, DEFAULT_ADMIN_PERMISSIONS } = require('../middlewares/adminMiddleware');
 const crypto = require('crypto');
 const pushService = require('../services/pushService');
+const emailService = require('../services/emailService');
 
 // ── ADMIN MANAGEMENT ────────────────────────────────────────
 /**
@@ -654,6 +655,44 @@ exports.sendPushNotification = async (req, res, next) => {
     }
 
     return res.status(201).json(success('Notification created', { notification }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Send a test transactional email (admin only)
+ */
+exports.sendTestEmail = async (req, res, next) => {
+  try {
+    const { to, subject, note } = req.body || {};
+
+    if (!to || typeof to !== 'string' || !to.includes('@')) {
+      return res.status(400).json(error('Valid recipient email (to) is required'));
+    }
+
+    const delivered = await emailService.sendAdminTestEmail({
+      to,
+      subject,
+      note,
+      adminName: req.adminUser?.email || 'Admin'
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'sent_test_email',
+      'email_test',
+      null,
+      { to, delivered },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    if (!delivered) {
+      return res.status(502).json(error('Test email dispatch failed. Check provider credentials and logs.'));
+    }
+
+    return res.json(success('Test email sent successfully', { delivered: true, to }));
   } catch (err) {
     next(err);
   }
