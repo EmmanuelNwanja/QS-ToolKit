@@ -13,7 +13,15 @@ export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuthStore();
   const [tab, setTab]         = useState('Profile');
   const [profile, setProfile] = useState({ name: '', phone: '', company_name: '', qs_cert_no: '', company_address: '' });
-  const [branding, setBranding] = useState({ brand_name: '', company_details: '', contact_info: '', primary_color: '#1a3c5e', secondary_color: '#f59e0b' });
+  const [branding, setBranding] = useState({
+    brand_name: '',
+    company_details: '',
+    contact_info: '',
+    primary_color: '#1a3c5e',
+    secondary_color: '#f59e0b',
+    logo_url: '',
+    signature_url: ''
+  });
   const [team, setTeam]       = useState({ members: [], pending_invites: [] });
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'manager' });
   const [subscription, setSubscription] = useState({ status: 'inactive', plan: null, expires_at: null, billing_cycle: 'monthly', auto_renew: true });
@@ -78,7 +86,9 @@ export default function SettingsPage() {
           company_details: u.branding_settings.company_details || '',
           contact_info: u.branding_settings.contact_info || '',
           primary_color: u.branding_settings.primary_color || '#1a3c5e',
-          secondary_color: u.branding_settings.secondary_color || '#f59e0b'
+          secondary_color: u.branding_settings.secondary_color || '#f59e0b',
+          logo_url: u.branding_settings.logo_url || '',
+          signature_url: u.branding_settings.signature_url || ''
         });
       }
     }).catch(() => {});
@@ -111,7 +121,14 @@ export default function SettingsPage() {
   const uploadAsset = async (file, type) => {
     try {
       const fn = type === 'logo' ? userAPI.uploadLogo : userAPI.uploadSignature;
-      await fn(file);
+      const res = await fn(file);
+      const uploadedUrl = res?.data?.url || '';
+      if (uploadedUrl) {
+        setBranding((prev) => ({
+          ...prev,
+          [type === 'logo' ? 'logo_url' : 'signature_url']: uploadedUrl
+        }));
+      }
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded!`);
     } catch { toast.error(`Could not upload ${type}`); }
   };
@@ -313,6 +330,35 @@ export default function SettingsPage() {
               {/* File uploads */}
               <div className="card space-y-4">
                 <h2 className="section-title">📁 Upload Assets</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Current Logo</p>
+                    {branding.logo_url ? (
+                      <img
+                        src={branding.logo_url}
+                        alt="Company logo preview"
+                        className="h-20 w-auto max-w-full object-contain rounded bg-white border border-gray-200 p-1"
+                      />
+                    ) : (
+                      <p className="text-xs text-gray-400">No logo uploaded yet.</p>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Current Signature</p>
+                    {branding.signature_url ? (
+                      <img
+                        src={branding.signature_url}
+                        alt="Signature preview"
+                        className="h-20 w-auto max-w-full object-contain rounded bg-white border border-gray-200 p-1"
+                      />
+                    ) : (
+                      <p className="text-xs text-gray-400">No signature uploaded yet.</p>
+                    )}
+                  </div>
+                </div>
+
                 {[
                   { label: 'Company Logo', ref: logoRef, type: 'logo', desc: 'PNG or JPG, max 5MB. Appears on all documents.' },
                   { label: 'Signature', ref: signatureRef, type: 'signature', desc: 'PNG with transparent background recommended.' }

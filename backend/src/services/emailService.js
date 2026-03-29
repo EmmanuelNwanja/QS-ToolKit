@@ -5,12 +5,21 @@
  */
 
 const Mailjet = require('node-mailjet');
+const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 
 const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
 const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET;
 const MAILJET_SENDER_EMAIL = process.env.MAILJET_SENDER_EMAIL;
 const MAILJET_SENDER_NAME = process.env.MAILJET_SENDER_NAME;
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'auto').toLowerCase(); // auto | mailjet | smtp
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
+const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME;
 const BRAND = {
   primary:    '#1a3c5e',
   gold:       '#f59e0b',
@@ -36,34 +45,65 @@ const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
   ? Mailjet.apiConnect(MAILJET_API_KEY, MAILJET_API_SECRET)
   : null;
 
+const smtpTransport = SMTP_HOST && SMTP_USER && SMTP_PASS
+  ? nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  })
+  : null;
+
+if (!mailjetClient && !smtpTransport) {
+  logger.error('Email service misconfigured: no Mailjet or SMTP provider is configured');
+}
+
 // ── Core send function ────────────────────────────────────────
 async function send({ to, subject, html, text, attachments = [] }) {
+  const recipients = (Array.isArray(to) ? to : [to]).map((entry) => {
+    if (typeof entry === 'string') return { email: entry };
+    if (!entry?.email) return null;
+    return {
+      email: entry.email,
+      ...(entry.name ? { name: entry.name } : {})
+    };
+  }).filter((entry) => entry && entry.email);
+
+  if (!recipients.length) {
+    logger.error({ message: 'Email send skipped: no valid recipients', subject, to });
+    return false;
+  }
+
+  const htmlPart = sanitizeHtmlDocument(html);
+  const textPart = normalizePlainText(text || htmlToText(htmlPart));
+
+  const providers = EMAIL_PROVIDER === 'auto'
+    ? ['mailjet', 'smtp']
+    : [EMAIL_PROVIDER];
+
+  for (const provider of providers) {
+    if (provider === 'mailjet' && mailjetClient) {
+      const ok = await sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments });
+      if (ok) return true;
+    }
+
+    if (provider === 'smtp' && smtpTransport) {
+      const ok = await sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments });
+      if (ok) return true;
+    }
+  }
+
+  logger.error({ message: 'Email delivery failed for all configured providers', subject, to, providers });
+  return false;
+}
+
+async function sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments }) {
   try {
-    if (!mailjetClient) {
-      logger.error({
-        message: 'Email send skipped: missing Mailjet credentials',
-        subject,
-        to
-      });
-      return false;
-    }
+    const mailjetRecipients = recipients.map((r) => ({
+      Email: r.email,
+      ...(r.name ? { Name: r.name } : {})
+    }));
 
-    const recipients = (Array.isArray(to) ? to : [to]).map((entry) => {
-      if (typeof entry === 'string') return { Email: entry };
-      if (!entry?.email) return null;
-      return {
-        Email: entry.email,
-        ...(entry.name ? { Name: entry.name } : {})
-      };
-    }).filter((entry) => entry && entry.Email);
-
-    if (!recipients.length) {
-      logger.error({ message: 'Email send skipped: no valid recipients', subject, to });
-      return false;
-    }
-
-    const htmlPart = sanitizeHtmlDocument(html);
-    const textPart = normalizePlainText(text || htmlToText(htmlPart));
     const mailjetAttachments = attachments.map((attachment) => {
       if (!attachment?.content || !attachment?.name) return null;
       return {
@@ -78,10 +118,10 @@ async function send({ to, subject, html, text, attachments = [] }) {
       .request({
         Messages: [{
           From: {
-            Email: MAILJET_SENDER_EMAIL || BRAND.email,
-            Name: MAILJET_SENDER_NAME || BRAND.name
+            Email: MAILJET_SENDER_EMAIL || SMTP_FROM_EMAIL || BRAND.email,
+            Name: MAILJET_SENDER_NAME || SMTP_FROM_NAME || BRAND.name
           },
-          To: recipients,
+          To: mailjetRecipients,
           Subject: subject,
           TextPart: textPart,
           HTMLPart: htmlPart,
@@ -92,11 +132,42 @@ async function send({ to, subject, html, text, attachments = [] }) {
     return true;
   } catch (err) {
     logger.error({
-      message: 'Email delivery failed',
+      message: 'Mailjet email delivery failed',
       subject,
-      to,
       status: err.statusCode || err.response?.status,
       provider_error: err.response?.body || err.response?.data || err.message
+    });
+    return false;
+  }
+}
+
+async function sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments }) {
+  try {
+    const to = recipients.map((r) => (r.name ? `${r.name} <${r.email}>` : r.email)).join(', ');
+    const smtpAttachments = attachments.map((attachment) => {
+      if (!attachment?.content || !attachment?.name) return null;
+      return {
+        filename: attachment.name,
+        content: Buffer.from(attachment.content, 'base64'),
+        contentType: attachment.contentType || 'application/octet-stream'
+      };
+    }).filter(Boolean);
+
+    await smtpTransport.sendMail({
+      from: `${SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name} <${SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email}>`,
+      to,
+      subject,
+      text: textPart,
+      html: htmlPart,
+      ...(smtpAttachments.length ? { attachments: smtpAttachments } : {})
+    });
+
+    return true;
+  } catch (err) {
+    logger.error({
+      message: 'SMTP email delivery failed',
+      subject,
+      provider_error: err.message
     });
     return false;
   }
