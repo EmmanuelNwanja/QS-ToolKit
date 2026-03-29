@@ -228,7 +228,8 @@ function buildSmtpEndpoints() {
       endpoints.push({
         host,
         port,
-        secure: port === 465 ? true : SMTP_SECURE
+        // 465 = implicit TLS (SMTPS), 587 = STARTTLS (secure must be false)
+        secure: port === 465
       });
     }
   }
