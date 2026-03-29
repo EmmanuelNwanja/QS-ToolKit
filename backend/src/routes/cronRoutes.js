@@ -1,19 +1,43 @@
 const router = require('express').Router();
+const crypto = require('crypto');
 const { runAllJobs } = require('../services/schedulerService');
 const logger = require('../utils/logger');
+
+function normalizeSecret(raw) {
+  if (!raw) return '';
+  // Remove accidental wrapping quotes and trim whitespace/newlines.
+  return String(raw).trim().replace(/^['"]+|['"]+$/g, '').trim();
+}
+
+function safeEqual(a, b) {
+  const left = Buffer.from(a || '', 'utf8');
+  const right = Buffer.from(b || '', 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
 
 // Secured cron endpoint - called by GitHub Actions
 router.post('/run', async (req, res) => {
   const authHeader = req.headers.authorization;
-  const providedToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice('Bearer '.length).trim()
-    : null;
+  const xCronSecret = req.headers['x-cron-secret'];
+
+  const providedToken = normalizeSecret(
+    authHeader?.startsWith('Bearer ')
+      ? authHeader.slice('Bearer '.length)
+      : (authHeader?.startsWith('Token ')
+        ? authHeader.slice('Token '.length)
+        : (xCronSecret || ''))
+  );
+
   const validSecrets = (process.env.CRON_SECRETS || process.env.CRON_SECRET || '')
-    .split(',')
-    .map((s) => s.trim())
+    .split(/[\s,;]+/)
+    .map((s) => normalizeSecret(s))
     .filter(Boolean);
 
-  if (!providedToken || validSecrets.length === 0 || !validSecrets.includes(providedToken)) {
+  const tokenIsValid = providedToken && validSecrets.some((secret) => safeEqual(secret, providedToken));
+
+  if (!tokenIsValid) {
+    logger.warn(`Cron auth failed. Provided token length: ${providedToken?.length || 0}, configured secrets: ${validSecrets.length}`);
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
