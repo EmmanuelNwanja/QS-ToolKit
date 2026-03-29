@@ -95,6 +95,8 @@ exports.sendToUsers = async (userIds, notification) => {
   }
 
   try {
+    await ensureDeliveryRows(notification.id, userIds);
+
     const { data: subscriptions, error: subError } = await supabase
       .from('push_subscriptions')
       .select('*')
@@ -109,10 +111,10 @@ exports.sendToUsers = async (userIds, notification) => {
       .update({
         successful_sends: result.successful,
         failed_sends: result.failed,
-        total_recipients: (subscriptions || []).length
+        total_recipients: userIds.length
       })
       .eq('id', notification.id);
-    return result;
+    return { ...result, total: userIds.length };
   } catch (err) {
     logger.error('Failed to send notifications to users:', err);
     throw err;
@@ -124,10 +126,21 @@ exports.sendToUsers = async (userIds, notification) => {
  */
 exports.sendToSegment = async (segment, notification) => {
   try {
-    // Build a targeted user-ID list for non-'all' segments
-    let targetUserIds = null; // null = everyone with an active subscription
+    // Paginate users so all targeted recipients get inbox rows, even without active push subscriptions
+    const PAGE_SIZE = 500;
+    let page = 0;
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+    let totalRecipients = 0;
 
-    if (segment !== 'all') {
+    const enterprisePlanIds = segment === 'enterprise'
+      ? await getEnterprisePlanIds()
+      : null;
+    const basicOrStudentPlanIds = ['student', 'basic'].includes(segment)
+      ? await getBasicStudentPlanIds()
+      : null;
+
+    while (true) {
       let usersQuery = supabase
         .from('users')
         .select('id')
@@ -142,72 +155,64 @@ exports.sendToSegment = async (segment, notification) => {
           usersQuery = usersQuery.in('subscription_status', ['active', 'trial']);
           break;
         case 'student':
-        case 'basic': {
-          const { data: plans } = await supabase
-            .from('subscription_plans')
-            .select('id')
-            .in('name', ['basic', 'student']);
-          const planIds = (plans || []).map(p => p.id);
-          if (planIds.length) usersQuery = usersQuery.in('plan_id', planIds);
+        case 'basic':
+          if (basicOrStudentPlanIds.length) {
+            usersQuery = usersQuery.in('plan_id', basicOrStudentPlanIds);
+          } else {
+            usersQuery = usersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          }
           break;
-        }
         case 'pro': {
           const proId = await getProPlanId();
           if (proId) usersQuery = usersQuery.eq('plan_id', proId);
           break;
         }
-        case 'enterprise': {
-          const { data: plans } = await supabase
-            .from('subscription_plans')
-            .select('id')
-            .ilike('name', 'enterprise%');
-          const planIds = (plans || []).map(p => p.id);
-          if (planIds.length) usersQuery = usersQuery.in('plan_id', planIds);
+        case 'enterprise':
+          if (enterprisePlanIds.length) {
+            usersQuery = usersQuery.in('plan_id', enterprisePlanIds);
+          } else {
+            usersQuery = usersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          }
           break;
-        }
+        case 'all':
         default:
           break;
       }
 
-      const { data: users, error: usersErr } = await usersQuery;
+      const { data: users, error: usersErr } = await usersQuery.range(
+        page * PAGE_SIZE,
+        (page + 1) * PAGE_SIZE - 1
+      );
       if (usersErr) throw new Error(`Segment query failed: ${usersErr.message}`);
-      targetUserIds = (users || []).map(u => u.id);
+      if (!users || users.length === 0) break;
 
-      if (targetUserIds.length === 0) {
-        logger.info(`sendToSegment(${segment}): no eligible users found`);
-        return { successful: 0, failed: 0, total: 0 };
-      }
-    }
+      const userIds = users.map((u) => u.id);
+      totalRecipients += userIds.length;
 
-    // Paginate push_subscriptions in batches of 500 to avoid Supabase's 1000-row default cap
-    const PAGE_SIZE = 500;
-    let page = 0;
-    let totalSuccessful = 0;
-    let totalFailed = 0;
-    let totalProcessed = 0;
+      // Make inbox durable: everyone targeted gets a pending delivery row.
+      await ensureDeliveryRows(notification.id, userIds);
 
-    while (true) {
-      let subQuery = supabase
+      const { data: subs, error: subErr } = await supabase
         .from('push_subscriptions')
         .select('id, user_id, endpoint, auth_key, p256dh_key')
         .eq('is_active', true)
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        .in('user_id', userIds);
 
-      if (targetUserIds !== null) {
-        subQuery = subQuery.in('user_id', targetUserIds);
+      if (subErr) throw new Error(`Subscription query failed: ${subErr.message}`);
+
+      if (subs && subs.length > 0) {
+        const result = await exports.sendToSubscriptions(subs, notification);
+        totalSuccessful += result.successful;
+        totalFailed += result.failed;
       }
 
-      const { data: subs, error: subErr } = await subQuery;
-      if (subErr) throw new Error(`Subscription query failed: ${subErr.message}`);
-      if (!subs || subs.length === 0) break;
-
-      const result = await exports.sendToSubscriptions(subs, notification);
-      totalSuccessful += result.successful;
-      totalFailed += result.failed;
-      totalProcessed += subs.length;
-
-      if (subs.length < PAGE_SIZE) break; // last page
+      if (users.length < PAGE_SIZE) break;
       page++;
+    }
+
+    if (totalRecipients === 0) {
+      logger.info(`sendToSegment(${segment}): no eligible users found`);
+      return { successful: 0, failed: 0, total: 0 };
     }
 
     // Write final cumulative stats after all pages complete
@@ -216,12 +221,12 @@ exports.sendToSegment = async (segment, notification) => {
       .update({
         successful_sends: totalSuccessful,
         failed_sends: totalFailed,
-        total_recipients: totalProcessed
+        total_recipients: totalRecipients
       })
       .eq('id', notification.id);
 
-    logger.info(`sendToSegment(${segment}): processed ${totalProcessed} — ${totalSuccessful} ok, ${totalFailed} failed`);
-    return { successful: totalSuccessful, failed: totalFailed, total: totalProcessed };
+    logger.info(`sendToSegment(${segment}): targeted ${totalRecipients} users — ${totalSuccessful} sent, ${totalFailed} failed`);
+    return { successful: totalSuccessful, failed: totalFailed, total: totalRecipients };
   } catch (err) {
     logger.error('Failed to send notification to segment:', err);
     throw err;
@@ -253,6 +258,48 @@ async function getProPlanId() {
   return plan?.id;
 }
 
+async function getBasicStudentPlanIds() {
+  const { data: plans } = await supabase
+    .from('subscription_plans')
+    .select('id')
+    .in('name', ['basic', 'student']);
+  return (plans || []).map((p) => p.id);
+}
+
+async function getEnterprisePlanIds() {
+  const { data: plans } = await supabase
+    .from('subscription_plans')
+    .select('id')
+    .ilike('name', 'enterprise%');
+  return (plans || []).map((p) => p.id);
+}
+
+async function ensureDeliveryRows(notificationId, userIds) {
+  if (!userIds || userIds.length === 0) return;
+
+  const { data: existingRows, error: existingErr } = await supabase
+    .from('notification_deliveries')
+    .select('user_id')
+    .eq('notification_id', notificationId)
+    .in('user_id', userIds);
+
+  if (existingErr) throw new Error(`Delivery preload check failed: ${existingErr.message}`);
+
+  const existing = new Set((existingRows || []).map((r) => r.user_id));
+  const missing = userIds.filter((id) => !existing.has(id));
+  if (missing.length === 0) return;
+
+  const { error: insertErr } = await supabase
+    .from('notification_deliveries')
+    .insert(missing.map((user_id) => ({
+      notification_id: notificationId,
+      user_id,
+      status: 'pending'
+    })));
+
+  if (insertErr) throw new Error(`Delivery preload insert failed: ${insertErr.message}`);
+}
+
 /**
  * Schedule notification for later delivery
  */
@@ -275,43 +322,63 @@ exports.sendToSubscriptions = async (subscriptions, notification) => {
   let successful = 0;
   let failed = 0;
 
+  const groupedByUser = new Map();
   for (const sub of subscriptions) {
-    const pushSubscription = {
-      endpoint: sub.endpoint,
-      keys: { auth: sub.auth_key, p256dh: sub.p256dh_key }
-    };
+    if (!groupedByUser.has(sub.user_id)) groupedByUser.set(sub.user_id, []);
+    groupedByUser.get(sub.user_id).push(sub);
+  }
 
-    try {
-      if (vapidPublicKey && vapidPrivateKey) {
+  for (const [userId, userSubs] of groupedByUser.entries()) {
+    let userSent = false;
+    let lastError = null;
+
+    for (const sub of userSubs) {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: { auth: sub.auth_key, p256dh: sub.p256dh_key }
+      };
+
+      try {
+        if (!vapidPublicKey || !vapidPrivateKey) {
+          throw new Error('Push notifications not configured on server (missing VAPID keys)');
+        }
+
         await webpush.sendNotification(pushSubscription, payload);
+        userSent = true;
+      } catch (err) {
+        lastError = err;
+        if (err.statusCode === 410) {
+          await supabase
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .eq('id', sub.id);
+        }
+        logger.error(`Push delivery failed for user ${userId}:`, err.message);
       }
+    }
 
-      await supabase.from('notification_deliveries').insert({
-        notification_id: notification.id,
-        user_id: sub.user_id,
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      });
-
+    if (userSent) {
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          error_message: null
+        })
+        .eq('notification_id', notification.id)
+        .eq('user_id', userId);
       successful++;
-    } catch (err) {
-      // HTTP 410 Gone — subscription expired on the browser side; deactivate it
-      if (err.statusCode === 410) {
-        await supabase
-          .from('push_subscriptions')
-          .update({ is_active: false })
-          .eq('id', sub.id);
-      }
-
-      await supabase.from('notification_deliveries').insert({
-        notification_id: notification.id,
-        user_id: sub.user_id,
-        status: 'failed',
-        error_message: err.message?.substring(0, 255)
-      });
-
+    } else {
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'failed',
+          error_message: lastError?.message?.substring(0, 255) || 'Delivery failed'
+        })
+        .eq('notification_id', notification.id)
+        .eq('user_id', userId)
+        .neq('status', 'sent');
       failed++;
-      logger.error(`Push delivery failed for user ${sub.user_id}:`, err.message);
     }
   }
 
