@@ -2,6 +2,7 @@ const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
+const logger = require('../utils/logger');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -74,15 +75,70 @@ function resolveBillingCycleFromPlanCode(plan, planCode, fallback = 'monthly') {
   return fallback;
 }
 
-async function initializeRecurringTransaction({ email, amountKobo, paystackPlanCode, metadata, callbackUrl }) {
-  return axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+async function initializePaystackTransaction({ email, amountKobo, paystackPlanCode, metadata, callbackUrl }) {
+  const payload = {
     email,
     amount: amountKobo,
     currency: 'NGN',
-    plan: paystackPlanCode,
     metadata,
     callback_url: callbackUrl
-  }, { headers: paystackHeaders() });
+  };
+
+  if (paystackPlanCode) {
+    payload.plan = paystackPlanCode;
+  }
+
+  return axios.post(`${PAYSTACK_BASE}/transaction/initialize`, payload, { headers: paystackHeaders() });
+}
+
+async function createPaystackSubscription({ customerCode, paystackPlanCode, authorizationCode, startDate }) {
+  const payload = {
+    customer: customerCode,
+    plan: paystackPlanCode
+  };
+
+  if (authorizationCode) {
+    payload.authorization = authorizationCode;
+  }
+
+  if (startDate) {
+    payload.start_date = new Date(startDate).toISOString();
+  }
+
+  return axios.post(`${PAYSTACK_BASE}/subscription`, payload, { headers: paystackHeaders() });
+}
+
+async function markPromoUsedOnce({ promoId, userId, planName }) {
+  if (!promoId || !userId) return false;
+
+  const { data: existing, error: existingError } = await supabase
+    .from('promo_code_uses')
+    .select('id')
+    .eq('promo_id', promoId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (existing) return false;
+
+  const { error: insertError } = await supabase
+    .from('promo_code_uses')
+    .insert({ promo_id: promoId, user_id: userId, plan_name: planName });
+
+  if (insertError) {
+    const message = String(insertError.message || '').toLowerCase();
+    if (message.includes('duplicate') || message.includes('unique')) {
+      return false;
+    }
+    throw insertError;
+  }
+
+  await supabase.rpc('increment_promo_uses', { p_promo_id: promoId });
+  return true;
 }
 
 // ── Get all plans ─────────────────────────────────────────────
@@ -156,9 +212,11 @@ exports.initiate = async (req, res, next) => {
       return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${billing_cycle} plan`));
     }
 
-    let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
+    const listPrice = roundMoney(billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly);
+    let basePrice = listPrice;
     let discountApplied = 0;
     let promoId = null;
+    let promoCodeValue = null;
 
     if (promo_code && ['basic', 'student', 'pro'].includes(plan_name)) {
       const { data: promo } = await supabase
@@ -172,11 +230,14 @@ exports.initiate = async (req, res, next) => {
           discountApplied = (basePrice * promo.discount_percent) / 100;
           basePrice = basePrice - discountApplied;
           promoId = promo.id;
+          promoCodeValue = promo.code;
         }
       }
     }
 
     basePrice = Math.max(0, Number(basePrice) || 0);
+    discountApplied = roundMoney(discountApplied);
+    const discountedCharge = discountApplied > 0 && basePrice > 0;
     const amountKobo = Math.round(basePrice * 100);
 
     // 100% promo discounts should activate directly without external payment.
@@ -184,12 +245,35 @@ exports.initiate = async (req, res, next) => {
       const expiresAt = await activateSubscription(req.user.id, plan.id, billing_cycle);
 
       if (promoId) {
-        await supabase.from('promo_code_uses').upsert(
-          { promo_id: promoId, user_id: req.user.id, plan_name: plan.name },
-          { onConflict: 'promo_id,user_id', ignoreDuplicates: true }
-        );
-        await supabase.rpc('increment_promo_uses', { p_promo_id: promoId });
+        await markPromoUsedOnce({ promoId, userId: req.user.id, planName: plan.name });
       }
+
+      await recordBillingTransactionOnce({
+        userId: req.user.id,
+        amount: 0,
+        grossAmount: listPrice,
+        discountAmount: listPrice,
+        currency: 'NGN',
+        reference: `PROMO-${promoId || 'FREE'}-${req.user.id}-${billing_cycle}`,
+        description: `${plan.name} plan (${billing_cycle}) subscription via full promo`,
+        planName: plan.name,
+        billingCycle: billing_cycle,
+        promoId,
+        paystackPlanCode,
+        metadata: {
+          plan_id: plan.id,
+          plan_name: plan.name,
+          billing_cycle,
+          paystack_plan_code: paystackPlanCode,
+          promo_id: promoId,
+          promo_code: promoCodeValue,
+          gross_amount: listPrice,
+          discount_amount: listPrice,
+          net_amount: 0,
+          payment_mode: 'full_promo',
+          is_philanthropist: false
+        }
+      });
 
       await emailService.sendSubscriptionConfirmation(user, billing_cycle, expiresAt);
 
@@ -206,10 +290,10 @@ exports.initiate = async (req, res, next) => {
 
     let paystackRes;
     try {
-      paystackRes = await initializeRecurringTransaction({
+      paystackRes = await initializePaystackTransaction({
         email: user.email,
         amountKobo,
-        paystackPlanCode,
+        paystackPlanCode: discountedCharge ? null : paystackPlanCode,
         metadata: {
           user_id: req.user.id,
           plan_id: plan.id,
@@ -217,7 +301,13 @@ exports.initiate = async (req, res, next) => {
           billing_cycle,
           paystack_plan_code: paystackPlanCode,
           promo_id: promoId,
+          promo_code: promoCodeValue,
           discount_applied: discountApplied,
+          discount_amount: discountApplied,
+          gross_amount: listPrice,
+          net_amount: roundMoney(basePrice),
+          requires_subscription_creation: discountedCharge,
+          payment_mode: discountedCharge ? 'discounted_first_charge' : 'recurring_plan_initialize',
           is_philanthropist: false,
           custom_fields: [
             { display_name: 'Plan',    variable_name: 'plan',    value: plan.name },
@@ -235,7 +325,9 @@ exports.initiate = async (req, res, next) => {
       authorization_url: paystackRes.data.data.authorization_url,
       reference: paystackRes.data.data.reference,
       amount: basePrice,
+      list_price: listPrice,
       discount_applied: discountApplied,
+      recurring_begins_after_discounted_charge: discountedCharge,
       billing_cycle
     }));
   } catch (err) { next(err); }
@@ -260,9 +352,11 @@ exports.initiatePhilanthropist = async (req, res, next) => {
       return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${billing_cycle} plan`));
     }
 
-    let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
+    const listPrice = roundMoney(billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly);
+    let basePrice = listPrice;
     let discountApplied = 0;
     let promoId = null;
+    let promoCodeValue = null;
 
     if (promo_code) {
       const { data: promo } = await supabase
@@ -274,6 +368,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
           discountApplied = (basePrice * promo.discount_percent) / 100;
           basePrice = basePrice - discountApplied;
           promoId = promo.id;
+          promoCodeValue = promo.code;
         }
       }
     }
@@ -285,6 +380,8 @@ exports.initiatePhilanthropist = async (req, res, next) => {
       .select().single();
 
     basePrice = Math.max(0, Number(basePrice) || 0);
+    discountApplied = roundMoney(discountApplied);
+    const discountedCharge = discountApplied > 0 && basePrice > 0;
     const amountKobo = Math.round(basePrice * 100);
 
     // 100% promo discounts should finalize the grant immediately.
@@ -339,10 +436,10 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 
     let paystackRes;
     try {
-      paystackRes = await initializeRecurringTransaction({
+      paystackRes = await initializePaystackTransaction({
         email: donor_email,
         amountKobo,
-        paystackPlanCode,
+        paystackPlanCode: discountedCharge ? null : paystackPlanCode,
         metadata: {
           is_philanthropist: true,
           grant_id: grant.id,
@@ -352,7 +449,13 @@ exports.initiatePhilanthropist = async (req, res, next) => {
           billing_cycle,
           paystack_plan_code: paystackPlanCode,
           promo_id: promoId,
+          promo_code: promoCodeValue,
           discount_applied: discountApplied,
+          discount_amount: discountApplied,
+          gross_amount: listPrice,
+          net_amount: roundMoney(basePrice),
+          requires_subscription_creation: false,
+          payment_mode: discountedCharge ? 'discounted_gift_charge' : 'gift_plan_initialize',
           donor_name,
           donor_email,
           custom_fields: [
@@ -372,6 +475,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
       authorization_url: paystackRes.data.data.authorization_url,
       reference: paystackRes.data.data.reference,
       amount: basePrice,
+      list_price: listPrice,
       discount_applied: discountApplied,
       grant_id: grant.id
     }));
@@ -447,6 +551,7 @@ exports.verify = async (req, res, next) => {
     } else {
       const alreadyProcessed = await hasBillingTransactionReference(reference);
       if (alreadyProcessed) {
+        await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: txn });
         return res.json(success('Subscription already processed', {
           plan: meta.plan_name,
           billing_cycle: meta.billing_cycle || 'monthly'
@@ -465,23 +570,33 @@ exports.verify = async (req, res, next) => {
       await recordBillingTransactionOnce({
         userId: meta.user_id,
         amount: txn.amount / 100,
+        grossAmount: meta.gross_amount,
+        discountAmount: meta.discount_amount || meta.discount_applied,
         currency: txn.currency || 'NGN',
         reference,
         description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
+        planName: meta.plan_name,
+        billingCycle: meta.billing_cycle,
+        promoId: meta.promo_id,
+        paystackPlanCode: meta.paystack_plan_code || txn.plan?.plan_code || null,
         metadata: {
           plan_id: meta.plan_id,
           plan_name: meta.plan_name,
           billing_cycle: meta.billing_cycle,
-          paystack_plan_code: meta.paystack_plan_code || txn.plan?.plan_code || null
+          paystack_plan_code: meta.paystack_plan_code || txn.plan?.plan_code || null,
+          promo_id: meta.promo_id || null,
+          promo_code: meta.promo_code || null,
+          gross_amount: roundMoney(meta.gross_amount ?? (txn.amount / 100)),
+          discount_amount: roundMoney(meta.discount_amount ?? meta.discount_applied ?? 0),
+          net_amount: roundMoney(txn.amount / 100),
+          payment_mode: meta.payment_mode || 'recurring_plan_initialize'
         }
       });
 
+      await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: txn, expiresAt });
+
       if (meta.promo_id) {
-        await supabase.from('promo_code_uses').upsert(
-          { promo_id: meta.promo_id, user_id: meta.user_id, plan_name: meta.plan_name },
-          { onConflict: 'promo_id,user_id', ignoreDuplicates: true }
-        );
-        await supabase.rpc('increment_promo_uses', { p_promo_id: meta.promo_id });
+        await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
       }
       const { data: user } = await supabase.from('users')
         .select('email, name, subscription_plans(name)').eq('id', meta.user_id).single();
@@ -508,10 +623,11 @@ exports.webhook = async (req, res, next) => {
       const meta = data.metadata || {};
       if (!meta.is_philanthropist && meta.user_id && meta.plan_id) {
         if (await hasBillingTransactionReference(data.reference)) {
+          await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data });
           return res.sendStatus(200);
         }
 
-        await activateSubscription(
+        const expiresAt = await activateSubscription(
           meta.user_id,
           meta.plan_id,
           meta.billing_cycle || 'monthly',
@@ -521,22 +637,33 @@ exports.webhook = async (req, res, next) => {
         await recordBillingTransactionOnce({
           userId: meta.user_id,
           amount: (data.amount || 0) / 100,
+          grossAmount: meta.gross_amount,
+          discountAmount: meta.discount_amount || meta.discount_applied,
           currency: data.currency || 'NGN',
           reference: data.reference,
           description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
+          planName: meta.plan_name,
+          billingCycle: meta.billing_cycle,
+          promoId: meta.promo_id,
+          paystackPlanCode: meta.paystack_plan_code || data.plan?.plan_code || null,
           metadata: {
             plan_id: meta.plan_id,
             plan_name: meta.plan_name,
             billing_cycle: meta.billing_cycle,
             paystack_plan_code: meta.paystack_plan_code || data.plan?.plan_code || null,
+            promo_id: meta.promo_id || null,
+            promo_code: meta.promo_code || null,
+            gross_amount: roundMoney(meta.gross_amount ?? ((data.amount || 0) / 100)),
+            discount_amount: roundMoney(meta.discount_amount ?? meta.discount_applied ?? 0),
+            net_amount: roundMoney((data.amount || 0) / 100),
+            payment_mode: meta.payment_mode || 'recurring_plan_initialize',
             source: 'charge.success'
           }
         });
+
+        await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data, expiresAt });
         if (meta.promo_id) {
-          await supabase.from('promo_code_uses').upsert(
-            { promo_id: meta.promo_id, user_id: meta.user_id, plan_name: meta.plan_name },
-            { onConflict: 'promo_id,user_id', ignoreDuplicates: true }
-          );
+          await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
         }
       }
     }
@@ -682,7 +809,7 @@ exports.renewMySubscription = async (req, res, next) => {
       return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${cycle} plan`));
     }
 
-    const paystackRes = await initializeRecurringTransaction({
+    const paystackRes = await initializePaystackTransaction({
       email: user.email,
       amountKobo: Math.round(Number(basePrice) * 100),
       paystackPlanCode,
@@ -728,22 +855,126 @@ async function persistPaystackCustomerState(userId, paystackPayload) {
   await supabase.from('users').update(updates).eq('id', userId);
 }
 
-async function recordBillingTransactionOnce({ userId, amount, currency, reference, description, metadata }) {
+async function ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload, expiresAt = null }) {
+  if (!meta?.requires_subscription_creation || meta?.is_philanthropist || !meta?.user_id || !meta?.paystack_plan_code) {
+    return null;
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id, paystack_customer_id, paystack_subscription_code, subscription_expires_at')
+    .eq('id', meta.user_id)
+    .maybeSingle();
+
+  if (userError || !user) {
+    return null;
+  }
+
+  if (user.paystack_subscription_code) {
+    return user.paystack_subscription_code;
+  }
+
+  const customerCode = paystackPayload?.customer?.customer_code || user.paystack_customer_id;
+  if (!customerCode) {
+    logger.warn(`Skipping deferred recurring setup for user ${meta.user_id}: missing Paystack customer code`);
+    return null;
+  }
+
+  try {
+    const subscriptionRes = await createPaystackSubscription({
+      customerCode,
+      paystackPlanCode: meta.paystack_plan_code,
+      authorizationCode: paystackPayload?.authorization?.authorization_code || null,
+      startDate: expiresAt || user.subscription_expires_at || null
+    });
+
+    await persistPaystackCustomerState(meta.user_id, {
+      customer: { customer_code: customerCode },
+      subscription: subscriptionRes.data.data
+    });
+
+    return subscriptionRes.data.data;
+  } catch (err) {
+    logger.error('Deferred recurring subscription setup failed', {
+      user_id: meta.user_id,
+      plan_code: meta.paystack_plan_code,
+      error: err.response?.data?.message || err.message
+    });
+    return null;
+  }
+}
+
+async function recordBillingTransactionOnce({
+  userId,
+  amount,
+  grossAmount,
+  discountAmount,
+  currency,
+  reference,
+  description,
+  planName,
+  billingCycle,
+  promoId,
+  paystackPlanCode,
+  metadata
+}) {
   if (!reference) return;
 
   const existing = await hasBillingTransactionReference(reference);
   if (existing) return;
 
-  await supabase.from('billing_transactions').insert({
+  const netAmount = roundMoney(amount);
+  const resolvedDiscount = roundMoney(discountAmount || 0);
+  const resolvedGross = roundMoney(grossAmount != null ? grossAmount : (netAmount + resolvedDiscount));
+  const payload = {
     user_id: userId,
-    amount,
+    amount: netAmount,
     currency,
     type: 'payment',
     status: 'completed',
     paystack_reference: reference,
     description,
     transaction_date: new Date().toISOString(),
-    metadata
+    gross_amount: resolvedGross,
+    discount_amount: resolvedDiscount,
+    net_amount: netAmount,
+    plan_name: planName || metadata?.plan_name || null,
+    billing_cycle: billingCycle || metadata?.billing_cycle || null,
+    promo_id: promoId || metadata?.promo_id || null,
+    paystack_plan_code: paystackPlanCode || metadata?.paystack_plan_code || null,
+    metadata: {
+      ...metadata,
+      gross_amount: resolvedGross,
+      discount_amount: resolvedDiscount,
+      net_amount: netAmount,
+      plan_name: planName || metadata?.plan_name || null,
+      billing_cycle: billingCycle || metadata?.billing_cycle || null,
+      promo_id: promoId || metadata?.promo_id || null,
+      paystack_plan_code: paystackPlanCode || metadata?.paystack_plan_code || null
+    }
+  };
+
+  const { error: insertError } = await supabase.from('billing_transactions').insert(payload);
+  if (!insertError) return;
+
+  const message = String(insertError.message || '').toLowerCase();
+  const missingFinancialColumn = ['gross_amount', 'discount_amount', 'net_amount', 'plan_name', 'billing_cycle', 'promo_id', 'paystack_plan_code']
+    .some((column) => message.includes(column));
+
+  if (!missingFinancialColumn) {
+    throw insertError;
+  }
+
+  await supabase.from('billing_transactions').insert({
+    user_id: userId,
+    amount: netAmount,
+    currency,
+    type: 'payment',
+    status: 'completed',
+    paystack_reference: reference,
+    description,
+    transaction_date: new Date().toISOString(),
+    metadata: payload.metadata
   });
 }
 

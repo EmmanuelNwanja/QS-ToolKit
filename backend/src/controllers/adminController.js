@@ -9,6 +9,56 @@ const emailService = require('../services/emailService');
 
 const ADMIN_OTP_TTL_MINUTES = 30;
 
+function readTransactionNumber(transaction, field, fallback = 0) {
+  if (transaction?.[field] !== undefined && transaction?.[field] !== null) {
+    return Number(transaction[field]) || 0;
+  }
+
+  if (transaction?.metadata?.[field] !== undefined && transaction?.metadata?.[field] !== null) {
+    return Number(transaction.metadata[field]) || 0;
+  }
+
+  return fallback;
+}
+
+function readTransactionText(transaction, field, fallback = null) {
+  if (transaction?.[field] !== undefined && transaction?.[field] !== null && String(transaction[field]).trim()) {
+    return String(transaction[field]).trim();
+  }
+
+  if (transaction?.metadata?.[field] !== undefined && transaction?.metadata?.[field] !== null && String(transaction.metadata[field]).trim()) {
+    return String(transaction.metadata[field]).trim();
+  }
+
+  return fallback;
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function getCycleAmount(plan, billingCycle) {
+  if (!plan) return 0;
+
+  if (billingCycle === 'annual') {
+    if (plan.price_annual != null) {
+      return Number(plan.price_annual) || 0;
+    }
+    return roundMoney((Number(plan.price_monthly) || 0) * 12 * 0.9);
+  }
+
+  return Number(plan.price_monthly) || 0;
+}
+
+function getMonthlyRecurringValue(plan, billingCycle) {
+  if (!plan) return 0;
+  if (billingCycle === 'annual') {
+    const annual = getCycleAmount(plan, 'annual');
+    return roundMoney(annual / 12);
+  }
+  return Number(plan.price_monthly) || 0;
+}
+
 // ── ADMIN MANAGEMENT ────────────────────────────────────────
 /**
  * Create a new admin user (super_admin only)
@@ -921,6 +971,8 @@ exports.sendTestEmail = async (req, res, next) => {
 exports.getDashboardStats = async (req, res, next) => {
   try {
     const nowIso = new Date().toISOString();
+    const now = new Date();
+    const next30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -933,31 +985,146 @@ exports.getDashboardStats = async (req, res, next) => {
 
     let activeSubsQuery = supabase
       .from('users')
-      .select('id, subscription_expires_at')
-      .eq('subscription_status', 'active');
+      .select('id, subscription_expires_at, billing_cycle, plan_id, subscription_plans(name, price_monthly, price_annual)')
+      .eq('subscription_status', 'active')
+      .not('plan_id', 'is', null);
     const { data: activeSubscriptionRows } = await activeSubsQuery;
 
-    const activeSubscriptions = (activeSubscriptionRows || []).filter((u) => {
+    const activeSubscribers = (activeSubscriptionRows || []).filter((u) => {
       return !u.subscription_expires_at || u.subscription_expires_at > nowIso;
-    }).length;
+    });
+    const activeSubscriptions = activeSubscribers.length;
 
     const paymentQuery = supabase
         .from('billing_transactions')
-        .select('amount')
+        .select('id, user_id, amount, currency, paystack_reference, description, transaction_date, created_at, metadata, users(name, email)')
         .eq('type', 'payment')
         .eq('status', 'completed');
 
     const refundQuery = supabase
         .from('billing_transactions')
-        .select('amount')
+        .select('amount, metadata')
         .eq('type', 'refund')
         .eq('status', 'completed');
 
     const [{ data: payments }, { data: refunds }] = await Promise.all([paymentQuery, refundQuery]);
 
-    const grossRevenue = (payments || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const grossRevenue = (payments || []).reduce((sum, row) => {
+      const netAmount = readTransactionNumber(row, 'net_amount', Number(row.amount || 0));
+      const discountAmount = readTransactionNumber(row, 'discount_amount', readTransactionNumber(row, 'discount_applied', 0));
+      const grossAmount = readTransactionNumber(row, 'gross_amount', netAmount + discountAmount);
+      return sum + grossAmount;
+    }, 0);
+    const collectedRevenue = (payments || []).reduce((sum, row) => {
+      return sum + readTransactionNumber(row, 'net_amount', Number(row.amount || 0));
+    }, 0);
+    const totalDiscounts = (payments || []).reduce((sum, row) => {
+      return sum + readTransactionNumber(row, 'discount_amount', readTransactionNumber(row, 'discount_applied', 0));
+    }, 0);
     const totalRefunds = (refunds || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
-    const totalRevenue = grossRevenue - totalRefunds;
+    const totalRevenue = collectedRevenue - totalRefunds;
+    const discountedPayments = (payments || []).filter((row) => {
+      return readTransactionNumber(row, 'discount_amount', readTransactionNumber(row, 'discount_applied', 0)) > 0;
+    });
+
+    const planPerformanceMap = {};
+    for (const payment of (payments || [])) {
+      const planName = readTransactionText(payment, 'plan_name', 'unknown');
+      const grossAmount = readTransactionNumber(payment, 'gross_amount', Number(payment.amount || 0));
+      const discountAmount = readTransactionNumber(payment, 'discount_amount', readTransactionNumber(payment, 'discount_applied', 0));
+      const netAmount = readTransactionNumber(payment, 'net_amount', Number(payment.amount || 0));
+
+      if (!planPerformanceMap[planName]) {
+        planPerformanceMap[planName] = {
+          plan_name: planName,
+          transactions: 0,
+          gross_revenue: 0,
+          discounted_revenue: 0,
+          actual_revenue: 0,
+          active_subscribers: 0,
+          projected_monthly_revenue: 0
+        };
+      }
+
+      planPerformanceMap[planName].transactions += 1;
+      planPerformanceMap[planName].gross_revenue += grossAmount;
+      planPerformanceMap[planName].discounted_revenue += discountAmount;
+      planPerformanceMap[planName].actual_revenue += netAmount;
+    }
+
+    let monthlyRecurringRevenue = 0;
+    let annualRecurringRevenue = 0;
+    let next30DayProjection = 0;
+
+    for (const subscriber of activeSubscribers) {
+      const plan = subscriber.subscription_plans;
+      if (!plan || Number(plan.price_monthly || 0) <= 0) continue;
+
+      const planName = plan.name || 'unknown';
+      const billingCycle = subscriber.billing_cycle || 'monthly';
+      const monthlyValue = getMonthlyRecurringValue(plan, billingCycle);
+      const cycleValue = getCycleAmount(plan, billingCycle);
+
+      monthlyRecurringRevenue += monthlyValue;
+
+      if (!planPerformanceMap[planName]) {
+        planPerformanceMap[planName] = {
+          plan_name: planName,
+          transactions: 0,
+          gross_revenue: 0,
+          discounted_revenue: 0,
+          actual_revenue: 0,
+          active_subscribers: 0,
+          projected_monthly_revenue: 0
+        };
+      }
+
+      planPerformanceMap[planName].active_subscribers += 1;
+      planPerformanceMap[planName].projected_monthly_revenue += monthlyValue;
+
+      if (subscriber.subscription_expires_at) {
+        const expiry = new Date(subscriber.subscription_expires_at);
+        if (expiry >= now && expiry <= next30Days) {
+          next30DayProjection += cycleValue;
+        }
+      }
+    }
+
+    annualRecurringRevenue = roundMoney(monthlyRecurringRevenue * 12);
+
+    const recentTransactions = (payments || [])
+      .slice()
+      .sort((a, b) => new Date(b.transaction_date || b.created_at) - new Date(a.transaction_date || a.created_at))
+      .slice(0, 10)
+      .map((payment) => {
+        const netAmount = readTransactionNumber(payment, 'net_amount', Number(payment.amount || 0));
+        const discountAmount = readTransactionNumber(payment, 'discount_amount', readTransactionNumber(payment, 'discount_applied', 0));
+        const grossAmount = readTransactionNumber(payment, 'gross_amount', netAmount + discountAmount);
+
+        return {
+          id: payment.id,
+          customer_name: payment.users?.name || 'Unknown customer',
+          customer_email: payment.users?.email || null,
+          plan_name: readTransactionText(payment, 'plan_name', 'unknown'),
+          billing_cycle: readTransactionText(payment, 'billing_cycle', 'monthly'),
+          gross_amount: roundMoney(grossAmount),
+          discount_amount: roundMoney(discountAmount),
+          net_amount: roundMoney(netAmount),
+          paystack_reference: payment.paystack_reference,
+          transaction_date: payment.transaction_date || payment.created_at,
+          payment_mode: readTransactionText(payment, 'payment_mode', 'subscription')
+        };
+      });
+
+    const planPerformance = Object.values(planPerformanceMap)
+      .map((planStats) => ({
+        ...planStats,
+        gross_revenue: roundMoney(planStats.gross_revenue),
+        discounted_revenue: roundMoney(planStats.discounted_revenue),
+        actual_revenue: roundMoney(planStats.actual_revenue),
+        projected_monthly_revenue: roundMoney(planStats.projected_monthly_revenue)
+      }))
+      .sort((a, b) => b.actual_revenue - a.actual_revenue || b.projected_monthly_revenue - a.projected_monthly_revenue);
 
     let promosQuery = supabase
       .from('promo_codes')
@@ -970,6 +1137,25 @@ exports.getDashboardStats = async (req, res, next) => {
       activeSubscriptions,
       totalRevenue,
       activePromoCodes,
+      financialModel: {
+        grossSubscriptionValue: roundMoney(grossRevenue),
+        discountedPaymentsValue: roundMoney(totalDiscounts),
+        collectedRevenue: roundMoney(collectedRevenue),
+        refundedRevenue: roundMoney(totalRefunds),
+        actualRevenue: roundMoney(totalRevenue),
+        discountedTransactionsCount: discountedPayments.length,
+        discountedCollections: roundMoney(discountedPayments.reduce((sum, row) => {
+          return sum + readTransactionNumber(row, 'net_amount', Number(row.amount || 0));
+        }, 0)),
+        averageTransactionValue: roundMoney((payments || []).length > 0 ? collectedRevenue / payments.length : 0),
+        revenueRealizationRate: grossRevenue > 0 ? roundMoney((collectedRevenue / grossRevenue) * 100) : 100,
+        monthlyRecurringRevenue: roundMoney(monthlyRecurringRevenue),
+        annualRecurringRevenue,
+        next30DayProjection: roundMoney(next30DayProjection),
+        activePaidSubscribers: activeSubscribers.filter((u) => Number(u.subscription_plans?.price_monthly || 0) > 0).length,
+        planPerformance,
+        recentTransactions
+      },
       generated_at: nowIso
     }));
   } catch (err) {

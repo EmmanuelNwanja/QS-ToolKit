@@ -113,6 +113,14 @@ export default function SubscriptionPage() {
     return `Save ₦${Math.round(saving).toLocaleString('en-NG')}/yr`;
   };
 
+  const renewalPrice = (plan) => {
+    if (!plan || plan.price_monthly === 0) return null;
+    const amount = billing === 'annual'
+      ? (plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.90))
+      : plan.price_monthly;
+    return `Future renewals continue at ₦${Math.round(amount).toLocaleString('en-NG')} per ${billing === 'annual' ? 'year' : 'month'}.`;
+  };
+
   // ── Promo code validation ──────────────────────────────────────
   const validatePromo = async (planName) => {
     const code = promoInputs[planName]?.trim();
@@ -323,9 +331,14 @@ export default function SubscriptionPage() {
                           </button>
                         </div>
                         {promoResults[plan.name] && (
-                          <p className="text-xs text-emerald-600 mt-1 font-medium">
-                            ✅ {promoResults[plan.name].discount_percent}% off — {promoResults[plan.name].description}
-                          </p>
+                          <div className="mt-1 space-y-1">
+                            <p className="text-xs text-emerald-600 font-medium">
+                              ✅ {promoResults[plan.name].discount_percent}% off — {promoResults[plan.name].description}
+                            </p>
+                            <p className="text-[11px] text-gray-500">
+                              Discount applies to the first payment only. {renewalPrice(plan)}
+                            </p>
+                          </div>
                         )}
                       </div>
                     )}
@@ -371,6 +384,9 @@ export default function SubscriptionPage() {
             <p className="text-sm text-blue-700">
               Pay with your debit card, bank transfer, or USSD. Annual plans save 10% vs monthly billing.
               Subscriptions auto-renew. Cancel anytime from your profile settings.
+            </p>
+            <p className="text-xs text-blue-600 mt-2">
+              Promo discounts apply to the first successful charge. Recurring renewals continue at the mapped Paystack plan price for your selected billing cycle.
             </p>
           </div>
 

@@ -2,6 +2,30 @@ const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
 const paystackAPI = require('../config/paystack');
 
+function readTransactionNumber(transaction, field, fallback = 0) {
+  if (transaction?.[field] !== undefined && transaction?.[field] !== null) {
+    return Number(transaction[field]) || 0;
+  }
+
+  if (transaction?.metadata?.[field] !== undefined && transaction?.metadata?.[field] !== null) {
+    return Number(transaction.metadata[field]) || 0;
+  }
+
+  return fallback;
+}
+
+function readTransactionText(transaction, field, fallback = null) {
+  if (transaction?.[field] !== undefined && transaction?.[field] !== null && String(transaction[field]).trim()) {
+    return String(transaction[field]).trim();
+  }
+
+  if (transaction?.metadata?.[field] !== undefined && transaction?.metadata?.[field] !== null && String(transaction.metadata[field]).trim()) {
+    return String(transaction.metadata[field]).trim();
+  }
+
+  return fallback;
+}
+
 /**
  * Billing Audit Service
  * Tracks all payment transactions, refunds, subscription changes, and generates financial reports
@@ -273,17 +297,33 @@ exports.getRevenueReport = async (filters = {}) => {
     // Aggregate by plan
     const byPlan = {};
     let totalRevenue = 0;
+    let totalGrossRevenue = 0;
+    let totalDiscounts = 0;
     let totalTransactions = 0;
 
     transactions.forEach((tx) => {
-      const planName = tx.user_subscriptions?.[0]?.subscription_plans?.name || 'unknown';
+      const planName = readTransactionText(tx, 'plan_name', tx.user_subscriptions?.[0]?.subscription_plans?.name || 'unknown');
+      const netAmount = readTransactionNumber(tx, 'net_amount', Number(tx.amount || 0));
+      const discountAmount = readTransactionNumber(tx, 'discount_amount', readTransactionNumber(tx, 'discount_applied', 0));
+      const grossAmount = readTransactionNumber(tx, 'gross_amount', netAmount + discountAmount);
+
       if (!byPlan[planName]) {
-        byPlan[planName] = { revenue: 0, count: 0, transactions: [] };
+        byPlan[planName] = {
+          revenue: 0,
+          gross_revenue: 0,
+          discounted_revenue: 0,
+          count: 0,
+          transactions: []
+        };
       }
-      byPlan[planName].revenue += tx.amount;
+      byPlan[planName].revenue += netAmount;
+      byPlan[planName].gross_revenue += grossAmount;
+      byPlan[planName].discounted_revenue += discountAmount;
       byPlan[planName].count += 1;
       byPlan[planName].transactions.push(tx);
-      totalRevenue += tx.amount;
+      totalRevenue += netAmount;
+      totalGrossRevenue += grossAmount;
+      totalDiscounts += discountAmount;
       totalTransactions += 1;
     });
 
@@ -305,6 +345,8 @@ exports.getRevenueReport = async (filters = {}) => {
     return {
       period: { start: startDate, end: endDate },
       total_revenue: totalRevenue,
+      total_gross_revenue: totalGrossRevenue,
+      total_discounted_revenue: totalDiscounts,
       total_refunds: totalRefunds,
       net_revenue: totalRevenue - totalRefunds,
       total_transactions: totalTransactions,
