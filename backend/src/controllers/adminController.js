@@ -664,10 +664,15 @@ exports.getPaystackPlanMappings = async (req, res, next) => {
   try {
     const { data: plans, error: dbError } = await supabase
       .from('subscription_plans')
-      .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, created_at, updated_at')
+      .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, created_at')
       .order('price_monthly', { ascending: true });
 
-    if (dbError) throw new Error(dbError.message);
+    if (dbError) {
+      if (String(dbError.message || '').toLowerCase().includes('paystack_plan_code')) {
+        return res.status(500).json(error('Paystack mapping columns are missing. Run migration 023_paystack_plan_mapping_and_annual_discount.sql.'));
+      }
+      throw new Error(dbError.message);
+    }
 
     return res.json(success('Paystack plan mappings retrieved', { plans }));
   } catch (err) {
@@ -727,18 +732,22 @@ exports.updatePaystackPlanMapping = async (req, res, next) => {
 
     const updates = {
       paystack_plan_code: monthlyCode,
-      paystack_plan_code_annual: annualCode,
-      updated_at: new Date().toISOString()
+      paystack_plan_code_annual: annualCode
     };
 
     const { data: updatedPlan, error: updateError } = await supabase
       .from('subscription_plans')
       .update(updates)
       .eq('id', planId)
-      .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, updated_at')
+      .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, created_at')
       .single();
 
-    if (updateError) throw new Error(updateError.message);
+    if (updateError) {
+      if (String(updateError.message || '').toLowerCase().includes('paystack_plan_code')) {
+        return res.status(500).json(error('Paystack mapping columns are missing. Run migration 023_paystack_plan_mapping_and_annual_discount.sql.'));
+      }
+      throw new Error(updateError.message);
+    }
 
     await logAdminActivity(
       req.adminUser.id,
