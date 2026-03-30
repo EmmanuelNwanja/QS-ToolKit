@@ -665,6 +665,7 @@ exports.getPaystackPlanMappings = async (req, res, next) => {
     const { data: plans, error: dbError } = await supabase
       .from('subscription_plans')
       .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, created_at')
+      .eq('is_active', true)
       .order('price_monthly', { ascending: true });
 
     if (dbError) {
@@ -717,7 +718,8 @@ exports.updatePaystackPlanMapping = async (req, res, next) => {
     if (submittedCodes.length > 0) {
       const { data: plans } = await supabase
         .from('subscription_plans')
-        .select('id, name, paystack_plan_code, paystack_plan_code_annual');
+        .select('id, name, paystack_plan_code, paystack_plan_code_annual')
+        .eq('is_active', true);
 
       const conflictingPlan = (plans || []).find((plan) => (
         plan.id !== planId && submittedCodes.some((code) => (
