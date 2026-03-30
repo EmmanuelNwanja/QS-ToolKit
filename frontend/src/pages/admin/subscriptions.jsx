@@ -8,15 +8,23 @@ export default function Subscriptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('active');
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchSubscriptions();
-  }, [filter]);
+  }, [filter, search, dateFrom, dateTo]);
 
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.getSubscriptions({ status: filter });
+      const response = await adminAPI.getSubscriptions({
+        status: filter,
+        search,
+        dateFrom,
+        dateTo
+      });
       setSubscriptions(response.data?.subscriptions || []);
       setError(null);
     } catch (err) {
@@ -25,6 +33,14 @@ export default function Subscriptions() {
       setLoading(false);
     }
   };
+
+  const clearFilters = () => {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const hasActiveFilters = search || dateFrom || dateTo;
 
   return (
     <ProtectedAdminRoute superAdminOnly>
@@ -53,11 +69,75 @@ export default function Subscriptions() {
             ))}
           </div>
 
+          {/* Search and Filters */}
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Search by email or name
+                </label>
+                <input
+                  type="text"
+                  placeholder="john@example.com or John Doe"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expires from
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expires to
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <div className="flex items-end">
+                  <button
+                    onClick={clearFilters}
+                    className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm font-medium transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
               {error}
             </div>
+          )}
+
+          {/* Results Info */}
+          {subscriptions.length > 0 && (
+            <p className="text-sm text-gray-600">
+              Showing {subscriptions.length} subscription{subscriptions.length !== 1 ? 's' : ''}
+            </p>
           )}
 
           {/* Subscriptions Table */}
@@ -69,6 +149,14 @@ export default function Subscriptions() {
             ) : subscriptions.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p className="text-lg">No subscriptions found</p>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="mt-4 text-blue-600 hover:text-blue-800 underline text-sm"
+                  >
+                    Clear filters and try again
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -84,7 +172,7 @@ export default function Subscriptions() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {subscriptions.map((sub) => (
-                      <tr key={sub.id} className="hover:bg-gray-50">
+                      <tr key={sub.id} className="hover:bg-gray-50 cursor-pointer transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <p className="text-sm font-medium text-gray-900">{sub.name}</p>
                           <p className="text-xs text-gray-500">{sub.email}</p>

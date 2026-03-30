@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI } from '../../services/api';
 import useAuthStore from '../../context/authStore';
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState(null);
   const [securityAlerts, setSecurityAlerts] = useState([]);
@@ -91,56 +93,72 @@ export default function AdminDashboard() {
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {/* Total Users */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => router.push('/admin/users')}
+                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm font-medium">Total Users</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats?.totalUsers || 0}
                     </p>
+                    <p className="text-xs text-gray-500 mt-2">Click to view all users</p>
                   </div>
                   <div className="text-4xl">👥</div>
                 </div>
-              </div>
+              </button>
 
               {/* Active Subscriptions */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => router.push('/admin/subscriptions')}
+                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm font-medium">Active Subscriptions</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats?.activeSubscriptions || 0}
                     </p>
+                    <p className="text-xs text-gray-500 mt-2">Click to search & filter</p>
                   </div>
                   <div className="text-4xl">💳</div>
                 </div>
-              </div>
+              </button>
 
               {/* Total Revenue */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => router.push('/admin/billing')}
+                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm font-medium">Actual Revenue</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {formatCurrency(stats?.totalRevenue || 0)}
                     </p>
+                    <p className="text-xs text-gray-500 mt-2">Click to view billing reports</p>
                   </div>
                   <div className="text-4xl">💰</div>
                 </div>
-              </div>
+              </button>
 
               {/* Discounts Granted */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => router.push('/admin/promo-codes')}
+                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm font-medium">Discounts Granted</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {formatCurrency(financial?.discountedPaymentsValue || 0)}
                     </p>
+                    <p className="text-xs text-gray-500 mt-2">Click to manage promo codes</p>
                   </div>
                   <div className="text-4xl">🏷️</div>
                 </div>
-              </div>
+              </button>
 
               {/* MRR */}
               <div className="bg-white rounded-lg shadow p-6">
@@ -169,17 +187,21 @@ export default function AdminDashboard() {
               </div>
 
               {/* Active Promo Codes */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => router.push('/admin/promo-codes')}
+                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm font-medium">Active Promo Codes</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats?.activePromoCodes || 0}
                     </p>
+                    <p className="text-xs text-gray-500 mt-2">Click to manage codes</p>
                   </div>
                   <div className="text-4xl">🎟️</div>
                 </div>
-              </div>
+              </button>
             </div>
 
             {user?.admin_role === 'super_admin' && financial && (

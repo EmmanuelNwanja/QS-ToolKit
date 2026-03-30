@@ -676,7 +676,7 @@ exports.generateUserOneTimePassword = async (req, res, next) => {
  */
 exports.getSubscriptions = async (req, res, next) => {
   try {
-    const { status = 'active', plan, limit = 50, offset = 0 } = req.query;
+    const { status = 'active', plan, search = '', dateFrom = null, dateTo = null, limit = 50, offset = 0 } = req.query;
 
     let query = supabase.from('users').select(`
       id, email, name, subscription_status, billing_cycle,
@@ -690,6 +690,21 @@ exports.getSubscriptions = async (req, res, next) => {
 
     if (plan) {
       query = query.eq('plan_id', plan);
+    }
+
+    // Search by email or name (case-insensitive substring match)
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      // Using .or() for OR condition - search in email or name
+      query = query.or(`email.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`);
+    }
+
+    // Filter by date range (subscription expiry date)
+    if (dateFrom) {
+      query = query.gte('subscription_expires_at', new Date(dateFrom).toISOString());
+    }
+    if (dateTo) {
+      query = query.lte('subscription_expires_at', new Date(dateTo).toISOString());
     }
 
     const { data: subscriptions, count, error: dbError } = await query

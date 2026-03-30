@@ -596,11 +596,23 @@ exports.verify = async (req, res, next) => {
       await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: txn, expiresAt });
 
       if (meta.promo_id) {
-        await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
+        try {
+          await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
+        } catch (promoErr) {
+          logger.error('Failed to mark promo used', { promoId: meta.promo_id, userId: meta.user_id, error: promoErr.message });
+        }
       }
-      const { data: user } = await supabase.from('users')
-        .select('email, name, subscription_plans(name)').eq('id', meta.user_id).single();
-      await emailService.sendSubscriptionConfirmation(user, meta.billing_cycle, expiresAt);
+
+      // Send confirmation email (non-critical, don't break response if it fails)
+      try {
+        const { data: user } = await supabase.from('users')
+          .select('email, name, subscription_plans(name)').eq('id', meta.user_id).single();
+        if (user) {
+          await emailService.sendSubscriptionConfirmation(user, meta.billing_cycle, expiresAt);
+        }
+      } catch (emailErr) {
+        logger.error('Failed to send subscription confirmation email', { userId: meta.user_id, error: emailErr.message });
+      }
     }
 
     return res.json(success('Subscription activated', {
