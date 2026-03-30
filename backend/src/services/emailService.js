@@ -6,13 +6,14 @@
 
 const Mailjet = require('node-mailjet');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const logger = require('../utils/logger');
 
 const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
 const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET;
 const MAILJET_SENDER_EMAIL = process.env.MAILJET_SENDER_EMAIL;
 const MAILJET_SENDER_NAME = process.env.MAILJET_SENDER_NAME;
-const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'auto').toLowerCase(); // auto | mailjet | smtp
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase(); // smtp | relay | mailjet | auto
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
@@ -20,6 +21,8 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME;
+const EMAIL_RELAY_URL = process.env.EMAIL_RELAY_URL;
+const EMAIL_RELAY_TOKEN = process.env.EMAIL_RELAY_TOKEN;
 const SMTP_HOSTS = (process.env.SMTP_HOSTS || '')
   .split(',')
   .map((h) => h.trim())
@@ -40,12 +43,13 @@ const BRAND = {
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 
-if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-  logger.error('Email service misconfigured: MAILJET_API_KEY or MAILJET_API_SECRET is missing');
-}
-
-if (!MAILJET_SENDER_EMAIL) {
-  logger.warn('MAILJET_SENDER_EMAIL missing; using fallback sender. Verify sender/domain in Mailjet to avoid rejection.');
+if (EMAIL_PROVIDER === 'mailjet' || EMAIL_PROVIDER === 'auto') {
+  if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
+    logger.warn('Mailjet credentials missing; SMTP will be used if configured');
+  }
+  if (!MAILJET_SENDER_EMAIL) {
+    logger.warn('MAILJET_SENDER_EMAIL missing; using fallback sender for Mailjet.');
+  }
 }
 
 const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
@@ -53,9 +57,22 @@ const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
   : null;
 
 const smtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+const relayConfigured = !!EMAIL_RELAY_URL;
 
-if (!mailjetClient && !smtpConfigured) {
-  logger.error('Email service misconfigured: no Mailjet or SMTP provider is configured');
+if (EMAIL_PROVIDER === 'smtp' && !smtpConfigured) {
+  logger.error('Email service misconfigured: EMAIL_PROVIDER=smtp but SMTP_* credentials are missing');
+}
+
+if (EMAIL_PROVIDER === 'relay' && !relayConfigured) {
+  logger.error('Email service misconfigured: EMAIL_PROVIDER=relay but EMAIL_RELAY_URL is missing');
+}
+
+if (EMAIL_PROVIDER === 'mailjet' && !mailjetClient) {
+  logger.error('Email service misconfigured: EMAIL_PROVIDER=mailjet but MAILJET_* credentials are missing');
+}
+
+if (EMAIL_PROVIDER === 'auto' && !mailjetClient && !smtpConfigured && !relayConfigured) {
+  logger.error('Email service misconfigured: no Mailjet, Relay, or SMTP provider is configured');
 }
 
 // ── Core send function ────────────────────────────────────────
@@ -78,12 +95,17 @@ async function send({ to, subject, html, text, attachments = [] }) {
   const textPart = normalizePlainText(text || htmlToText(htmlPart));
 
   const providers = EMAIL_PROVIDER === 'auto'
-    ? ['mailjet', 'smtp']
+    ? ['relay', ...(mailjetClient ? ['mailjet'] : []), 'smtp']
     : [EMAIL_PROVIDER];
 
   for (const provider of providers) {
     if (provider === 'mailjet' && mailjetClient) {
       const ok = await sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments });
+      if (ok) return true;
+    }
+
+    if (provider === 'relay' && relayConfigured) {
+      const ok = await sendViaRelay({ recipients, subject, htmlPart, textPart, attachments });
       if (ok) return true;
     }
 
@@ -207,6 +229,40 @@ async function sendViaSmtp({ recipients, subject, htmlPart, textPart, attachment
   }
 
   return false;
+}
+
+async function sendViaRelay({ recipients, subject, htmlPart, textPart, attachments }) {
+  try {
+    const payload = {
+      from: {
+        email: SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email,
+        name: SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name
+      },
+      to: recipients,
+      subject,
+      html: htmlPart,
+      text: textPart,
+      attachments
+    };
+
+    await axios.post(EMAIL_RELAY_URL, payload, {
+      timeout: 20000,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(EMAIL_RELAY_TOKEN ? { Authorization: `Bearer ${EMAIL_RELAY_TOKEN}` } : {})
+      }
+    });
+
+    return true;
+  } catch (err) {
+    logger.error({
+      message: 'Relay email delivery failed',
+      subject,
+      status: err.response?.status,
+      provider_error: err.response?.data || err.message
+    });
+    return false;
+  }
 }
 
 function buildSmtpEndpoints() {

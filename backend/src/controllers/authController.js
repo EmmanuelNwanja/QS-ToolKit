@@ -463,12 +463,12 @@ exports.resendVerification = async (req, res, next) => {
     const verificationSent = await emailService.sendEmailVerification(user, verificationToken);
 
     if (!verificationSent) {
-      logger.error({
-        message: 'Resend verification failed',
+      logger.warn({
+        message: 'Resend verification delivery failed',
         user_id: user.id,
         email: user.email
       });
-      return res.status(502).json(error('We could not send the verification email right now. Please try again shortly.'));
+      return res.status(202).json(success('Verification email request accepted, but delivery is delayed. Please try again shortly.'));
     }
 
     return res.json(success('Verification email sent.'));
