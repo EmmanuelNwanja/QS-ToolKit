@@ -43,6 +43,48 @@ async function resolveSubscriptionPlanByName(planName) {
     || plans[0];
 }
 
+async function resolveSubscriptionPlanByPaystackCode(planCode) {
+  if (!planCode) return null;
+
+  const { data: plans, error: planErr } = await supabase
+    .from('subscription_plans')
+    .select('*')
+    .eq('is_active', true);
+
+  if (planErr) throw planErr;
+
+  return (plans || []).find((plan) => (
+    plan.paystack_plan_code === planCode || plan.paystack_plan_code_annual === planCode
+  )) || null;
+}
+
+function getPaystackPlanCode(plan, billingCycle) {
+  if (!plan) return null;
+  const code = billingCycle === 'annual'
+    ? plan.paystack_plan_code_annual
+    : plan.paystack_plan_code;
+  const normalized = String(code || '').trim();
+  return normalized || null;
+}
+
+function resolveBillingCycleFromPlanCode(plan, planCode, fallback = 'monthly') {
+  if (!planCode || !plan) return fallback;
+  if (plan.paystack_plan_code_annual === planCode) return 'annual';
+  if (plan.paystack_plan_code === planCode) return 'monthly';
+  return fallback;
+}
+
+async function initializeRecurringTransaction({ email, amountKobo, paystackPlanCode, metadata, callbackUrl }) {
+  return axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+    email,
+    amount: amountKobo,
+    currency: 'NGN',
+    plan: paystackPlanCode,
+    metadata,
+    callback_url: callbackUrl
+  }, { headers: paystackHeaders() });
+}
+
 // ── Get all plans ─────────────────────────────────────────────
 exports.getPlans = async (req, res, next) => {
   try {
@@ -109,6 +151,11 @@ exports.initiate = async (req, res, next) => {
       return res.status(400).json(error('User email is required to initiate payment'));
     }
 
+    const paystackPlanCode = getPaystackPlanCode(plan, billing_cycle);
+    if (!paystackPlanCode) {
+      return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${billing_cycle} plan`));
+    }
+
     let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
     let discountApplied = 0;
     let promoId = null;
@@ -159,15 +206,16 @@ exports.initiate = async (req, res, next) => {
 
     let paystackRes;
     try {
-      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+      paystackRes = await initializeRecurringTransaction({
         email: user.email,
-        amount: amountKobo,
-        currency: 'NGN',
+        amountKobo,
+        paystackPlanCode,
         metadata: {
           user_id: req.user.id,
           plan_id: plan.id,
           plan_name: plan.name,
           billing_cycle,
+          paystack_plan_code: paystackPlanCode,
           promo_id: promoId,
           discount_applied: discountApplied,
           is_philanthropist: false,
@@ -176,8 +224,8 @@ exports.initiate = async (req, res, next) => {
             { display_name: 'Billing', variable_name: 'billing', value: billing_cycle }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/subscription`
-      }, { headers: paystackHeaders() });
+        callbackUrl: `${process.env.FRONTEND_URL}/subscription`
+      });
     } catch (paystackError) {
       const providerMsg = paystackError?.response?.data?.message || paystackError.message;
       return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
@@ -206,6 +254,11 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 
     const plan = await resolveSubscriptionPlanByName(plan_name);
     if (!plan) return res.status(400).json(error('Invalid plan'));
+
+    const paystackPlanCode = getPaystackPlanCode(plan, billing_cycle);
+    if (!paystackPlanCode) {
+      return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${billing_cycle} plan`));
+    }
 
     let basePrice = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
     let discountApplied = 0;
@@ -286,10 +339,10 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 
     let paystackRes;
     try {
-      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+      paystackRes = await initializeRecurringTransaction({
         email: donor_email,
-        amount: amountKobo,
-        currency: 'NGN',
+        amountKobo,
+        paystackPlanCode,
         metadata: {
           is_philanthropist: true,
           grant_id: grant.id,
@@ -297,6 +350,7 @@ exports.initiatePhilanthropist = async (req, res, next) => {
           plan_id: plan.id,
           plan_name,
           billing_cycle,
+          paystack_plan_code: paystackPlanCode,
           promo_id: promoId,
           discount_applied: discountApplied,
           donor_name,
@@ -307,8 +361,8 @@ exports.initiatePhilanthropist = async (req, res, next) => {
             { display_name: 'Billing',  variable_name: 'billing', value: billing_cycle }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/subscription`
-      }, { headers: paystackHeaders() });
+        callbackUrl: `${process.env.FRONTEND_URL}/subscription`
+      });
     } catch (paystackError) {
       const providerMsg = paystackError?.response?.data?.message || paystackError.message;
       return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
@@ -325,8 +379,23 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 };
 
 // ── Helpers ───────────────────────────────────────────────────
-async function activateSubscription(userId, planId, billingCycle) {
-  const expiresAt = new Date();
+async function activateSubscription(userId, planId, billingCycle, options = {}) {
+  const { extendFromCurrentExpiry = false } = options;
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('subscription_expires_at')
+    .eq('id', userId)
+    .single();
+
+  const now = new Date();
+  const currentExpiry = currentUser?.subscription_expires_at
+    ? new Date(currentUser.subscription_expires_at)
+    : null;
+  const baseDate = extendFromCurrentExpiry && currentExpiry && currentExpiry.getTime() > now.getTime()
+    ? currentExpiry
+    : now;
+  const expiresAt = new Date(baseDate.getTime());
+
   billingCycle === 'annual'
     ? expiresAt.setFullYear(expiresAt.getFullYear() + 1)
     : expiresAt.setMonth(expiresAt.getMonth() + 1);
@@ -376,22 +445,34 @@ exports.verify = async (req, res, next) => {
         await emailService.sendPhilanthropistDonorConfirmation?.(meta);
       }
     } else {
-      const expiresAt = await activateSubscription(meta.user_id, meta.plan_id, meta.billing_cycle || 'monthly');
+      const alreadyProcessed = await hasBillingTransactionReference(reference);
+      if (alreadyProcessed) {
+        return res.json(success('Subscription already processed', {
+          plan: meta.plan_name,
+          billing_cycle: meta.billing_cycle || 'monthly'
+        }));
+      }
+
+      const expiresAt = await activateSubscription(
+        meta.user_id,
+        meta.plan_id,
+        meta.billing_cycle || 'monthly',
+        { extendFromCurrentExpiry: !!(meta.is_renewal || meta.is_auto_renewal) }
+      );
+      await persistPaystackCustomerState(meta.user_id, txn);
 
       // Record billing transaction for audit and admin subscriptions view
-      await supabase.from('billing_transactions').insert({
-        user_id: meta.user_id,
+      await recordBillingTransactionOnce({
+        userId: meta.user_id,
         amount: txn.amount / 100,
         currency: txn.currency || 'NGN',
-        type: 'payment',
-        status: 'completed',
-        paystack_reference: reference,
+        reference,
         description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
-        transaction_date: new Date().toISOString(),
         metadata: {
           plan_id: meta.plan_id,
           plan_name: meta.plan_name,
-          billing_cycle: meta.billing_cycle
+          billing_cycle: meta.billing_cycle,
+          paystack_plan_code: meta.paystack_plan_code || txn.plan?.plan_code || null
         }
       });
 
@@ -426,13 +507,75 @@ exports.webhook = async (req, res, next) => {
     if (event === 'charge.success') {
       const meta = data.metadata || {};
       if (!meta.is_philanthropist && meta.user_id && meta.plan_id) {
-        await activateSubscription(meta.user_id, meta.plan_id, meta.billing_cycle || 'monthly');
+        if (await hasBillingTransactionReference(data.reference)) {
+          return res.sendStatus(200);
+        }
+
+        await activateSubscription(
+          meta.user_id,
+          meta.plan_id,
+          meta.billing_cycle || 'monthly',
+          { extendFromCurrentExpiry: !!(meta.is_renewal || meta.is_auto_renewal) }
+        );
+        await persistPaystackCustomerState(meta.user_id, data);
+        await recordBillingTransactionOnce({
+          userId: meta.user_id,
+          amount: (data.amount || 0) / 100,
+          currency: data.currency || 'NGN',
+          reference: data.reference,
+          description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
+          metadata: {
+            plan_id: meta.plan_id,
+            plan_name: meta.plan_name,
+            billing_cycle: meta.billing_cycle,
+            paystack_plan_code: meta.paystack_plan_code || data.plan?.plan_code || null,
+            source: 'charge.success'
+          }
+        });
         if (meta.promo_id) {
           await supabase.from('promo_code_uses').upsert(
             { promo_id: meta.promo_id, user_id: meta.user_id, plan_name: meta.plan_name },
             { onConflict: 'promo_id,user_id', ignoreDuplicates: true }
           );
         }
+      }
+    }
+    if (event === 'subscription.create') {
+      const resolved = await resolveUserAndPlanFromPaystackEvent(data);
+      if (resolved?.user?.id) {
+        await persistPaystackCustomerState(resolved.user.id, data);
+      }
+    }
+    if (event === 'invoice.update' && isSuccessfulInvoiceEvent(data)) {
+      const recurringReference = data.reference || data.invoice_code || null;
+      if (recurringReference && await hasBillingTransactionReference(recurringReference)) {
+        return res.sendStatus(200);
+      }
+
+      const resolved = await resolveUserAndPlanFromPaystackEvent(data);
+      if (resolved?.user?.id && resolved?.plan?.id) {
+        const billingCycle = resolved.billingCycle || resolved.user.billing_cycle || 'monthly';
+        await activateSubscription(
+          resolved.user.id,
+          resolved.plan.id,
+          billingCycle,
+          { extendFromCurrentExpiry: true }
+        );
+        await persistPaystackCustomerState(resolved.user.id, data);
+        await recordBillingTransactionOnce({
+          userId: resolved.user.id,
+          amount: (data.amount_paid ?? data.amount ?? 0) / 100,
+          currency: data.currency || 'NGN',
+          reference: data.reference || data.invoice_code || `${event}-${resolved.user.id}-${Date.now()}`,
+          description: `${resolved.plan.name} plan (${billingCycle}) renewal`,
+          metadata: {
+            plan_id: resolved.plan.id,
+            plan_name: resolved.plan.name,
+            billing_cycle: billingCycle,
+            paystack_plan_code: resolved.planCode,
+            source: 'invoice.update'
+          }
+        });
       }
     }
     if (event === 'subscription.disable') {
@@ -514,7 +657,7 @@ exports.renewMySubscription = async (req, res, next) => {
 
     const { data: user, error: userErr } = await supabase
       .from('users')
-      .select('email, plan_id, subscription_plans(name, price_monthly, price_annual)')
+      .select('email, plan_id, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
       .eq('id', req.user.id)
       .single();
 
@@ -534,23 +677,30 @@ exports.renewMySubscription = async (req, res, next) => {
       return res.status(400).json(error('Current plan is not payable. Choose a paid plan to renew.'));
     }
 
-    const paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
+    const paystackPlanCode = getPaystackPlanCode(plan, cycle);
+    if (!paystackPlanCode) {
+      return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${cycle} plan`));
+    }
+
+    const paystackRes = await initializeRecurringTransaction({
       email: user.email,
-      amount: Math.round(Number(basePrice) * 100),
-      currency: 'NGN',
+      amountKobo: Math.round(Number(basePrice) * 100),
+      paystackPlanCode,
       metadata: {
         user_id: req.user.id,
         plan_id: user.plan_id,
         plan_name: plan.name,
         billing_cycle: cycle,
+        paystack_plan_code: paystackPlanCode,
+        is_renewal: true,
         is_philanthropist: false,
         custom_fields: [
           { display_name: 'Plan', variable_name: 'plan', value: plan.name },
           { display_name: 'Billing', variable_name: 'billing', value: cycle }
         ]
       },
-      callback_url: `${process.env.FRONTEND_URL}/subscription`
-    }, { headers: paystackHeaders() });
+      callbackUrl: `${process.env.FRONTEND_URL}/subscription`
+    });
 
     return res.json(success('Renewal initiated', {
       authorization_url: paystackRes.data.data.authorization_url,
@@ -560,3 +710,108 @@ exports.renewMySubscription = async (req, res, next) => {
     }));
   } catch (err) { next(err); }
 };
+
+async function persistPaystackCustomerState(userId, paystackPayload) {
+  if (!userId) return;
+
+  const customerCode = paystackPayload?.customer?.customer_code || null;
+  const subscriptionCode = paystackPayload?.subscription?.subscription_code
+    || paystackPayload?.subscription_code
+    || null;
+
+  if (!customerCode && !subscriptionCode) return;
+
+  const updates = { updated_at: new Date().toISOString() };
+  if (customerCode) updates.paystack_customer_id = customerCode;
+  if (subscriptionCode) updates.paystack_subscription_code = subscriptionCode;
+
+  await supabase.from('users').update(updates).eq('id', userId);
+}
+
+async function recordBillingTransactionOnce({ userId, amount, currency, reference, description, metadata }) {
+  if (!reference) return;
+
+  const existing = await hasBillingTransactionReference(reference);
+  if (existing) return;
+
+  await supabase.from('billing_transactions').insert({
+    user_id: userId,
+    amount,
+    currency,
+    type: 'payment',
+    status: 'completed',
+    paystack_reference: reference,
+    description,
+    transaction_date: new Date().toISOString(),
+    metadata
+  });
+}
+
+async function hasBillingTransactionReference(reference) {
+  if (!reference) return false;
+
+  const { data: existing } = await supabase
+    .from('billing_transactions')
+    .select('id')
+    .eq('paystack_reference', reference)
+    .maybeSingle();
+
+  return !!existing;
+}
+
+async function resolveUserAndPlanFromPaystackEvent(data) {
+  const customerEmail = data?.customer?.email || null;
+  const customerCode = data?.customer?.customer_code || null;
+  const subscriptionCode = data?.subscription?.subscription_code || data?.subscription_code || null;
+  const planCode = data?.plan?.plan_code
+    || data?.subscription?.plan?.plan_code
+    || data?.line_items?.[0]?.plan?.plan_code
+    || null;
+
+  let user = null;
+
+  if (subscriptionCode) {
+    const lookup = await supabase
+      .from('users')
+      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
+      .eq('paystack_subscription_code', subscriptionCode)
+      .maybeSingle();
+    user = lookup.data || null;
+  }
+
+  if (!user && customerCode) {
+    const lookup = await supabase
+      .from('users')
+      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
+      .eq('paystack_customer_id', customerCode)
+      .maybeSingle();
+    user = lookup.data || null;
+  }
+
+  if (!user && customerEmail) {
+    const lookup = await supabase
+      .from('users')
+      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
+      .eq('email', customerEmail)
+      .maybeSingle();
+    user = lookup.data || null;
+  }
+
+  let plan = await resolveSubscriptionPlanByPaystackCode(planCode);
+  if (!plan && user?.plan_id) {
+    const lookup = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', user.plan_id)
+      .maybeSingle();
+    plan = lookup.data || null;
+  }
+
+  const billingCycle = resolveBillingCycleFromPlanCode(plan, planCode, user?.billing_cycle || 'monthly');
+  return { user, plan, billingCycle, planCode };
+}
+
+function isSuccessfulInvoiceEvent(data) {
+  const status = String(data?.status || '').toLowerCase();
+  return status === 'success' || status === 'paid' || data?.paid === true;
+}

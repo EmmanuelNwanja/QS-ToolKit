@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI } from '../../services/api';
+import useAuthStore from '../../context/authStore';
 
 export default function AdminDashboard() {
+  const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState(null);
   const [securityAlerts, setSecurityAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +175,19 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600">Push notifications to users</p>
                 </div>
               </a>
+
+              {user?.admin_role === 'super_admin' && (
+                <a
+                  href="/admin/paystack-plans"
+                  className="flex items-center gap-3 p-4 border-2 border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
+                >
+                  <span className="text-2xl">🧩</span>
+                  <div>
+                    <p className="font-medium text-gray-900">Paystack Plan Mapping</p>
+                    <p className="text-sm text-gray-600">Manage recurring billing plan codes</p>
+                  </div>
+                </a>
+              )}
             </div>
           </div>
 

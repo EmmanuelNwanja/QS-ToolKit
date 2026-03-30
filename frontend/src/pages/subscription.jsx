@@ -83,7 +83,7 @@ export default function SubscriptionPage() {
   const displayPrice = (plan) => {
     if (plan.price_monthly === 0) return 'Free';
     // Compute annual from monthly if price_annual column not yet populated in DB
-    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.88);
+    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.90);
     const base = billing === 'annual' ? annualPrice : plan.price_monthly;
     const promo = promoResults[plan.name];
     if (promo?.discount_percent) {
@@ -108,7 +108,7 @@ export default function SubscriptionPage() {
 
   const annualSavings = (plan) => {
     if (plan.price_monthly === 0) return null;
-    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.88);
+    const annualPrice = plan.price_annual != null ? plan.price_annual : Math.round(plan.price_monthly * 12 * 0.90);
     const saving = (plan.price_monthly * 12) - annualPrice;
     return `Save ₦${Math.round(saving).toLocaleString('en-NG')}/yr`;
   };
@@ -245,7 +245,7 @@ export default function SubscriptionPage() {
             >
               Annual
               <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                12% off
+                10% off
               </span>
             </button>
           </div>
@@ -369,7 +369,7 @@ export default function SubscriptionPage() {
           <div className="card bg-blue-50 border-blue-100">
             <h3 className="font-semibold text-blue-800 mb-2">💳 Secure Nigerian Payment via Paystack</h3>
             <p className="text-sm text-blue-700">
-              Pay with your debit card, bank transfer, or USSD. Annual plans save 12% vs monthly billing.
+              Pay with your debit card, bank transfer, or USSD. Annual plans save 10% vs monthly billing.
               Subscriptions auto-renew. Cancel anytime from your profile settings.
             </p>
           </div>

@@ -638,6 +638,109 @@ exports.getSubscriptions = async (req, res, next) => {
       query = query.eq('subscription_status', status);
     }
 
+
+  /**
+   * Get Paystack plan-code mappings for subscription plans.
+   */
+  exports.getPaystackPlanMappings = async (req, res, next) => {
+    try {
+      const { data: plans, error: dbError } = await supabase
+        .from('subscription_plans')
+        .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, created_at, updated_at')
+        .order('price_monthly', { ascending: true });
+
+      if (dbError) throw new Error(dbError.message);
+
+      return res.json(success('Paystack plan mappings retrieved', { plans }));
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * Update Paystack plan-code mappings for a subscription plan.
+   */
+  exports.updatePaystackPlanMapping = async (req, res, next) => {
+    try {
+      const { planId } = req.params;
+
+      const normalizeCode = (value) => {
+        const normalized = String(value || '').trim();
+        return normalized || null;
+      };
+
+      const monthlyCode = normalizeCode(req.body?.paystack_plan_code);
+      const annualCode = normalizeCode(req.body?.paystack_plan_code_annual);
+
+      const { data: currentPlan, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('id, name, price_monthly, paystack_plan_code, paystack_plan_code_annual')
+        .eq('id', planId)
+        .single();
+
+      if (planError || !currentPlan) {
+        return res.status(404).json(error('Subscription plan not found'));
+      }
+
+      if (Number(currentPlan.price_monthly || 0) > 0 && (!monthlyCode || !annualCode)) {
+        return res.status(400).json(error('Both monthly and annual Paystack plan codes are required for paid plans'));
+      }
+
+      const submittedCodes = [monthlyCode, annualCode].filter(Boolean);
+      if (new Set(submittedCodes).size !== submittedCodes.length) {
+        return res.status(400).json(error('Monthly and annual Paystack plan codes must be different'));
+      }
+
+      if (submittedCodes.length > 0) {
+        const { data: plans } = await supabase
+          .from('subscription_plans')
+          .select('id, name, paystack_plan_code, paystack_plan_code_annual');
+
+        const conflictingPlan = (plans || []).find((plan) => (
+          plan.id !== planId && submittedCodes.some((code) => (
+            code === plan.paystack_plan_code || code === plan.paystack_plan_code_annual
+          ))
+        ));
+
+        if (conflictingPlan) {
+          return res.status(409).json(error(`A submitted Paystack plan code is already assigned to ${conflictingPlan.name}`));
+        }
+      }
+
+      const updates = {
+        paystack_plan_code: monthlyCode,
+        paystack_plan_code_annual: annualCode,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: updatedPlan, error: updateError } = await supabase
+        .from('subscription_plans')
+        .update(updates)
+        .eq('id', planId)
+        .select('id, name, price_monthly, price_annual, is_active, paystack_plan_code, paystack_plan_code_annual, updated_at')
+        .single();
+
+      if (updateError) throw new Error(updateError.message);
+
+      await logAdminActivity(
+        req.adminUser.id,
+        'updated_paystack_plan_mapping',
+        'subscription_plan',
+        planId,
+        {
+          plan_name: updatedPlan.name,
+          paystack_plan_code: updatedPlan.paystack_plan_code,
+          paystack_plan_code_annual: updatedPlan.paystack_plan_code_annual
+        },
+        req.ip,
+        req.get('user-agent')
+      );
+
+      return res.json(success('Paystack plan mapping updated', { plan: updatedPlan }));
+    } catch (err) {
+      next(err);
+    }
+  };
     if (plan) {
       query = query.eq('plan_id', plan);
     }

@@ -83,7 +83,7 @@ async function autoRenewSubscriptions() {
     const now = new Date().toISOString();
     const { data: users, error: queryErr } = await supabase
       .from('users')
-      .select('id, email, plan_id, subscription_expires_at, billing_cycle, subscription_plans(name, price_monthly, price_annual)')
+      .select('id, email, plan_id, subscription_expires_at, billing_cycle, paystack_subscription_code, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
       .eq('auto_renew', true)
       .eq('subscription_status', 'active')
       .lte('subscription_expires_at', now);
@@ -111,6 +111,15 @@ async function autoRenewSubscriptions() {
 
         const billingCycle = user.billing_cycle || 'monthly';
         const plan = user.subscription_plans;
+        const mappedPaystackPlanCode = billingCycle === 'annual'
+          ? plan.paystack_plan_code_annual
+          : plan.paystack_plan_code;
+
+        if (mappedPaystackPlanCode) {
+          logger.info(`Skipping manual auto-renew for user ${user.id}; Paystack recurring plan mapping is configured.`);
+          continue;
+        }
+
         const basePrice = billingCycle === 'annual' ? plan.price_annual : plan.price_monthly;
 
         if (!basePrice || Number(basePrice) <= 0) {
