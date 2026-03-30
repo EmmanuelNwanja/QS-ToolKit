@@ -2,6 +2,44 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
+
+// ─── Force change password after OTP login ───────────────────
+exports.forceChangePassword = async (req, res, next) => {
+  try {
+    const newPassword = String(req.body?.newPassword || '');
+    const confirmPassword = String(req.body?.confirmPassword || '');
+
+    if (!req.user?.force_password_change) {
+      return res.status(400).json(error('Password change is not currently required for this account.'));
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json(error('New password must be at least 8 characters'));
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json(error('Password confirmation does not match'));
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        password_hash: passwordHash,
+        force_password_change: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.user.id);
+
+    if (updateError) throw new Error(updateError.message);
+
+    return res.json(success('Password changed successfully. You can continue using your account.'));
+  } catch (err) {
+    next(err);
+  }
+};
 
 // ─── Get profile ──────────────────────────────────────────────
 exports.getProfile = async (req, res, next) => {

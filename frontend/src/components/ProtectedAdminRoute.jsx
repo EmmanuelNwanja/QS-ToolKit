@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { adminAPI } from '../services/api';
+import useAuthStore from '../context/authStore';
 
 /**
  * ProtectedAdminRoute - Wrapper to ensure only admins can access certain pages
  */
 export default function ProtectedAdminRoute({ children, requiredPermission, superAdminOnly = false }) {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    if (user?.force_password_change) {
+      router.push('/auth/force-change-password');
+      setLoading(false);
+      return;
+    }
+
     const checkAdminAccess = async () => {
       try {
         const { data } = await adminAPI.verify();
@@ -40,7 +48,7 @@ export default function ProtectedAdminRoute({ children, requiredPermission, supe
     };
 
     checkAdminAccess();
-  }, [router, requiredPermission, superAdminOnly]);
+  }, [router, requiredPermission, superAdminOnly, user?.force_password_change]);
 
   if (loading) {
     return (

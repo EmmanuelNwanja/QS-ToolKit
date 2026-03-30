@@ -17,6 +17,10 @@ export default function ProtectedRoute({ children, requirePlan }) {
       router.replace('/auth/onboarding');
       return;
     }
+    if (user.force_password_change) {
+      router.replace('/auth/force-change-password');
+      return;
+    }
     if (requirePlan) {
       const rank = (value) => {
         const normalizedRaw = String(value || '').toLowerCase();

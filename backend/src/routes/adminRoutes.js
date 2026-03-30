@@ -96,6 +96,14 @@ router.get(
   adminController.getUsers
 );
 
+router.post(
+  '/users/:userId/one-time-password',
+  adminAuth,
+  requirePermission('manage_users'),
+  trackAdminActivity('generated_one_time_password', 'user'),
+  adminController.generateUserOneTimePassword
+);
+
 // ── SUBSCRIPTION MANAGEMENT ────────────────────────────────────
 router.get(
   '/subscriptions',

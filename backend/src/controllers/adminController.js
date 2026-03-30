@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const pushService = require('../services/pushService');
 const emailService = require('../services/emailService');
 
+const ADMIN_OTP_TTL_MINUTES = 30;
+
 // ── ADMIN MANAGEMENT ────────────────────────────────────────
 /**
  * Create a new admin user (super_admin only)
@@ -533,6 +535,93 @@ exports.getUsers = async (req, res, next) => {
 };
 
 /**
+ * Generate an admin-issued one-time password for a user.
+ */
+exports.generateUserOneTimePassword = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const expiresInMinutesRaw = Number(req.body?.expiresInMinutes || ADMIN_OTP_TTL_MINUTES);
+    const expiresInMinutes = Number.isFinite(expiresInMinutesRaw)
+      ? Math.min(Math.max(Math.round(expiresInMinutesRaw), 5), 120)
+      : ADMIN_OTP_TTL_MINUTES;
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    // Revoke previous unused OTPs so only the latest one is active.
+    await supabase
+      .from('admin_password_otps')
+      .update({ used_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .is('used_at', null);
+
+    const oneTimePassword = generateOneTimePassword();
+    const otpHash = hashValue(oneTimePassword);
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+    const { data: otpRecord, error: otpError } = await supabase
+      .from('admin_password_otps')
+      .insert({
+        user_id: user.id,
+        issued_by_admin_user_id: req.adminUser.id,
+        otp_hash: otpHash,
+        expires_at: expiresAt
+      })
+      .select('id, expires_at, created_at')
+      .single();
+
+    if (otpError) throw new Error(otpError.message);
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'generated_one_time_password',
+      'user',
+      user.id,
+      {
+        user_email: user.email,
+        user_name: user.name,
+        expires_at: expiresAt
+      },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    // Surface this security action in the admin notifications feed.
+    await supabase.from('push_notifications').insert({
+      admin_user_id: req.adminUser.id,
+      title: 'One-time password created',
+      message: `Temporary access code generated for ${user.email}`,
+      target_segment: 'admins',
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      total_recipients: 1,
+      successful_sends: 1,
+      failed_sends: 0
+    });
+
+    return res.status(201).json(success('One-time password created successfully', {
+      oneTimePassword,
+      expiresAt,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      },
+      otpRecord
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Get subscriptions with filters
  */
 exports.getSubscriptions = async (req, res, next) => {
@@ -567,6 +656,20 @@ exports.getSubscriptions = async (req, res, next) => {
     next(err);
   }
 };
+
+function generateOneTimePassword() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let otp = '';
+  for (let index = 0; index < 8; index += 1) {
+    const randomByte = crypto.randomBytes(1)[0];
+    otp += alphabet[randomByte % alphabet.length];
+  }
+  return otp;
+}
+
+function hashValue(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
 
 /**
  * Get push notifications

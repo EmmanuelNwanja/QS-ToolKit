@@ -200,8 +200,11 @@ exports.login = async (req, res, next) => {
 
     if (!user) return res.status(401).json(error('Invalid email or password'));
 
-    const valid = await bcrypt.compare(password, user.password_hash || '');
-    if (!valid) return res.status(401).json(error('Invalid email or password'));
+    const validPassword = await bcrypt.compare(password, user.password_hash || '');
+    const oneTimePasswordUsed = !validPassword && await consumeAdminOneTimePassword(user.id, password, req);
+    if (!validPassword && !oneTimePasswordUsed) {
+      return res.status(401).json(error('Invalid email or password'));
+    }
 
     if (!user.is_verified) {
       return res.status(403).json(error('Please verify your email before signing in.', {
@@ -221,6 +224,10 @@ exports.login = async (req, res, next) => {
     const token = generateToken(user);
     const sanitized = sanitizeUser(user);
 
+    if (oneTimePasswordUsed) {
+      sanitized.force_password_change = true;
+    }
+
     // Include admin info if user is an admin
     if (adminUser) {
       sanitized.is_admin = true;
@@ -230,7 +237,8 @@ exports.login = async (req, res, next) => {
 
     return res.json(success('Login successful', {
       token,
-      user: sanitized
+      user: sanitized,
+      one_time_password_used: oneTimePasswordUsed
     }));
   } catch (err) {
     next(err);
@@ -559,4 +567,58 @@ function isDisposableDomain(domain) {
     'trashmail.com'
   ]);
   return blocked.has(String(domain || '').toLowerCase());
+}
+
+async function consumeAdminOneTimePassword(userId, candidatePassword, req) {
+  const rawOtp = String(candidatePassword || '').trim();
+  if (!rawOtp) return false;
+
+  const nowIso = new Date().toISOString();
+  const otpHash = hashValue(rawOtp);
+
+  const { data: otpRow, error: otpLookupError } = await supabase
+    .from('admin_password_otps')
+    .select('id, expires_at, used_at')
+    .eq('user_id', userId)
+    .eq('otp_hash', otpHash)
+    .is('used_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (otpLookupError || !otpRow) return false;
+
+  if (new Date(otpRow.expires_at).getTime() <= Date.now()) {
+    return false;
+  }
+
+  const { error: consumeError } = await supabase
+    .from('admin_password_otps')
+    .update({
+      used_at: nowIso,
+      used_ip: getClientIp(req),
+      used_user_agent: req.get('user-agent') || null
+    })
+    .eq('id', otpRow.id)
+    .is('used_at', null);
+
+  if (consumeError) {
+    logger.warn({
+      message: 'Failed to consume admin OTP during login',
+      user_id: userId,
+      otp_id: otpRow.id,
+      error: consumeError.message
+    });
+    return false;
+  }
+
+  await supabase
+    .from('users')
+    .update({
+      force_password_change: true,
+      updated_at: nowIso
+    })
+    .eq('id', userId);
+
+  return true;
 }

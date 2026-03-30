@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [resending, setResending] = useState(false);
   const [emailIssueAlert, setEmailIssueAlert] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -60,6 +61,10 @@ export default function LoginPage() {
       // Small delay to ensure state is updated before redirect
       setTimeout(() => {
         // Redirect based on user type and onboarding status
+        if (user.force_password_change) {
+          router.push('/auth/force-change-password');
+          return;
+        }
         if (!user.onboarding_completed) {
           router.push('/auth/onboarding');
         } else if (user.is_admin) {
@@ -156,6 +161,15 @@ export default function LoginPage() {
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                   required
                 />
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(true)}
+                    className="text-sm font-medium text-primary-700 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
 
               <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
@@ -183,6 +197,41 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-5 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">Forgot Password</h3>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                To reset your access, please contact QSToolkit Admin support.
+              </p>
+              <p className="text-sm text-gray-700">
+                Email: <a href="mailto:support@qs.solnuv.com" className="font-semibold text-primary-700 underline">support@qs.solnuv.com</a>
+              </p>
+              <p className="text-sm text-gray-700">
+                Or contact the QSToolkit WhatsApp Support Group.
+              </p>
+              <p className="text-xs text-gray-500">
+                Admin will verify your account and issue a temporary one-time password.
+              </p>
+            </div>
+
+            <div className="flex justify-end border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

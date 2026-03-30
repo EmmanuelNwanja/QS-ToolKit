@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI, userActionsAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -14,6 +15,7 @@ export default function AdminUsers() {
   const [actionType, setActionType] = useState('');
   const [actionData, setActionData] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [otpResult, setOtpResult] = useState(null);
 
   const actionTypes = [
     { value: 'suspend', label: 'Suspend User', color: 'bg-red-500' },
@@ -23,7 +25,8 @@ export default function AdminUsers() {
     { value: 'extend_subscription', label: 'Extend Subscription', color: 'bg-cyan-500' },
     { value: 'revoke_subscription', label: 'Revoke Subscription', color: 'bg-orange-500' },
     { value: 'issue_credit', label: 'Issue Credit', color: 'bg-indigo-500' },
-    { value: 'process_refund', label: 'Process Refund', color: 'bg-pink-500' }
+    { value: 'process_refund', label: 'Process Refund', color: 'bg-pink-500' },
+    { value: 'generate_one_time_password', label: 'Generate One-Time Password', color: 'bg-amber-500' }
   ];
 
   useEffect(() => {
@@ -89,6 +92,19 @@ export default function AdminUsers() {
             method: actionData.method
           });
           break;
+        case 'generate_one_time_password': {
+          const response = await adminAPI.generateUserOneTimePassword(uid, {
+            expiresInMinutes: actionData.expiresInMinutes || 30
+          });
+          const payload = response.data || {};
+          setOtpResult({
+            oneTimePassword: payload.oneTimePassword,
+            expiresAt: payload.expiresAt,
+            user: payload.user
+          });
+          toast.success('One-time password created. Share it securely with the user.');
+          break;
+        }
         default:
           throw new Error(`Unknown action: ${actionType}`);
       }
@@ -96,11 +112,14 @@ export default function AdminUsers() {
       // Refresh users list
       await fetchUsers();
 
-      // Reset modal
-      setShowActionModal(false);
-      setActionType('');
-      setActionData({});
-      setSelectedUser(null);
+      // Keep modal open for OTP actions so admin can copy the generated password.
+      if (actionType !== 'generate_one_time_password') {
+        setShowActionModal(false);
+        setActionType('');
+        setActionData({});
+        setSelectedUser(null);
+      }
+
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to perform action');
@@ -114,6 +133,7 @@ export default function AdminUsers() {
     setSelectedUser(user);
     setActionType(action);
     setActionData({});
+    setOtpResult(null);
     setShowActionModal(true);
   };
 
@@ -383,6 +403,49 @@ export default function AdminUsers() {
                     </>
                   )}
 
+                  {actionType === 'generate_one_time_password' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        OTP Expiry (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={actionData.expiresInMinutes || 30}
+                        onChange={(e) => setActionData({ ...actionData, expiresInMinutes: parseInt(e.target.value, 10) || 30 })}
+                        min="5"
+                        max="120"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Default is 30 minutes. Only the latest OTP remains valid.
+                      </p>
+                    </div>
+                  )}
+
+                  {actionType === 'generate_one_time_password' && otpResult?.oneTimePassword && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-sm font-semibold text-amber-800">One-Time Password</p>
+                      <p className="mt-1 text-2xl font-bold tracking-widest text-amber-900">{otpResult.oneTimePassword}</p>
+                      <p className="mt-1 text-xs text-amber-700">
+                        Expires: {otpResult.expiresAt ? new Date(otpResult.expiresAt).toLocaleString() : 'N/A'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(otpResult.oneTimePassword);
+                            toast.success('One-time password copied');
+                          } catch {
+                            toast.error('Unable to copy. Please copy manually.');
+                          }
+                        }}
+                        className="mt-3 px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700"
+                      >
+                        Copy Password
+                      </button>
+                    </div>
+                  )}
+
                   {/* Buttons */}
                   <div className="flex gap-3 pt-4">
                     <button
@@ -398,6 +461,7 @@ export default function AdminUsers() {
                         setShowActionModal(false);
                         setActionType('');
                         setActionData({});
+                        setOtpResult(null);
                       }}
                       className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition"
                     >

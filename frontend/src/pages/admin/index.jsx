@@ -5,11 +5,14 @@ import { adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
+  const [securityAlerts, setSecurityAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [alertsLoading, setAlertsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchSecurityAlerts();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -21,6 +24,22 @@ export default function AdminDashboard() {
       setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSecurityAlerts = async () => {
+    try {
+      setAlertsLoading(true);
+      const response = await adminAPI.getActivityLogs({
+        action: 'generated_one_time_password',
+        limit: 8
+      });
+      setSecurityAlerts(response.data?.logs || []);
+    } catch (err) {
+      setSecurityAlerts([]);
+      console.error('Failed to load security alerts', err);
+    } finally {
+      setAlertsLoading(false);
     }
   };
 
@@ -159,10 +178,43 @@ export default function AdminDashboard() {
 
           {/* Recent Activity */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            <div className="text-center py-8 text-gray-500">
-              <p>No recent activity yet</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Security Notifications</h3>
+              <button
+                type="button"
+                onClick={fetchSecurityAlerts}
+                className="text-sm font-medium text-primary-700 hover:text-primary-800"
+                disabled={alertsLoading}
+              >
+                {alertsLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
             </div>
+
+            {alertsLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Loading security notifications...</p>
+              </div>
+            ) : securityAlerts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No OTP notifications yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {securityAlerts.map((log) => (
+                  <div key={log.id} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-900">
+                      One-time password created for {log.details?.user_email || 'a user'}
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      Expires {log.details?.expires_at ? new Date(log.details.expires_at).toLocaleString() : 'soon'}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Logged {new Date(log.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </AdminLayout>

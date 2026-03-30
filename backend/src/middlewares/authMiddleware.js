@@ -14,7 +14,7 @@ exports.protect = async (req, res, next) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, user_type, plan_id, subscription_status, org_role, organization_id, account_status')
+      .select('id, email, user_type, plan_id, subscription_status, org_role, organization_id, account_status, force_password_change')
       .eq('id', decoded.id)
       .single();
 
@@ -22,6 +22,16 @@ exports.protect = async (req, res, next) => {
 
     if (user.account_status === 'deleted') {
       return res.status(401).json(error('This account has been deleted'));
+    }
+
+    const originalUrl = String(req.originalUrl || '');
+    const isAllowedForceChangeRoute = originalUrl.startsWith('/api/v1/users/password/force-change')
+      || originalUrl.startsWith('/api/v1/auth/me');
+
+    if (user.force_password_change && !isAllowedForceChangeRoute) {
+      return res.status(403).json(error('Password change required before continuing.', {
+        code: 'FORCE_PASSWORD_CHANGE_REQUIRED'
+      }));
     }
 
     req.user = user;
