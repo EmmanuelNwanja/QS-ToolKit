@@ -36,15 +36,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — redirect to login
+// Handle 401 globally — redirect to login.
+// Excluded: /auth/me (handled by authStore.init() which guards against token races)
+// Excluded: any /auth/* page (user is mid-login; init() may still be resolving a stale token)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error.response?.status === 401 &&
-      typeof window !== 'undefined' &&
-      !window.location.pathname.startsWith('/auth/')
-    ) {
+    const requestUrl = String(error.config?.url || '');
+    const isInitRequest = requestUrl === '/auth/me' || requestUrl.endsWith('/auth/me');
+    const onAuthPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/');
+    if (error.response?.status === 401 && !isInitRequest && !onAuthPage) {
       localStorage.removeItem('qst_token');
       localStorage.removeItem('qst_user');
       window.location.href = '/auth/login';

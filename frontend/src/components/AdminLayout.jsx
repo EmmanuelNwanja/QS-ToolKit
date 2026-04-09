@@ -49,8 +49,10 @@ export default function AdminLayout({ children }) {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-pointer"
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-pointer border-0 p-0"
           onClick={() => setSidebarOpen(false)}
         />
       )}
