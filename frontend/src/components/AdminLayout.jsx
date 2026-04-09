@@ -50,7 +50,7 @@ export default function AdminLayout({ children }) {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-pointer"
           onClick={() => setSidebarOpen(false)}
         />
       )}

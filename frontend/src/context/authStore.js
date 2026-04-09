@@ -34,9 +34,15 @@ const useAuthStore = create((set, get) => ({
       localStorage.setItem('qst_user', JSON.stringify(user));
       set({ user, loading: false, initialized: true });
     } catch {
-      localStorage.removeItem('qst_token');
-      localStorage.removeItem('qst_user');
-      set({ user: null, token: null, loading: false, initialized: true });
+      // Only clear storage if the token hasn't been replaced by a concurrent login().
+      // If login() succeeded while /auth/me was in-flight, that new token must survive.
+      if (localStorage.getItem('qst_token') === token) {
+        localStorage.removeItem('qst_token');
+        localStorage.removeItem('qst_user');
+        set({ user: null, token: null, loading: false, initialized: true });
+      } else {
+        set({ loading: false, initialized: true });
+      }
     }
   },
 
