@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from '../context/authStore';
 import pushNotificationService from '../services/pushNotificationService';
@@ -6,51 +6,52 @@ import '../styles/globals.css';
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
 const SW_URL = `/service-worker.js?v=${encodeURIComponent(APP_VERSION)}`;
-const SW_RELOAD_GUARD_KEY = 'qst_sw_reloaded_version';
 
 export default function App({ Component, pageProps }) {
   const init = useAuthStore((s) => s.init);
   const user = useAuthStore((s) => s.user);
+  const [updateReady, setUpdateReady] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState(null);
 
   useEffect(() => {
     init();
   }, [init]);
 
-  // Register service worker for PWA support
+  // Register service worker and detect updates
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     let isMounted = true;
     let visibilityHandler = null;
 
-    const requestActivation = (registration) => {
+    const trackWaiting = (registration) => {
       if (registration.waiting) {
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        setWaitingWorker(registration.waiting);
+        setUpdateReady(true);
       }
+    };
+
+    const onUpdateFound = (registration) => {
       registration.addEventListener('updatefound', () => {
         const installing = registration.installing;
         if (!installing) return;
         installing.addEventListener('statechange', () => {
+          // New worker installed and waiting — show prompt instead of forcing reload
           if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-            installing.postMessage({ type: 'SKIP_WAITING' });
+            if (!isMounted) return;
+            setWaitingWorker(installing);
+            setUpdateReady(true);
           }
         });
       });
     };
 
-    const onControllerChange = () => {
-      if (sessionStorage.getItem(SW_RELOAD_GUARD_KEY) === APP_VERSION) return;
-      sessionStorage.setItem(SW_RELOAD_GUARD_KEY, APP_VERSION);
-      window.location.reload();
-    };
-
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-
     navigator.serviceWorker
       .register(SW_URL)
       .then((registration) => {
         if (!isMounted) return;
-        requestActivation(registration);
+        trackWaiting(registration);
+        onUpdateFound(registration);
         registration.update().catch(() => {});
 
         visibilityHandler = () => {
@@ -64,12 +65,19 @@ export default function App({ Component, pageProps }) {
 
     return () => {
       isMounted = false;
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
       if (visibilityHandler) {
         document.removeEventListener('visibilitychange', visibilityHandler);
       }
     };
   }, []);
+
+  // User-triggered update: tell waiting worker to activate, then reload once
+  const applyUpdate = useCallback(() => {
+    if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    }, { once: true });
+  }, [waitingWorker]);
 
   // Initialize push notifications once the user is authenticated
   useEffect(() => {
@@ -86,6 +94,27 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       {getLayout(<Component {...pageProps} />)}
+
+      {/* Update available banner — shown when a new service worker is waiting */}
+      {updateReady && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-primary-800 px-5 py-3 text-white shadow-xl">
+          <span className="text-sm font-medium">A new version of QSToolkit is available.</span>
+          <button
+            onClick={applyUpdate}
+            className="rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-gold-600 transition-colors"
+          >
+            Reload
+          </button>
+          <button
+            onClick={() => setUpdateReady(false)}
+            className="text-primary-300 hover:text-white text-xs"
+            aria-label="Dismiss update banner"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <Toaster
         position="top-right"
         toastOptions={{
