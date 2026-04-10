@@ -3,11 +3,10 @@
  * Handles: push notifications, offline caching, app shell caching
  */
 
-const CACHE_NAME = 'qstoolkit-v3';
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE_NAME = `qstoolkit-${SW_VERSION}`;
 const STATIC_ASSETS = [
-  '/',
   '/favicon.svg',
-  '/manifest.json',
   '/icons/icon.svg',
   '/icons/maskable-icon.svg',
 ];
@@ -137,6 +136,9 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests — always go network
   if (url.pathname.startsWith('/api/')) return;
 
+  // Skip Next.js data requests — always go network
+  if (url.pathname.startsWith('/_next/data/')) return;
+
   // Skip chrome-extension and non-http requests
   if (!url.protocol.startsWith('http')) return;
 
@@ -144,8 +146,16 @@ self.addEventListener('fetch', (event) => {
   // Caching them here causes stale chunk errors after new deployments.
   if (url.pathname.startsWith('/_next/')) return;
 
-  // Only public/ static assets (icons, manifest, fonts) use cache-first.
-  const isPublicAsset = /\.(woff2?|ttf|svg|png|jpg|ico|webp|json)(\?.*)?$/.test(url.pathname)
+  // HTML navigations: network-first only, no cache write to avoid stale authenticated pages.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
+  // Only public static assets (icons/fonts/images) use cache-first.
+  const isPublicAsset = /\.(woff2?|ttf|svg|png|jpg|ico|webp)(\?.*)?$/.test(url.pathname)
     && !url.pathname.startsWith('/_next/');
   if (isPublicAsset) {
     event.respondWith(
@@ -164,16 +174,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML pages: network-first, fall back to cache, then offline shell
+  // Other requests: network-first with cache fallback only (no cache write).
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        if (response && response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        }
-        return response;
-      })
+      .then((response) => response)
       .catch(() =>
         caches.match(event.request).then((cached) => cached || caches.match('/'))
       )

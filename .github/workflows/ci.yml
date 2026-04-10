@@ -59,6 +59,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: pk_test_placeholder
           NEXT_PUBLIC_APP_URL: https://qs.solnuv.com
+          NEXT_PUBLIC_APP_VERSION: ${{ github.sha }}
 
   # ── Daily jobs: runs on schedule OR manual dispatch ───────────
   daily-jobs:

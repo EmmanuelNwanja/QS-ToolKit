@@ -9,6 +9,8 @@
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
+const SW_URL = `/service-worker.js?v=${encodeURIComponent(APP_VERSION)}`;
 
 class PushNotificationService {
   constructor() {
@@ -32,7 +34,7 @@ class PushNotificationService {
       }
 
       // Register service worker
-      this.registration = await navigator.serviceWorker.register('/service-worker.js', {
+      this.registration = await navigator.serviceWorker.register(SW_URL, {
         scope: '/'
       });
       console.log('[Push] Service worker registered:', this.registration);
