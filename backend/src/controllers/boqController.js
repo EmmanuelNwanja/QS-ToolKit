@@ -223,20 +223,36 @@ exports.exportExcel = async (req, res, next) => {
 
 // ─── Helpers ──────────────────────────────────────────────────
 async function getFullBoq(boqId, userId) {
-  return singleOrNull(
+  const boq = await singleOrNull(
     supabase
     .from('boq_documents')
     .select(`
       *,
-      projects(title, client_name, location),
       boq_sections(
         *,
-        boq_items(* )
+        boq_items(*)
       )
     `)
     .eq('id', boqId)
     .eq('user_id', userId)
   );
+
+  if (!boq) return null;
+
+  // Fetch project separately if project_id exists
+  if (boq.project_id) {
+    const project = await singleOrNull(
+      supabase
+        .from('projects')
+        .select('id, title, client_name, location')
+        .eq('id', boq.project_id)
+    );
+    boq.projects = project || null;
+  } else {
+    boq.projects = null;
+  }
+
+  return boq;
 }
 
 async function getBrandingForUser(userId) {

@@ -239,13 +239,30 @@ exports.sendToClient = async (req, res, next) => {
 
 // ─── Helpers ──────────────────────────────────────────────────
 async function getFullInvoice(invoiceId, userId) {
-  return singleOrNull(
+  const invoice = await singleOrNull(
     supabase
-    .from('invoices')
-    .select('*, invoice_items(*), projects(title)')
-    .eq('id', invoiceId)
-    .eq('user_id', userId)
+      .from('invoices')
+      .select('*, invoice_items(*)')
+      .eq('id', invoiceId)
+      .eq('user_id', userId)
   );
+
+  if (!invoice) return null;
+
+  // Fetch project separately if project_id exists
+  if (invoice.project_id) {
+    const project = await singleOrNull(
+      supabase
+        .from('projects')
+        .select('id, title')
+        .eq('id', invoice.project_id)
+    );
+    invoice.projects = project ? { title: project.title } : null;
+  } else {
+    invoice.projects = null;
+  }
+
+  return invoice;
 }
 
 async function getBrandingForUser(userId) {
