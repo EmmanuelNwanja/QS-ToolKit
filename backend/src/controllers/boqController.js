@@ -38,9 +38,12 @@ exports.create = async (req, res, next) => {
       location: req.body.location,
       prepared_by: req.body.prepared_by,
       checked_by: req.body.checked_by,
-      date_prepared: req.body.date_prepared,
+      date_prepared: req.body.date_prepared ? req.body.date_prepared : undefined, // Empty string becomes undefined (uses default)
       status: req.body.status
     };
+
+    // Remove undefined keys to let DB use defaults
+    Object.keys(boqData).forEach(key => boqData[key] === undefined && delete boqData[key]);
 
     const { data: boq, error: boqErr } = await supabase
       .from('boq_documents')
@@ -97,7 +100,11 @@ exports.update = async (req, res, next) => {
       updated_at: new Date()
     };
 
-    // Remove undefined keys to avoid overwriting columns unintentionally.
+    // Sanitize empty date strings to null, then remove undefined/null keys
+    if (updatePayload.date_prepared === '' || updatePayload.date_prepared === null) {
+      delete updatePayload.date_prepared; // Remove to avoid overwriting with null
+    }
+
     Object.keys(updatePayload).forEach((key) => {
       if (updatePayload[key] === undefined) delete updatePayload[key];
     });

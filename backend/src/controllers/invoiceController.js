@@ -80,10 +80,19 @@ exports.create = async (req, res, next) => {
     const discountAmount = subtotal * ((invoiceData.discount_percent || 0) / 100);
     const total = subtotal + vatAmount - discountAmount;
 
+    // Sanitize date fields: convert empty strings to null or use defaults
+    const sanitizedData = { ...invoiceData };
+    if (!sanitizedData.issue_date || sanitizedData.issue_date === '') {
+      delete sanitizedData.issue_date; // Use DB default (CURRENT_DATE)
+    }
+    if (!sanitizedData.due_date || sanitizedData.due_date === '') {
+      sanitizedData.due_date = null; // Allow null for optional due_date
+    }
+
     const { data: invoice, error: invErr } = await supabase
       .from('invoices')
       .insert({
-        ...invoiceData,
+        ...sanitizedData,
         invoice_type: invoiceType,
         client_name: resolvedClientName,
         user_id: req.user.id,
@@ -156,6 +165,14 @@ exports.update = async (req, res, next) => {
       );
 
       if (itemErr) throw itemErr;
+    }
+
+    // Sanitize date fields: convert empty strings to null
+    if (updates.issue_date === '') {
+      updates.issue_date = null;
+    }
+    if (updates.due_date === '') {
+      updates.due_date = null;
     }
 
     const { data, error: err } = await supabase
