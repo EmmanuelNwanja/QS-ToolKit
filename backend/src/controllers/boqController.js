@@ -2,6 +2,7 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const pdfService = require('../services/pdfService');
 const excelService = require('../services/excelService');
+const { singleOrNull } = require('../utils/supabaseQuery');
 
 // ─── List BOQs ────────────────────────────────────────────────
 exports.list = async (req, res, next) => {
@@ -74,7 +75,7 @@ exports.create = async (req, res, next) => {
 exports.get = async (req, res, next) => {
   try {
     const boq = await getFullBoq(req.params.id, req.user.id);
-    if (!boq) return res.status(404).json(error('BOQ not found'));
+    if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
     return res.json(success('BOQ details', { boq }));
   } catch (err) { next(err); }
 };
@@ -109,7 +110,7 @@ exports.update = async (req, res, next) => {
       .select()
       .single();
 
-    if (err || !data) return res.status(404).json(error('BOQ not found'));
+    if (err || !data) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
     return res.json(success('BOQ updated', { boq: data }));
   } catch (err) { next(err); }
 };
@@ -184,10 +185,9 @@ exports.removeItem = async (req, res, next) => {
 exports.exportPdf = async (req, res, next) => {
   try {
     const boq = await getFullBoq(req.params.id, req.user.id);
-    if (!boq) return res.status(404).json(error('BOQ not found'));
+    if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
 
-    const { data: branding } = await supabase
-      .from('branding_settings').select('*').eq('user_id', req.user.id).single();
+    const branding = await getBrandingForUser(req.user.id);
 
     const pdfBuffer = await pdfService.generateBoqPdf(boq, branding);
 
@@ -209,10 +209,9 @@ exports.exportPdf = async (req, res, next) => {
 exports.exportExcel = async (req, res, next) => {
   try {
     const boq = await getFullBoq(req.params.id, req.user.id);
-    if (!boq) return res.status(404).json(error('BOQ not found'));
+    if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
 
-    const { data: branding } = await supabase
-      .from('branding_settings').select('*').eq('user_id', req.user.id).single();
+    const branding = await getBrandingForUser(req.user.id);
 
     const buffer = await excelService.generateBoqExcel(boq, branding);
 
@@ -224,7 +223,8 @@ exports.exportExcel = async (req, res, next) => {
 
 // ─── Helpers ──────────────────────────────────────────────────
 async function getFullBoq(boqId, userId) {
-  const { data } = await supabase
+  return singleOrNull(
+    supabase
     .from('boq_documents')
     .select(`
       *,
@@ -236,9 +236,16 @@ async function getFullBoq(boqId, userId) {
     `)
     .eq('id', boqId)
     .eq('user_id', userId)
-    .single();
+  );
+}
 
-  return data;
+async function getBrandingForUser(userId) {
+  return singleOrNull(
+    supabase
+    .from('branding_settings')
+    .select('*')
+    .eq('user_id', userId)
+  );
 }
 
 async function recalcTotals(boqId) {

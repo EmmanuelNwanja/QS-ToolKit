@@ -3,6 +3,7 @@ const { success, error } = require('../utils/responseHelper');
 const pdfService = require('../services/pdfService');
 const excelService = require('../services/excelService');
 const emailService = require('../services/emailService');
+const { singleOrNull } = require('../utils/supabaseQuery');
 
 exports.list = async (req, res, next) => {
   try {
@@ -25,6 +26,23 @@ exports.list = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const { items = [], ...invoiceData } = req.body;
+
+    if (!Array.isArray(items)) {
+      return res.status(400).json(error('Items must be an array', { code: 'INVALID_ITEMS_FORMAT' }));
+    }
+
+    for (const item of items) {
+      const description = String(item?.description || '').trim();
+      const quantity = Number(item?.quantity);
+      const unitPrice = Number(item?.unit_price);
+
+      if (!description || !Number.isFinite(quantity) || !Number.isFinite(unitPrice) || quantity <= 0 || unitPrice < 0) {
+        return res.status(400).json(error('Each item must include a description, quantity > 0, and unit price >= 0', {
+          code: 'INVALID_ITEMS_FORMAT'
+        }));
+      }
+    }
+
     const allowedTypes = ['invoice', 'quotation', 'valuation', 'proforma'];
     const invoiceType = allowedTypes.includes(invoiceData.invoice_type)
       ? invoiceData.invoice_type
@@ -41,17 +59,19 @@ exports.create = async (req, res, next) => {
 
     let resolvedClientName = (invoiceData.client_name || '').trim();
     if (!resolvedClientName && invoiceData.project_id) {
-      const { data: project } = await supabase
+      const project = await singleOrNull(
+        supabase
         .from('projects')
         .select('client_name')
         .eq('id', invoiceData.project_id)
         .eq('user_id', req.user.id)
-        .single();
+      );
+
       resolvedClientName = (project?.client_name || '').trim();
     }
 
     if (!resolvedClientName) {
-      return res.status(400).json(error('Client name is required to create this document'));
+      return res.status(400).json(error('Client name is required to create this document', { code: 'CLIENT_NAME_REQUIRED' }));
     }
 
     // Calculate totals
@@ -79,9 +99,11 @@ exports.create = async (req, res, next) => {
     if (invErr) throw invErr;
 
     if (items.length > 0) {
-      await supabase.from('invoice_items').insert(
+      const { error: itemErr } = await supabase.from('invoice_items').insert(
         items.map((item, i) => ({ ...item, invoice_id: invoice.id, sort_order: i }))
       );
+
+      if (itemErr) throw itemErr;
     }
 
     const fullInvoice = await getFullInvoice(invoice.id, req.user.id);
@@ -92,7 +114,7 @@ exports.create = async (req, res, next) => {
 exports.get = async (req, res, next) => {
   try {
     const invoice = await getFullInvoice(req.params.id, req.user.id);
-    if (!invoice) return res.status(404).json(error('Invoice not found'));
+    if (!invoice) return res.status(404).json(error('Invoice not found', { code: 'INVOICE_NOT_FOUND' }));
     return res.json(success('Invoice details', { invoice }));
   } catch (err) { next(err); }
 };
@@ -101,7 +123,23 @@ exports.update = async (req, res, next) => {
   try {
     const { items, ...updates } = req.body;
 
-    if (items) {
+    if (items !== undefined) {
+      if (!Array.isArray(items)) {
+        return res.status(400).json(error('Items must be an array', { code: 'INVALID_ITEMS_FORMAT' }));
+      }
+
+      for (const item of items) {
+        const description = String(item?.description || '').trim();
+        const quantity = Number(item?.quantity);
+        const unitPrice = Number(item?.unit_price);
+
+        if (!description || !Number.isFinite(quantity) || !Number.isFinite(unitPrice) || quantity <= 0 || unitPrice < 0) {
+          return res.status(400).json(error('Each item must include a description, quantity > 0, and unit price >= 0', {
+            code: 'INVALID_ITEMS_FORMAT'
+          }));
+        }
+      }
+
       // Recalculate totals
       const subtotal = items.reduce((s, i) => s + (i.quantity * i.unit_price), 0);
       const vatAmount = subtotal * ((updates.vat_percent || 7.5) / 100);
@@ -113,9 +151,11 @@ exports.update = async (req, res, next) => {
 
       // Replace items
       await supabase.from('invoice_items').delete().eq('invoice_id', req.params.id);
-      await supabase.from('invoice_items').insert(
+      const { error: itemErr } = await supabase.from('invoice_items').insert(
         items.map((item, i) => ({ ...item, invoice_id: req.params.id, sort_order: i }))
       );
+
+      if (itemErr) throw itemErr;
     }
 
     const { data, error: err } = await supabase
@@ -126,7 +166,7 @@ exports.update = async (req, res, next) => {
       .select()
       .single();
 
-    if (err || !data) return res.status(404).json(error('Invoice not found'));
+    if (err || !data) return res.status(404).json(error('Invoice not found', { code: 'INVOICE_NOT_FOUND' }));
     return res.json(success('Invoice updated', { invoice: data }));
   } catch (err) { next(err); }
 };
@@ -141,10 +181,9 @@ exports.remove = async (req, res, next) => {
 exports.exportPdf = async (req, res, next) => {
   try {
     const invoice = await getFullInvoice(req.params.id, req.user.id);
-    if (!invoice) return res.status(404).json(error('Invoice not found'));
+    if (!invoice) return res.status(404).json(error('Invoice not found', { code: 'INVOICE_NOT_FOUND' }));
 
-    const { data: branding } = await supabase
-      .from('branding_settings').select('*').eq('user_id', req.user.id).single();
+    const branding = await getBrandingForUser(req.user.id);
 
     const pdfBuffer = await pdfService.generateInvoicePdf(invoice, branding);
     res.setHeader('Content-Type', 'application/pdf');
@@ -164,10 +203,9 @@ exports.exportPdf = async (req, res, next) => {
 exports.exportExcel = async (req, res, next) => {
   try {
     const invoice = await getFullInvoice(req.params.id, req.user.id);
-    if (!invoice) return res.status(404).json(error('Invoice not found'));
+    if (!invoice) return res.status(404).json(error('Invoice not found', { code: 'INVOICE_NOT_FOUND' }));
 
-    const { data: branding } = await supabase
-      .from('branding_settings').select('*').eq('user_id', req.user.id).single();
+    const branding = await getBrandingForUser(req.user.id);
 
     const buffer = await excelService.generateInvoiceExcel(invoice, branding);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -179,10 +217,9 @@ exports.exportExcel = async (req, res, next) => {
 exports.sendToClient = async (req, res, next) => {
   try {
     const invoice = await getFullInvoice(req.params.id, req.user.id);
-    if (!invoice) return res.status(404).json(error('Invoice not found'));
+    if (!invoice) return res.status(404).json(error('Invoice not found', { code: 'INVOICE_NOT_FOUND' }));
 
-    const { data: branding } = await supabase
-      .from('branding_settings').select('*').eq('user_id', req.user.id).single();
+    const branding = await getBrandingForUser(req.user.id);
 
     const pdfBuffer = await pdfService.generateInvoicePdf(invoice, branding);
     await emailService.sendInvoiceToClient(invoice, branding, pdfBuffer);
@@ -202,11 +239,20 @@ exports.sendToClient = async (req, res, next) => {
 
 // ─── Helpers ──────────────────────────────────────────────────
 async function getFullInvoice(invoiceId, userId) {
-  const { data } = await supabase
+  return singleOrNull(
+    supabase
     .from('invoices')
     .select('*, invoice_items(*), projects(title)')
     .eq('id', invoiceId)
     .eq('user_id', userId)
-    .single();
-  return data;
+  );
+}
+
+async function getBrandingForUser(userId) {
+  return singleOrNull(
+    supabase
+    .from('branding_settings')
+    .select('*')
+    .eq('user_id', userId)
+  );
 }

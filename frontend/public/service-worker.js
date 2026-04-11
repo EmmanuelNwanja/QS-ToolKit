@@ -11,6 +11,13 @@ const STATIC_ASSETS = [
   '/icons/maskable-icon.svg',
 ];
 
+function offlineFallbackResponse() {
+  return new Response('You appear to be offline. Please reconnect and try again.', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
+}
+
 // ── INSTALLATION ───────────────────────────────────────────
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
@@ -149,7 +156,10 @@ self.addEventListener('fetch', (event) => {
   // HTML navigations: network-first only, no cache write to avoid stale authenticated pages.
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/'))
+      fetch(event.request).catch(async () => {
+        const cachedShell = await caches.match('/');
+        return cachedShell || offlineFallbackResponse();
+      })
     );
     return;
   }
@@ -178,9 +188,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => response)
-      .catch(() =>
-        caches.match(event.request).then((cached) => cached || caches.match('/'))
-      )
+      .catch(async () => {
+        const cachedRequest = await caches.match(event.request);
+        if (cachedRequest) return cachedRequest;
+        const cachedShell = await caches.match('/');
+        return cachedShell || offlineFallbackResponse();
+      })
   );
 });
 

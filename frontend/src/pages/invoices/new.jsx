@@ -95,11 +95,25 @@ export default function NewInvoicePage() {
       toast.success('Invoice created successfully');
       router.push(`/projects/${form.project_id}`);
     } catch (err) {
-      if (err.response?.data?.message?.toLowerCase().includes('client name')) {
+      const errorCode = err.response?.data?.code;
+      const errorMessage = err.response?.data?.message || '';
+
+      if (errorCode === 'CLIENT_NAME_REQUIRED' || errorMessage.toLowerCase().includes('client name')) {
         toast.error('Client name is required. Enter it here or set it on the project first.');
         return;
       }
-      toast.error(err.response?.data?.message || 'Could not create invoice');
+
+      if (errorCode === 'INVALID_ITEMS_FORMAT') {
+        toast.error('One or more invoice items are invalid. Check descriptions, quantities, and prices.');
+        return;
+      }
+
+      if (!err.response) {
+        toast.error('Network issue detected. Check your internet connection and try again.');
+        return;
+      }
+
+      toast.error(errorMessage || 'Could not create invoice');
     } finally {
       setLoading(false);
     }

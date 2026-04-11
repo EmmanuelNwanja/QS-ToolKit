@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
+const { singleOrNull } = require('../utils/supabaseQuery');
 
 exports.list = async (req, res, next) => {
   try {
@@ -43,29 +44,31 @@ exports.create = async (req, res, next) => {
 
 exports.get = async (req, res, next) => {
   try {
-    const { data, error: err } = await supabase
+    const data = await singleOrNull(
+      supabase
       .from('projects')
       .select('*, boq_documents(*), invoices(id, invoice_type, total_amount, status), feedback_links(id, is_active), project_milestones(*)')
       .eq('id', req.params.id)
       .eq('user_id', req.user.id)
-      .single();
+    );
 
-    if (err || !data) return res.status(404).json(error('Project not found'));
+    if (!data) return res.status(404).json(error('Project not found', { code: 'PROJECT_NOT_FOUND' }));
     return res.json(success('Project details', { project: data }));
   } catch (err) { next(err); }
 };
 
 exports.update = async (req, res, next) => {
   try {
-    const { data, error: err } = await supabase
+    const data = await singleOrNull(
+      supabase
       .from('projects')
       .update({ ...req.body, updated_at: new Date() })
       .eq('id', req.params.id)
       .eq('user_id', req.user.id)
       .select()
-      .single();
+    );
 
-    if (err || !data) return res.status(404).json(error('Project not found'));
+    if (!data) return res.status(404).json(error('Project not found', { code: 'PROJECT_NOT_FOUND' }));
     return res.json(success('Project updated', { project: data }));
   } catch (err) { next(err); }
 };
