@@ -30,7 +30,7 @@ exports.register = async (req, res, next) => {
 
     const emailDomain = normalizedEmail.split('@')[1] || '';
     if (isDisposableDomain(emailDomain)) {
-      return res.status(400).json(error('Disposable email domains are not allowed'));
+      return res.status(400).json(error('Disposable email domains are not allowed', { code: 'DISPOSABLE_EMAIL' }));
     }
 
     // Check duplicate
@@ -40,7 +40,7 @@ exports.register = async (req, res, next) => {
       .eq('email', normalizedEmail)
       .single();
 
-    if (existing) return res.status(409).json(error('Email already registered'));
+    if (existing) return res.status(409).json(error('Email already registered', { code: 'EMAIL_CONFLICT' }));
 
     const deviceHash = hashValue(deviceId);
     const emailHash = hashValue(normalizedEmail);
@@ -198,12 +198,12 @@ exports.login = async (req, res, next) => {
       .eq('email', normalizedEmail)
       .single();
 
-    if (!user) return res.status(401).json(error('Invalid email or password'));
+    if (!user) return res.status(401).json(error('Invalid email or password', { code: 'INVALID_CREDENTIALS' }));
 
     const validPassword = await bcrypt.compare(password, user.password_hash || '');
     const oneTimePasswordUsed = !validPassword && await consumeAdminOneTimePassword(user.id, password, req);
     if (!validPassword && !oneTimePasswordUsed) {
-      return res.status(401).json(error('Invalid email or password'));
+      return res.status(401).json(error('Invalid email or password', { code: 'INVALID_CREDENTIALS' }));
     }
 
     if (!user.is_verified) {
@@ -388,15 +388,15 @@ exports.verifyEmail = async (req, res, next) => {
       .single();
 
     if (!tokenRow) {
-      return res.status(400).json(error('Invalid verification token'));
+      return res.status(400).json(error('Invalid verification token', { code: 'INVALID_TOKEN' }));
     }
 
     if (tokenRow.used_at) {
-      return res.status(400).json(error('Verification token has already been used'));
+      return res.status(400).json(error('Verification token has already been used', { code: 'TOKEN_ALREADY_USED' }));
     }
 
     if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-      return res.status(400).json(error('Verification token has expired'));
+      return res.status(400).json(error('Verification token has expired', { code: 'TOKEN_EXPIRED' }));
     }
 
     await supabase
