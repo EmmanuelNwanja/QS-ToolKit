@@ -94,7 +94,7 @@ export default function PublicFeedbackPage() {
             <div className="card text-center py-12">
               <p className="text-4xl mb-3">✅</p>
               <h2 className="font-display text-xl font-bold text-primary-800 mb-2">Already Submitted</h2>
-              <p className="text-gray-500 text-sm">You've already left feedback for this project. Thank you!</p>
+              <p className="text-gray-500 text-sm">You&apos;ve already left feedback for this project. Thank you!</p>
             </div>
           ) : submitted ? (
             <div className="card text-center py-12">
@@ -107,12 +107,12 @@ export default function PublicFeedbackPage() {
             <form onSubmit={handleSubmit} className="card space-y-6">
               <div className="pb-4 border-b border-gray-100">
                 <h1 className="font-display text-xl font-bold text-primary-800">
-                  Rate {link.company_name || link.surveyor_name}'s Work
+                  Rate {link.company_name || link.surveyor_name}&apos;s Work
                 </h1>
                 <p className="text-gray-500 text-sm mt-1">Project: <strong>{link.project_title}</strong></p>
                 {link.message && (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800 italic">
-                    "{link.message}"
+                    &quot;{link.message}&quot;
                   </div>
                 )}
               </div>

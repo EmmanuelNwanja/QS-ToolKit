@@ -182,7 +182,7 @@ export default function FeedbackPage() {
                       ))}
                     </div>
                     {r.comment && (
-                      <p className="mt-3 text-sm text-gray-600 italic border-l-2 border-gold-300 pl-3">"{r.comment}"</p>
+                      <p className="mt-3 text-sm text-gray-600 italic border-l-2 border-gold-300 pl-3">&quot;{r.comment}&quot;</p>
                     )}
                   </div>
                 ))}

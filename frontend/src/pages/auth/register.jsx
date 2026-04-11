@@ -77,7 +77,7 @@ export default function RegisterPage() {
               <span className="font-display text-2xl font-bold text-primary-800">QSToolkit</span>
             </Link>
             <h1 className="font-display text-2xl font-bold text-primary-800">Create Your Account</h1>
-            <p className="text-gray-500 text-sm mt-1">Join Nigeria's QS professional community</p>
+            <p className="text-gray-500 text-sm mt-1">Join Nigeria&apos;s QS professional community</p>
           </div>
 
           {/* Step pills */}

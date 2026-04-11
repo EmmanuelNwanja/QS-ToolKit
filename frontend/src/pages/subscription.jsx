@@ -207,7 +207,7 @@ export default function SubscriptionPage() {
                 <p className="font-semibold text-gold-800">You have a pending gift subscription!</p>
                 <p className="text-sm text-gold-700 mt-0.5">
                   Someone has paid for a <strong>{mySub.pending_gift.plan_name}</strong> plan for you.
-                  It will activate automatically. Contact support if it hasn't activated within 24 hours.
+                  It will activate automatically. Contact support if it hasn&apos;t activated within 24 hours.
                 </p>
               </div>
             </div>
@@ -408,7 +408,7 @@ export default function SubscriptionPage() {
 
               <form onSubmit={handlePhilSubmit} className="space-y-4">
                 <div>
-                  <label className="label">Recipient's Email <span className="text-red-500">*</span></label>
+                  <label className="label">Recipient&apos;s Email <span className="text-red-500">*</span></label>
                   <input type="email" className="input" placeholder="recipient@email.com" required
                     value={philForm.beneficiary_email}
                     onChange={e => setPhilForm(f => ({ ...f, beneficiary_email: e.target.value }))} />
@@ -446,7 +446,7 @@ export default function SubscriptionPage() {
                 </div>
 
                 <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 text-xs text-gold-800">
-                  🔔 If the recipient doesn't have a QSToolkit account yet, the subscription will activate automatically when they register with this email address.
+                  🔔 If the recipient doesn&apos;t have a QSToolkit account yet, the subscription will activate automatically when they register with this email address.
                 </div>
 
                 <div className="flex gap-3 pt-1">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI } from '../../services/api';
@@ -379,8 +380,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <a
-                href="/admin/promo-codes"
+              <Link href="/admin/promo-codes"
                 className="flex items-center gap-3 p-4 border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
               >
                 <span className="text-2xl">🎟️</span>
@@ -388,10 +388,9 @@ export default function AdminDashboard() {
                   <p className="font-medium text-gray-900">Manage Promo Codes</p>
                   <p className="text-sm text-gray-600">Create and manage discount codes</p>
                 </div>
-              </a>
+              </Link>
 
-              <a
-                href="/admin/users"
+              <Link href="/admin/users"
                 className="flex items-center gap-3 p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors"
               >
                 <span className="text-2xl">👥</span>
@@ -399,10 +398,9 @@ export default function AdminDashboard() {
                   <p className="font-medium text-gray-900">Manage Users</p>
                   <p className="text-sm text-gray-600">View and manage user accounts</p>
                 </div>
-              </a>
+              </Link>
 
-              <a
-                href="/admin/notifications"
+              <Link href="/admin/notifications"
                 className="flex items-center gap-3 p-4 border-2 border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
               >
                 <span className="text-2xl">🔔</span>
@@ -410,11 +408,10 @@ export default function AdminDashboard() {
                   <p className="font-medium text-gray-900">Send Notifications</p>
                   <p className="text-sm text-gray-600">Push notifications to users</p>
                 </div>
-              </a>
+              </Link>
 
               {user?.admin_role === 'super_admin' && (
-                <a
-                  href="/admin/paystack-plans"
+                <Link href="/admin/paystack-plans"
                   className="flex items-center gap-3 p-4 border-2 border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
                 >
                   <span className="text-2xl">🧩</span>
@@ -422,7 +419,7 @@ export default function AdminDashboard() {
                     <p className="font-medium text-gray-900">Paystack Plan Mapping</p>
                     <p className="text-sm text-gray-600">Manage recurring billing plan codes</p>
                   </div>
-                </a>
+                </Link>
               )}
             </div>
           </div>

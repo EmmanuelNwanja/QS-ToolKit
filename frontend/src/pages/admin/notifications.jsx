@@ -204,7 +204,7 @@ export default function PushNotifications() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-blue-900 mb-2">Web Push Notifications</h3>
             <p className="text-blue-800 mb-4">
-              Send targeted push notifications to your users' browsers. Users must have subscribed to notifications on your platform first.
+              Send targeted push notifications to your users&apos; browsers. Users must have subscribed to notifications on your platform first.
             </p>
             <div className="text-sm text-blue-700 space-y-1">
               <p>✓ Segment by plan type (all, free, paid, basic, pro)</p>
