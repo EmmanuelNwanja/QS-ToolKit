@@ -22,18 +22,10 @@ export default function Layout({ children, title }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const debugLog = (hypothesisId, message, data = {}) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7411/ingest/a7db3b80-8b35-473e-aa3b-8025557c0afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b45a5f'},body:JSON.stringify({sessionId:'b45a5f',runId:'initial',hypothesisId,location:'frontend/src/components/Layout.jsx:debugLog',message,data,timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  };
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
-    // #region agent log
-    debugLog('H1', 'Route change closed sidebar', { pathname: router.pathname });
-    // #endregion
   }, [router.pathname]);
 
   // PWA install prompt
@@ -45,16 +37,6 @@ export default function Layout({ children, title }) {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    debugLog('H2', 'Sidebar state changed', {
-      sidebarOpen,
-      pathname: router.pathname,
-      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : null
-    });
-    // #endregion
-  }, [sidebarOpen, router.pathname]);
-
-  useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
     const updateViewportMode = () => {
@@ -63,13 +45,6 @@ export default function Layout({ children, title }) {
       if (!mobile) {
         setSidebarOpen(false);
       }
-      // #region agent log
-      debugLog('H5', 'Viewport mode updated', {
-        mobile,
-        viewportWidth: window.innerWidth,
-        pathname: router.pathname
-      });
-      // #endregion
     };
 
     updateViewportMode();
@@ -82,9 +57,6 @@ export default function Layout({ children, title }) {
 
     const onEsc = (event) => {
       if (event.key !== 'Escape') return;
-      // #region agent log
-      debugLog('H6', 'Escape pressed to close sidebar', { pathname: router.pathname });
-      // #endregion
       setSidebarOpen(false);
     };
 
@@ -114,12 +86,6 @@ export default function Layout({ children, title }) {
           aria-label="Close menu"
           className="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-pointer border-0 p-0"
           onClick={() => {
-            // #region agent log
-            debugLog('H3', 'Overlay clicked to close sidebar', {
-              pathname: router.pathname,
-              viewportWidth: typeof window !== 'undefined' ? window.innerWidth : null
-            });
-            // #endregion
             setSidebarOpen(false);
           }}
         />
@@ -195,12 +161,6 @@ export default function Layout({ children, title }) {
             <button
               className="lg:hidden text-gray-500 hover:text-primary-700 p-1"
               onClick={() => {
-                // #region agent log
-                debugLog('H4', 'Hamburger clicked to open sidebar', {
-                  pathname: router.pathname,
-                  viewportWidth: typeof window !== 'undefined' ? window.innerWidth : null
-                });
-                // #endregion
                 setSidebarOpen(true);
               }}
             >
