@@ -21,6 +21,7 @@ export default function Layout({ children, title }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const debugLog = (hypothesisId, message, data = {}) => {
     // #region agent log
     fetch('http://127.0.0.1:7411/ingest/a7db3b80-8b35-473e-aa3b-8025557c0afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b45a5f'},body:JSON.stringify({sessionId:'b45a5f',runId:'initial',hypothesisId,location:'frontend/src/components/Layout.jsx:debugLog',message,data,timestamp:Date.now()})}).catch(()=>{});
@@ -53,6 +54,44 @@ export default function Layout({ children, title }) {
     // #endregion
   }, [sidebarOpen, router.pathname]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const updateViewportMode = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobileViewport(mobile);
+      if (!mobile) {
+        setSidebarOpen(false);
+      }
+      // #region agent log
+      debugLog('H5', 'Viewport mode updated', {
+        mobile,
+        viewportWidth: window.innerWidth,
+        pathname: router.pathname
+      });
+      // #endregion
+    };
+
+    updateViewportMode();
+    window.addEventListener('resize', updateViewportMode);
+    return () => window.removeEventListener('resize', updateViewportMode);
+  }, [router.pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+
+    const onEsc = (event) => {
+      if (event.key !== 'Escape') return;
+      // #region agent log
+      debugLog('H6', 'Escape pressed to close sidebar', { pathname: router.pathname });
+      // #endregion
+      setSidebarOpen(false);
+    };
+
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [sidebarOpen, router.pathname]);
+
   const handleInstall = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
@@ -69,7 +108,7 @@ export default function Layout({ children, title }) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile overlay */}
-      {sidebarOpen && (
+      {sidebarOpen && isMobileViewport && (
         <button
           type="button"
           aria-label="Close menu"
