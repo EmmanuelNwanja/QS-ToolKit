@@ -3,6 +3,7 @@ const { success, error } = require('../utils/responseHelper');
 const pdfService = require('../services/pdfService');
 const excelService = require('../services/excelService');
 const { singleOrNull } = require('../utils/supabaseQuery');
+const { normalizeStandard, validateBoqForFinalization } = require('../services/measurementStandardService');
 
 // ─── List BOQs ────────────────────────────────────────────────
 exports.list = async (req, res, next) => {
@@ -26,6 +27,12 @@ exports.list = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const { sections = [] } = req.body;
+    const standard = normalizeStandard(req.body.measurement_standard);
+    if (!standard) {
+      return res.status(400).json(error('Measurement standard is required (SMM7 or NRM2).', {
+        code: 'MEASUREMENT_STANDARD_REQUIRED'
+      }));
+    }
 
     // Allow only known BOQ document columns to avoid schema-cache errors
     // when the client sends extra UI-only fields.
@@ -39,7 +46,8 @@ exports.create = async (req, res, next) => {
       prepared_by: req.body.prepared_by,
       checked_by: req.body.checked_by,
       date_prepared: req.body.date_prepared ? req.body.date_prepared : undefined, // Empty string becomes undefined (uses default)
-      status: req.body.status
+      status: req.body.status,
+      measurement_standard: standard
     };
 
     // Remove undefined keys to let DB use defaults
@@ -53,8 +61,10 @@ exports.create = async (req, res, next) => {
 
     if (boqErr) throw boqErr;
 
+    const normalizedSections = normalizeSections(sections);
+
     // Insert sections and items
-    for (const [i, section] of sections.entries()) {
+    for (const [i, section] of normalizedSections.entries()) {
       const { items = [], ...sectionData } = section;
       const { data: sec } = await supabase
         .from('boq_sections')
@@ -64,7 +74,13 @@ exports.create = async (req, res, next) => {
 
       if (items.length > 0) {
         await supabase.from('boq_items').insert(
-          items.map((item, j) => ({ ...item, section_id: sec.id, boq_id: boq.id, sort_order: j }))
+          items.map((item, j) => ({
+            ...normalizeItem(item),
+            section_id: sec.id,
+            boq_id: boq.id,
+            sort_order: j,
+            is_preliminary: sectionData.section_type === 'preliminaries'
+          }))
         );
       }
     }
@@ -86,6 +102,15 @@ exports.get = async (req, res, next) => {
 // ─── Update BOQ ───────────────────────────────────────────────
 exports.update = async (req, res, next) => {
   try {
+    const standard = req.body.measurement_standard !== undefined
+      ? normalizeStandard(req.body.measurement_standard)
+      : undefined;
+    if (req.body.measurement_standard !== undefined && !standard) {
+      return res.status(400).json(error('Measurement standard must be SMM7 or NRM2.', {
+        code: 'MEASUREMENT_STANDARD_INVALID'
+      }));
+    }
+
     const updatePayload = {
       project_id: req.body.project_id,
       title: req.body.title,
@@ -97,6 +122,7 @@ exports.update = async (req, res, next) => {
       checked_by: req.body.checked_by,
       date_prepared: req.body.date_prepared,
       status: req.body.status,
+      measurement_standard: standard,
       updated_at: new Date()
     };
 
@@ -118,6 +144,18 @@ exports.update = async (req, res, next) => {
       .single();
 
     if (err || !data) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
+
+    if (data.status === 'final' || data.status === 'submitted') {
+      const fullBoq = await getFullBoq(req.params.id, req.user.id);
+      const validation = validateBoqForFinalization(fullBoq);
+      if (!validation.ok) {
+        return res.status(422).json(error('BOQ compliance checks failed.', {
+          code: 'BOQ_COMPLIANCE_FAILED',
+          errors: validation.errors
+        }));
+      }
+    }
+
     return res.json(success('BOQ updated', { boq: data }));
   } catch (err) { next(err); }
 };
@@ -134,9 +172,13 @@ exports.remove = async (req, res, next) => {
 // ─── Add Section ──────────────────────────────────────────────
 exports.addSection = async (req, res, next) => {
   try {
+    const sectionPayload = {
+      ...req.body,
+      section_type: normalizeSectionType(req.body.section_type)
+    };
     const { data, error: err } = await supabase
       .from('boq_sections')
-      .insert({ ...req.body, boq_id: req.params.id })
+      .insert({ ...sectionPayload, boq_id: req.params.id })
       .select()
       .single();
 
@@ -148,9 +190,10 @@ exports.addSection = async (req, res, next) => {
 // ─── Add Item to Section ──────────────────────────────────────
 exports.addItem = async (req, res, next) => {
   try {
+    const normalized = normalizeItem(req.body);
     const { data, error: err } = await supabase
       .from('boq_items')
-      .insert({ ...req.body, boq_id: req.params.id, section_id: req.params.sectionId })
+      .insert({ ...normalized, boq_id: req.params.id, section_id: req.params.sectionId })
       .select()
       .single();
 
@@ -166,9 +209,10 @@ exports.addItem = async (req, res, next) => {
 // ─── Update Item ──────────────────────────────────────────────
 exports.updateItem = async (req, res, next) => {
   try {
+    const updatePayload = normalizeItem(req.body, true);
     const { data, error: err } = await supabase
       .from('boq_items')
-      .update(req.body)
+      .update(updatePayload)
       .eq('id', req.params.itemId)
       .select()
       .single();
@@ -194,6 +238,14 @@ exports.exportPdf = async (req, res, next) => {
     const boq = await getFullBoq(req.params.id, req.user.id);
     if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
 
+    const validation = validateBoqForFinalization(boq);
+    if (!validation.ok) {
+      return res.status(422).json(error('BOQ compliance checks failed. Export blocked.', {
+        code: 'BOQ_COMPLIANCE_FAILED',
+        errors: validation.errors
+      }));
+    }
+
     const branding = await getBrandingForUser(req.user.id);
 
     const pdfBuffer = await pdfService.generateBoqPdf(boq, branding);
@@ -217,6 +269,14 @@ exports.exportExcel = async (req, res, next) => {
   try {
     const boq = await getFullBoq(req.params.id, req.user.id);
     if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
+
+    const validation = validateBoqForFinalization(boq);
+    if (!validation.ok) {
+      return res.status(422).json(error('BOQ compliance checks failed. Export blocked.', {
+        code: 'BOQ_COMPLIANCE_FAILED',
+        errors: validation.errors
+      }));
+    }
 
     const branding = await getBrandingForUser(req.user.id);
 
@@ -291,4 +351,64 @@ async function recalcTotals(boqId) {
   // Update boq total
   const grandTotal = Object.values(sectionTotals).reduce((s, v) => s + v, 0);
   await supabase.from('boq_documents').update({ total_amount: grandTotal }).eq('id', boqId);
+}
+
+function normalizeSectionType(sectionType) {
+  const value = String(sectionType || 'measured_work').trim().toLowerCase();
+  const allowed = ['preliminaries', 'measured_work', 'provisional_sum', 'dayworks'];
+  return allowed.includes(value) ? value : 'measured_work';
+}
+
+function normalizeSections(sections = []) {
+  const next = sections.map((section, index) => ({
+    ...section,
+    sort_order: section.sort_order ?? index,
+    section_type: normalizeSectionType(section.section_type)
+  }));
+
+  const hasPrelim = next.some((s) => s.section_type === 'preliminaries');
+  if (!hasPrelim) {
+    next.unshift({
+      title: 'Preliminaries',
+      section_type: 'preliminaries',
+      sort_order: 0,
+      items: [{
+        item_no: 'P1',
+        description: 'Site setup and mobilization',
+        unit: 'item',
+        quantity: 1,
+        rate: 0,
+        amount: 0,
+        cost_class: 'preliminaries',
+        is_preliminary: true
+      }]
+    });
+  }
+
+  return next.map((section, index) => ({ ...section, sort_order: index }));
+}
+
+function normalizeItem(input = {}, partial = false) {
+  const normalized = {};
+  const keys = [
+    'item_no', 'description', 'unit', 'quantity', 'rate', 'remarks',
+    'material_type', 'thickness_or_mix', 'finish_type', 'spec_reference',
+    'cost_class', 'is_preliminary'
+  ];
+
+  keys.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(input, key)) normalized[key] = input[key];
+  });
+
+  if (!partial || normalized.cost_class !== undefined) {
+    const rawCostClass = String(normalized.cost_class || 'measured_work').trim().toLowerCase();
+    const allowed = ['preliminaries', 'measured_work', 'provisional_sum', 'dayworks'];
+    normalized.cost_class = allowed.includes(rawCostClass) ? rawCostClass : 'measured_work';
+  }
+
+  if (!partial || normalized.is_preliminary !== undefined) {
+    normalized.is_preliminary = Boolean(normalized.is_preliminary || normalized.cost_class === 'preliminaries');
+  }
+
+  return normalized;
 }

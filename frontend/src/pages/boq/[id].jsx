@@ -14,7 +14,12 @@ function blankItem() {
     unit: '',
     quantity: '1',
     rate: '',
-    remarks: ''
+    remarks: '',
+    cost_class: 'measured_work',
+    material_type: '',
+    thickness_or_mix: '',
+    finish_type: '',
+    spec_reference: ''
   };
 }
 
@@ -25,9 +30,10 @@ export default function BoqDetailPage() {
   const [loading, setLoading] = useState(true);
   const [savingDoc, setSavingDoc] = useState(false);
   const [boq, setBoq] = useState(null);
-  const [docForm, setDocForm] = useState({ title: '', notes: '', status: 'draft' });
+  const [docForm, setDocForm] = useState({ title: '', notes: '', status: 'draft', measurement_standard: '' });
 
   const [newSectionTitle, setNewSectionTitle] = useState('');
+  const [newSectionType, setNewSectionType] = useState('measured_work');
   const [addingSection, setAddingSection] = useState(false);
 
   const [itemForms, setItemForms] = useState({});
@@ -43,7 +49,12 @@ export default function BoqDetailPage() {
       const { data } = await boqAPI.get(id);
       const next = data.boq;
       setBoq(next);
-      setDocForm({ title: next.title || '', notes: next.notes || '', status: next.status || 'draft' });
+      setDocForm({
+        title: next.title || '',
+        notes: next.notes || '',
+        status: next.status || 'draft',
+        measurement_standard: next.measurement_standard || ''
+      });
     } catch (err) {
       toast.error(err.response?.data?.message || 'BOQ not found');
       router.push('/projects');
@@ -74,9 +85,11 @@ export default function BoqDetailPage() {
     try {
       await boqAPI.addSection(id, {
         title: newSectionTitle.trim(),
-        sort_order: sections.length
+        sort_order: sections.length,
+        section_type: newSectionType
       });
       setNewSectionTitle('');
+      setNewSectionType('measured_work');
       await fetchBoq();
       toast.success('Section added');
     } catch (err) {
@@ -103,6 +116,12 @@ export default function BoqDetailPage() {
         quantity: Number(form.quantity || 0),
         rate: Number(form.rate || 0),
         remarks: form.remarks || null
+        ,
+        cost_class: form.cost_class || 'measured_work',
+        material_type: form.material_type || null,
+        thickness_or_mix: form.thickness_or_mix || null,
+        finish_type: form.finish_type || null,
+        spec_reference: form.spec_reference || null
       });
       setItemForms((prev) => ({ ...prev, [sectionId]: blankItem() }));
       await fetchBoq();
@@ -223,6 +242,19 @@ export default function BoqDetailPage() {
                   <option value="submitted">Submitted</option>
                 </select>
               </div>
+              <div>
+                <label className="label">Measurement Standard <span className="text-red-500">*</span></label>
+                <select
+                  className="input"
+                  value={docForm.measurement_standard}
+                  onChange={(e) => setDocForm((f) => ({ ...f, measurement_standard: e.target.value }))}
+                  required
+                >
+                  <option value="">Select standard...</option>
+                  <option value="SMM7">SMM7</option>
+                  <option value="NRM2">NRM2</option>
+                </select>
+              </div>
               <div className="sm:col-span-3">
                 <label className="label">Notes</label>
                 <textarea
@@ -246,7 +278,7 @@ export default function BoqDetailPage() {
               <span className="text-sm font-semibold text-primary-700">Total: {formatNaira(boq.total_amount || 0)}</span>
             </div>
 
-            <form onSubmit={addSection} className="grid sm:grid-cols-4 gap-2 mb-5">
+            <form onSubmit={addSection} className="grid sm:grid-cols-6 gap-2 mb-5">
               <input
                 className="input sm:col-span-3"
                 placeholder="Add section title (e.g. Preliminaries)"
@@ -254,6 +286,12 @@ export default function BoqDetailPage() {
                 onChange={(e) => setNewSectionTitle(e.target.value)}
                 required
               />
+              <select className="input sm:col-span-2" value={newSectionType} onChange={(e) => setNewSectionType(e.target.value)}>
+                <option value="measured_work">Measured Work</option>
+                <option value="preliminaries">Preliminaries</option>
+                <option value="provisional_sum">Provisional Sum</option>
+                <option value="dayworks">Dayworks</option>
+              </select>
               <button type="submit" className="btn-secondary" disabled={addingSection}>
                 {addingSection ? 'Adding...' : 'Add Section'}
               </button>
@@ -271,6 +309,7 @@ export default function BoqDetailPage() {
                     <div key={section.id} className="rounded-xl border border-gray-200 p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">{section.title}</h3>
+                        <span className="text-xs text-gray-500 uppercase">{section.section_type || 'measured_work'}</span>
                         <span className="text-sm text-gray-600">Section total: {formatNaira(section.section_total || 0)}</span>
                       </div>
 
@@ -280,6 +319,7 @@ export default function BoqDetailPage() {
                             <tr className="text-left text-gray-500 border-b">
                               <th className="py-2 pr-3">Item No</th>
                               <th className="py-2 pr-3">Description</th>
+                              <th className="py-2 pr-3">Spec</th>
                               <th className="py-2 pr-3">Unit</th>
                               <th className="py-2 pr-3">Qty</th>
                               <th className="py-2 pr-3">Rate</th>
@@ -292,6 +332,9 @@ export default function BoqDetailPage() {
                               <tr key={item.id} className="border-b last:border-0">
                                 <td className="py-2 pr-3 text-gray-700">{item.item_no || '-'}</td>
                                 <td className="py-2 pr-3 text-gray-700">{item.description}</td>
+                                <td className="py-2 pr-3 text-xs text-gray-600">
+                                  {[item.material_type, item.thickness_or_mix, item.finish_type].filter(Boolean).join(' | ') || '-'}
+                                </td>
                                 <td className="py-2 pr-3 text-gray-700">{item.unit || '-'}</td>
                                 <td className="py-2 pr-3 w-24">
                                   <input
@@ -342,6 +385,18 @@ export default function BoqDetailPage() {
                         >
                           {addingItem[section.id] ? 'Adding...' : 'Add Item'}
                         </button>
+                      </div>
+                      <div className="grid sm:grid-cols-12 gap-2 mt-2">
+                        <select className="input sm:col-span-2" value={form.cost_class} onChange={(e) => setItemField(section.id, 'cost_class', e.target.value)}>
+                          <option value="measured_work">Measured Work</option>
+                          <option value="preliminaries">Preliminaries</option>
+                          <option value="provisional_sum">Provisional Sum</option>
+                          <option value="dayworks">Dayworks</option>
+                        </select>
+                        <input className="input sm:col-span-3" placeholder="Material Type" value={form.material_type} onChange={(e) => setItemField(section.id, 'material_type', e.target.value)} />
+                        <input className="input sm:col-span-2" placeholder="Thickness/Mix" value={form.thickness_or_mix} onChange={(e) => setItemField(section.id, 'thickness_or_mix', e.target.value)} />
+                        <input className="input sm:col-span-2" placeholder="Finish Type" value={form.finish_type} onChange={(e) => setItemField(section.id, 'finish_type', e.target.value)} />
+                        <input className="input sm:col-span-3" placeholder="Spec Reference" value={form.spec_reference} onChange={(e) => setItemField(section.id, 'spec_reference', e.target.value)} />
                       </div>
                       <p className="text-xs text-gray-500 mt-2">Leave rate empty for unpriced BOQ lines. Amount auto-calculates as quantity × rate.</p>
                     </div>

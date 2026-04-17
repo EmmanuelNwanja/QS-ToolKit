@@ -130,14 +130,28 @@ exports.plastering = async (req, res, next) => {
       surfaces = [],
       thickness_mm = 15,
       mortar_ratio = '1:4',   // cement:sand
-      wastage_percent = 10
+      wastage_percent = 10,
+      openings_deduction_confirmed = false
     } = req.body;
+
+    if (!openings_deduction_confirmed) {
+      return res.status(400).json(error('Openings deduction confirmation is required for plastering.', {
+        code: 'OPENINGS_DEDUCTION_REQUIRED'
+      }));
+    }
 
     let totalArea = 0;
     const surfaceResults = surfaces.map(s => {
-      const area = s.length * s.height;
-      totalArea += area;
-      return { ...s, area_m2: +area.toFixed(3) };
+      const grossArea = s.length * s.height;
+      const openingsArea = (s.openings || []).reduce((sum, opening) => sum + (opening.width * opening.height), 0);
+      const netArea = Math.max(grossArea - openingsArea, 0);
+      totalArea += netArea;
+      return {
+        ...s,
+        gross_area_m2: +grossArea.toFixed(3),
+        openings_deduction_m2: +openingsArea.toFixed(3),
+        net_area_m2: +netArea.toFixed(3)
+      };
     });
 
     const volume = (totalArea * (thickness_mm / 1000)) * (1 + wastage_percent / 100);
@@ -156,7 +170,8 @@ exports.plastering = async (req, res, next) => {
         thickness_mm,
         mortar_ratio,
         wet_volume_m3: +volume.toFixed(4),
-        materials: { cement_bags_50kg: cementBags, sharp_sand_m3: sandM3 }
+        materials: { cement_bags_50kg: cementBags, sharp_sand_m3: sandM3 },
+        openings_deduction_confirmed: true
       }
     }));
   } catch (err) { next(err); }
@@ -170,8 +185,15 @@ exports.paint = async (req, res, next) => {
       coats = 2,
       coverage_m2_per_litre = 10,    // typical Nigerian emulsion
       include_primer = true,
-      primer_coverage = 12
+      primer_coverage = 12,
+      openings_deduction_confirmed = false
     } = req.body;
+
+    if (!openings_deduction_confirmed) {
+      return res.status(400).json(error('Openings deduction confirmation is required for painting.', {
+        code: 'OPENINGS_DEDUCTION_REQUIRED'
+      }));
+    }
 
     let totalArea = 0;
     const surfaceResults = surfaces.map(s => {
@@ -200,7 +222,8 @@ exports.paint = async (req, res, next) => {
         coats,
         paint_litres_required: paintLitres,
         suggested_tins: { '5L_tins': tins5L, '4L_tins': tins4L, '1L_tins': tins1L },
-        primer_litres: primerLitres
+        primer_litres: primerLitres,
+        openings_deduction_confirmed: true
       }
     }));
   } catch (err) { next(err); }
@@ -298,30 +321,71 @@ exports.earthwork = async (req, res, next) => {
     const {
       sections = [],
       soil_type = 'loam',     // loam | clay | sandy | laterite
-      bulking_factor
+      bulking_factor,
+      working_space_mm = 300,
+      working_space_mode = 'both_sides',
+      excavation_method = 'mechanical',
+      excavation_type = 'trench',
+      backfill_factor = 0.6,
+      compaction_unit = 'm3'
     } = req.body;
 
     const bulkingFactors = { loam: 1.25, clay: 1.35, sandy: 1.15, laterite: 1.20 };
     const bf = bulking_factor || bulkingFactors[soil_type] || 1.25;
+    const methodFactors = { manual: 1.2, mechanical: 1.0 };
+    const typeFactors = { trench: 1.0, bulk: 0.95 };
+    const sideMultiplier = working_space_mode === 'single_side' ? 1 : 2;
+    const allowanceM = Math.max(Number(working_space_mm) || 0, 0) / 1000;
 
     let totalExcavation = 0;
+    let totalBackfill = 0;
     const sectionResults = sections.map(s => {
-      const vol = s.length * s.width * s.depth;
+      const baseWidth = Number(s.width || 0);
+      const effectiveWidth = baseWidth + (allowanceM * sideMultiplier);
+      const vol = Number(s.length || 0) * effectiveWidth * Number(s.depth || 0);
+      const backfill = vol * Math.max(Math.min(Number(backfill_factor), 1), 0);
       totalExcavation += vol;
-      return { ...s, volume_m3: +vol.toFixed(4) };
+      totalBackfill += backfill;
+      return {
+        ...s,
+        base_width_m: +baseWidth.toFixed(3),
+        effective_width_m: +effectiveWidth.toFixed(3),
+        working_space_added_m: +(allowanceM * sideMultiplier).toFixed(3),
+        excavation_in_situ_m3: +vol.toFixed(4),
+        backfill_compacted_m3: +backfill.toFixed(4),
+        compaction_qty: +(compaction_unit === 'm2'
+          ? (Number(s.length || 0) * effectiveWidth)
+          : backfill).toFixed(4)
+      };
     });
+
+    const looseVolume = totalExcavation * bf;
+    const disposalLoose = looseVolume - totalBackfill;
+    const methodFactor = methodFactors[excavation_method] || 1;
+    const typeFactor = typeFactors[excavation_type] || 1;
+    const productivityIndex = +(1 / (methodFactor * typeFactor * bf)).toFixed(3);
 
     await logUsage(req.user.id, 'earthwork');
 
     return res.json(success('Earthwork calculation complete', {
       sections: sectionResults,
       summary: {
-        total_excavation_m3: +totalExcavation.toFixed(4),
+        excavation_in_situ_m3: +totalExcavation.toFixed(4),
+        disposal_loose_m3: +disposalLoose.toFixed(4),
+        backfill_compacted_m3: +totalBackfill.toFixed(4),
+        compaction_m3_or_m2: +(compaction_unit === 'm2'
+          ? sectionResults.reduce((sum, section) => sum + Number(section.compaction_qty || 0), 0)
+          : totalBackfill).toFixed(4),
         soil_type,
+        excavation_method,
+        excavation_type,
         bulking_factor: bf,
-        loose_volume_m3: +(totalExcavation * bf).toFixed(4),
-        truck_loads_5t: Math.ceil((totalExcavation * bf) / 5),
-        note: 'Loose volume for haulage truck estimation'
+        working_space_mm: Number(working_space_mm) || 0,
+        working_space_mode,
+        productivity_index: productivityIndex,
+        loose_volume_m3: +looseVolume.toFixed(4),
+        truck_loads_5t: Math.ceil(looseVolume / 5),
+        note: 'Outputs are separated for excavation, disposal, backfilling, and compaction.'
       }
     }));
   } catch (err) { next(err); }

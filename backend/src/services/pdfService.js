@@ -237,6 +237,7 @@ function buildBoqFallbackPdf(boq, branding) {
     doc.text(`Client: ${safeText(boq.client_name)}`);
     doc.text(`Project: ${safeText(boq.projects?.title, 'N/A')}`);
     doc.text(`Status: ${safeText(boq.status, 'draft')}`);
+    doc.text(`Measurement Standard: ${safeText(boq.measurement_standard, 'Not Set')}`);
     doc.moveDown(1);
 
     const sections = Array.isArray(boq.boq_sections) ? boq.boq_sections : [];
@@ -254,9 +255,10 @@ function buildBoqFallbackPdf(boq, branding) {
             const qty = Number(item.quantity || 0);
             const rate = Number(item.rate || 0);
             const amount = Number(item.amount ?? qty * rate);
-            doc.fontSize(10).text(
-              `${letter}${itemIndex + 1} ${safeText(item.description)}  |  ${qty.toFixed(2)} ${safeText(item.unit, '')}  |  ${formatNaira(rate)}  |  ${formatNaira(amount)}`
-            );
+            const specBits = [item.material_type, item.thickness_or_mix, item.finish_type, item.spec_reference].filter(Boolean).join(' | ');
+            doc.fontSize(10).text(`${letter}${itemIndex + 1} ${safeText(item.description)}`);
+            if (specBits) doc.fontSize(9).fillColor('#555').text(`Spec: ${specBits}`);
+            doc.fillColor('#000').text(`Qty: ${qty.toFixed(2)} ${safeText(item.unit, '')}  |  Rate: ${formatNaira(rate)}  |  Amount: ${formatNaira(amount)}`);
           });
         }
         doc.moveDown(0.5);
@@ -276,12 +278,17 @@ function buildBoqHtml(boq, branding) {
 
   const sectionsHtml = (boq.boq_sections || []).map((section, si) => `
     <tr class="section-header">
-      <td colspan="6">${String.fromCharCode(65 + si)}. ${section.title}</td>
+      <td colspan="6">${String.fromCharCode(65 + si)}. ${section.title} ${section.section_type ? `(${section.section_type})` : ''}</td>
     </tr>
     ${(section.boq_items || []).map((item, ii) => `
       <tr class="${ii % 2 === 0 ? 'even' : ''}">
         <td>${item.item_no || `${String.fromCharCode(65 + si)}${ii + 1}`}</td>
-        <td>${item.description}</td>
+        <td>
+          <div>${item.description}</div>
+          ${[item.material_type, item.thickness_or_mix, item.finish_type, item.spec_reference].filter(Boolean).length > 0
+            ? `<div style="font-size:8pt;color:#64748b;margin-top:2px;">Spec: ${[item.material_type, item.thickness_or_mix, item.finish_type, item.spec_reference].filter(Boolean).join(' | ')}</div>`
+            : ''}
+        </td>
         <td class="center">${item.unit || '-'}</td>
         <td class="right">${Number(item.quantity || 0).toFixed(2)}</td>
         <td class="right">${formatNaira(item.rate)}</td>
@@ -343,6 +350,7 @@ function buildBoqHtml(boq, branding) {
     <div class="meta-item"><label>Client:</label> ${boq.client_name || boq.projects?.client_name || '-'}</div>
     <div class="meta-item"><label>Location:</label> ${boq.location || boq.projects?.location || '-'}</div>
     <div class="meta-item"><label>Prepared By:</label> ${boq.prepared_by || companyName}</div>
+    <div class="meta-item"><label>Measurement Standard:</label> ${boq.measurement_standard || '-'}</div>
   </div>
 
   <table>

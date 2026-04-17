@@ -16,7 +16,8 @@ export default function NewBoqPage() {
     title: '',
     project_id: '',
     notes: '',
-    status: 'draft'
+    status: 'draft',
+    measurement_standard: ''
   });
 
   useEffect(() => {
@@ -93,6 +94,20 @@ export default function NewBoqPage() {
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
               />
+            </div>
+
+            <div>
+              <label className="label">Measurement Standard <span className="text-red-500">*</span></label>
+              <select
+                className="input"
+                value={form.measurement_standard}
+                onChange={(e) => set('measurement_standard', e.target.value)}
+                required
+              >
+                <option value="">Select standard...</option>
+                <option value="SMM7">SMM7</option>
+                <option value="NRM2">NRM2</option>
+              </select>
             </div>
 
             <div>

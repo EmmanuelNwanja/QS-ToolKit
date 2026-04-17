@@ -40,6 +40,7 @@ exports.generateBoqExcel = async (boq, branding) => {
   ws.addRow([]);
   ws.addRow(['Project:', boq.projects?.title || '-', '', 'Client:', boq.client_name || '-', '']);
   ws.addRow(['Location:', boq.location || '-', '', 'Date:', boq.date_prepared || new Date().toISOString().split('T')[0], '']);
+  ws.addRow(['Measurement Standard:', boq.measurement_standard || '-', '', '', '', '']);
   ws.addRow([]);
 
   // Header row
@@ -56,7 +57,7 @@ exports.generateBoqExcel = async (boq, branding) => {
   (boq.boq_sections || []).forEach((section, si) => {
     // Section header
     const sectionRow = ws.addRow([
-      '', `${String.fromCharCode(65 + si)}. ${section.title}`.toUpperCase(), '', '', '', ''
+      '', `${String.fromCharCode(65 + si)}. ${section.title} ${section.section_type ? `(${section.section_type})` : ''}`.toUpperCase(), '', '', '', ''
     ]);
     ws.mergeCells(`B${sectionRow.number}:F${sectionRow.number}`);
     sectionRow.eachCell(cell => {
@@ -67,7 +68,10 @@ exports.generateBoqExcel = async (boq, branding) => {
     (section.boq_items || []).forEach((item, ii) => {
       const row = ws.addRow([
         item.item_no || `${String.fromCharCode(65 + si)}${ii + 1}`,
-        item.description,
+        [
+          item.description,
+          [item.material_type, item.thickness_or_mix, item.finish_type, item.spec_reference].filter(Boolean).join(' | ')
+        ].filter(Boolean).join(' | Spec: '),
         item.unit || '-',
         Number(item.quantity || 0),
         Number(item.rate || 0),

@@ -17,13 +17,13 @@ const WINDOW_TYPES = [
 ];
 
 // Standard sizes from Miracle's project
-const STD_DOOR_SIZES  = ['1200x2100', '900x2100', '750x2100'];
-const STD_WIN_SIZES   = ['1200x1200', '600x600', '600x1800', '1800x600'];
+const STD_DOOR_SIZES  = ['1500x2400', '1200x2100', '900x2100', '750x2100'];
+const STD_WIN_SIZES   = ['1500x1200', '1200x1200', '600x600', '600x1800', '1800x600'];
 
 export default function DoorWindowForm({ onCalculate, loading }) {
   const [activeTab, setActiveTab] = useState('Doors');
-  const [doors, setDoors]   = useState([{ ref: 'D1', type: 'double_leaf_steel', width_mm: 1200, height_mm: 2100, quantity: 2, note: '' }]);
-  const [windows, setWindows] = useState([{ ref: 'W1', type: 'sliding_aluminium', width_mm: 1200, height_mm: 1200, quantity: 19, note: '' }]);
+  const [doors, setDoors]   = useState([{ ref: 'D1', type: 'double_leaf_steel', width_mm: 1500, height_mm: 2400, quantity: 1, note: 'Double Leaf Main Entrance Door template' }]);
+  const [windows, setWindows] = useState([{ ref: 'W1', type: 'fixed_light', width_mm: 1500, height_mm: 1200, quantity: 1, note: 'Fixed Glass Window template' }]);
   const [bp, setBp]           = useState([{ ref: 'G1', width_mm: 1200, height_mm: 1200, quantity: 19, mesh_type: '25×25mm hollow square pipe' }]);
 
   const addDoor   = () => setDoors(d => [...d, { ref: `D${d.length + 1}`, type: 'single_leaf_panel', width_mm: 900, height_mm: 2100, quantity: 1, note: '' }]);

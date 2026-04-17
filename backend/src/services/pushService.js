@@ -140,7 +140,8 @@ exports.sendToSegment = async (segment, notification) => {
       ? await getBasicStudentPlanIds()
       : null;
 
-    while (true) {
+    let hasMorePages = true;
+    while (hasMorePages) {
       let usersQuery = supabase
         .from('users')
         .select('id')
@@ -184,7 +185,10 @@ exports.sendToSegment = async (segment, notification) => {
         (page + 1) * PAGE_SIZE - 1
       );
       if (usersErr) throw new Error(`Segment query failed: ${usersErr.message}`);
-      if (!users || users.length === 0) break;
+      if (!users || users.length === 0) {
+        hasMorePages = false;
+        break;
+      }
 
       const userIds = users.map((u) => u.id);
       totalRecipients += userIds.length;
@@ -206,8 +210,11 @@ exports.sendToSegment = async (segment, notification) => {
         totalFailed += result.failed;
       }
 
-      if (users.length < PAGE_SIZE) break;
-      page++;
+      if (users.length < PAGE_SIZE) {
+        hasMorePages = false;
+      } else {
+        page++;
+      }
     }
 
     if (totalRecipients === 0) {
@@ -232,19 +239,6 @@ exports.sendToSegment = async (segment, notification) => {
     throw err;
   }
 };
-
-/**
- * Helper: Get basic plan ID
- */
-async function getBasicPlanId() {
-  // Kept for legacy callers; prefer querying both 'basic' and 'student' together
-  const { data: plan } = await supabase
-    .from('subscription_plans')
-    .select('id')
-    .eq('name', 'basic')
-    .single();
-  return plan?.id;
-}
 
 /**
  * Helper: Get pro plan ID

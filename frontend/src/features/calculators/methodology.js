@@ -22,10 +22,10 @@ export const CALC_METHODS = {
     ]
   },
   plastering: {
-    standard: 'Plaster/render quantity based on net surface area and plaster thickness.',
+    standard: 'SMM7/NRM2-aligned plaster/render quantity using net surface area after openings deductions.',
     units: ['Area in m2', 'Thickness in mm', 'Mortar in m3'],
     steps: [
-      'Surface area = sum of wall/ceiling areas minus openings.',
+      'Surface area = sum of wall/ceiling gross areas minus measured openings.',
       'Wet mortar volume = area x thickness(m).',
       'Dry mortar volume = wet volume x dry factor.',
       'Mix ratio allocation gives cement and sand quantities.',
@@ -33,7 +33,7 @@ export const CALC_METHODS = {
     ]
   },
   paint: {
-    standard: 'Paint estimation based on manufacturer-style coverage rates and coat count.',
+    standard: 'SMM7/NRM2-aligned paint estimation with mandatory openings deductions and coat coverage.',
     units: ['Area in m2', 'Paint in liters', 'Containers by size'],
     steps: [
       'Net paintable area = total area - deductions.',
@@ -65,13 +65,14 @@ export const CALC_METHODS = {
     ]
   },
   earthwork: {
-    standard: 'Excavation and haulage estimate with soil bulking factor.',
+    standard: 'SMM7/NRM2-ready earthwork with separated excavation, disposal, backfilling, compaction, and working-space allowances.',
     units: ['Volume in m3', 'Haulage loads in count'],
     steps: [
-      'Excavation volume = sum of trench/pit sections.',
-      'Loose volume = excavation volume x bulking_factor.',
-      'Truck loads = loose volume / truck_capacity.',
-      'Apply trimming/wastage allowances where configured.'
+      'Effective excavation width includes working-space allowances.',
+      'Excavation in-situ quantity is measured separately from disposal and backfilling.',
+      'Loose disposal volume = in-situ excavation x bulking_factor minus compacted backfill.',
+      'Construction method and excavation type influence productivity metadata.',
+      'Compaction is reported as m3 or m2 based on selected unit.'
     ]
   },
   tiling: {

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "test:qs": "node src/tests/measurementStandardService.test.js"
   },
   "engines": {
     "node": ">=18.0.0"
