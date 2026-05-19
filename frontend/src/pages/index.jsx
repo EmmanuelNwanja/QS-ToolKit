@@ -125,31 +125,6 @@ const STATS = [
   { value: '100%', label: 'Cloud Based', sub: 'Access from any device' }
 ];
 
-const PLANS = [
-  {
-    name: 'Basic',
-    price: '₦5,000',
-    period: '/month',
-    desc: 'For students and entry-level QSs getting started.',
-    features: ['2 projects/month', '30 calculator uses', '2 BOQs', '2 invoices & quotes', 'PDF & Excel exports', '1 user, 1 device']
-  },
-  {
-    name: 'Pro',
-    price: '₦15,000',
-    period: '/month',
-    desc: 'For practicing professionals who need more volume.',
-    features: ['5 projects/month', '80 calculator uses', '5 BOQs', '5 invoices & quotes', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support'],
-    popular: true
-  },
-  {
-    name: 'Enterprise',
-    price: '₦70,000',
-    period: '/month',
-    desc: 'For firms and teams managing multiple projects.',
-    features: ['50 projects/month', '700 calculator uses', '50 BOQs', '50 invoices & quotes', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles', 'Top priority support']
-  }
-];
-
 const FAQS = [
   {
     q: 'What makes QSToolkit different from Excel?',
@@ -336,17 +311,6 @@ export default function LandingPage() {
           </div>
 
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              custom={0}
-              className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm mb-8"
-            >
-              <span className="text-gold-400">🇳🇬</span>
-              <span className="text-white/80">Built for Nigerian Quantity Surveyors</span>
-            </motion.div>
-
             <motion.h1
               variants={fadeUp}
               initial="hidden"
@@ -445,9 +409,55 @@ export default function LandingPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════
-            THE PLATFORM
+            THE OLD WAY
             ═══════════════════════════════════════════════════════ */}
         <section className="bg-primary-800 py-24 md:py-32 px-4 relative overflow-hidden">
+          <div className="max-w-6xl mx-auto relative z-10">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="mb-16"
+            >
+              <SectionLabel text="The Old Way" light />
+              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight max-w-3xl">
+                Tied to a machine. Tied to a license. Tied to luck.
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={staggerContainer}
+              className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            >
+              {[
+                { title: 'Steep learning curve', body: 'Months to master. One update changes everything. Training new staff is a project itself.' },
+                { title: 'One device, one point of failure', body: 'Laptop crashes? Software corrupts? Left it at home? Your entire practice stops dead.' },
+                { title: 'Solo by design', body: 'No shared workspace. No real-time collaboration. Teamwork means passing files around on a flash drive.' }
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  variants={fadeUp}
+                  className="bg-primary-900/50 border border-white/5 rounded-2xl p-8"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5">
+                    <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-sm text-white/40 leading-relaxed">{item.body}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            THE PLATFORM
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-900 py-24 md:py-32 px-4 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-gold-500/[0.02] blur-3xl" />
           </div>
@@ -527,6 +537,73 @@ export default function LandingPage() {
                     </div>
                   </div>
                   {/* Decorative corner accents */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t border-l border-gold-500/20 rounded-tl-2xl" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b border-r border-gold-500/20 rounded-br-2xl" />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            PRIVACY VAULT
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-800 py-24 md:py-32 px-4 relative">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-80px' }}
+                variants={slideFromLeft}
+              >
+                <SectionLabel text="Privacy" light />
+                <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+                  Your BOQs are your edge.
+                  <br />
+                  <span className="text-gold-400">We keep them that way.</span>
+                </h2>
+                <p className="text-white/40 text-lg leading-relaxed mb-8">
+                  In this market, a leaked quote kills a bid. A shared BOQ becomes your competitor&apos;s starting point. QSToolkit isolates every project, encrypts your data at rest, and never trains models on your work.
+                </p>
+                <ul className="space-y-4">
+                  {['Encrypted data at rest', 'Isolated project workspaces', 'No AI training on your documents', 'Granular team permissions', 'Audit trail for every access'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-white/60">
+                      <span className="w-5 h-5 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-gold-400 text-xs">✓</span>
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-80px' }}
+                variants={slideFromRight}
+                className="relative"
+              >
+                <div className="relative bg-primary-800/60 border border-white/5 rounded-2xl p-8 md:p-10">
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Encryption', value: 'AES-256', status: 'Active' },
+                      { label: 'Data residency', value: 'Your account only', status: 'Isolated' },
+                      { label: 'AI training', value: 'Never', status: 'Disabled' },
+                      { label: 'Third-party sharing', value: 'None', status: 'Blocked' }
+                    ].map((row) => (
+                      <div key={row.label} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                        <div>
+                          <div className="text-xs text-white/30 uppercase tracking-wider">{row.label}</div>
+                          <div className="text-sm text-white/80 font-medium">{row.value}</div>
+                        </div>
+                        <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                          {row.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                   <div className="absolute top-0 left-0 w-8 h-8 border-t border-l border-gold-500/20 rounded-tl-2xl" />
                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b border-r border-gold-500/20 rounded-br-2xl" />
                 </div>
@@ -659,10 +736,12 @@ export default function LandingPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════
-            PRICING
+            QS AI ENGINE
             ═══════════════════════════════════════════════════════ */}
-        <section className="bg-white py-24 md:py-32 px-4" id="pricing">
-          <div className="max-w-5xl mx-auto">
+        <section className="bg-white py-24 md:py-32 px-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gold-500/[0.04] blur-3xl pointer-events-none" />
+
+          <div className="max-w-6xl mx-auto relative z-10">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -670,12 +749,17 @@ export default function LandingPage() {
               variants={fadeUp}
               className="text-center mb-16"
             >
-              <SectionLabel text="Pricing" />
-              <h2 className="font-display text-4xl md:text-5xl font-bold text-primary-800 leading-tight mb-4">
-                Simple. Transparent. Nigerian.
+              <div className="inline-flex items-center gap-2 mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-gold-600">Coming Soon</span>
+              </div>
+              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-800 leading-tight mb-6">
+                QS AI Engine.
+                <br />
+                <span className="text-gold-500">Your digital surveyor.</span>
               </h2>
-              <p className="text-gray-500 max-w-lg mx-auto">
-                No hidden fees. No surprise charges. Pick what fits your practice.
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                We are building an AI that understands construction documents, not just text. Upload drawings. Ask questions. Get quantities.
               </p>
             </motion.div>
 
@@ -684,52 +768,39 @@ export default function LandingPage() {
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={staggerContainer}
-              className="grid md:grid-cols-3 gap-6"
+              className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-              {PLANS.map((plan) => (
+              {[
+                { title: 'Auto-BOQ', body: 'Upload architectural drawings and specifications. The AI generates a draft BOQ with line items, quantities, and descriptions.' },
+                { title: 'Cost forecasting', body: 'Trend analysis across your project history and market data. Predict cost overruns before they happen.' },
+                { title: 'Variance detection', body: 'Compare estimate vs actuals automatically. Flag discrepancies between revisions without manual line-by-line checks.' },
+                { title: 'Natural language', body: '"What changed between Rev A and Rev B?" Ask in plain English. Get answers in seconds, not hours.' }
+              ].map((feat, i) => (
                 <motion.div
-                  key={plan.name}
-                  variants={scaleIn}
-                  className={`relative rounded-2xl border p-8 flex flex-col ${
-                    plan.popular
-                      ? 'border-gold-500 bg-gold-500/[0.02]'
-                      : 'border-gray-100 bg-white'
-                  }`}
+                  key={i}
+                  variants={fadeUp}
+                  className="bg-white rounded-2xl p-6 border border-gray-100 shadow-card hover:shadow-card-md transition-shadow"
                 >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-gold-500 text-white text-xs font-bold px-4 py-1 rounded-full">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
-                  <div className="mb-6">
-                    <h3 className="font-display text-xl font-bold text-primary-800">{plan.name}</h3>
-                    <p className="text-xs text-gray-400 mt-1">{plan.desc}</p>
-                    <div className="flex items-end gap-1 mt-4">
-                      <span className="text-3xl font-bold text-primary-700">{plan.price}</span>
-                      <span className="text-gray-400 text-sm mb-1">{plan.period}</span>
-                    </div>
+                  <div className="w-10 h-10 rounded-lg bg-primary-700 flex items-center justify-center mb-4">
+                    <span className="font-display text-sm font-bold text-gold-400">0{i + 1}</span>
                   </div>
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
-                        <span className="text-gold-500 font-bold mt-0.5 flex-shrink-0">✓</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href="/auth/register"
-                    className={plan.popular
-                      ? 'btn-gold w-full text-center justify-center'
-                      : 'btn-secondary w-full text-center justify-center'
-                    }
-                  >
-                    Get {plan.name}
-                  </Link>
+                  <h3 className="font-display text-lg font-bold text-primary-800 mb-2">{feat.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{feat.body}</p>
                 </motion.div>
               ))}
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={fadeUp}
+              className="mt-12 text-center"
+            >
+              <Link href="/auth/register" className="btn-primary px-8 py-3 inline-flex">
+                Join the Waitlist →
+              </Link>
+              <p className="text-xs text-gray-400 mt-3">Be the first to know when it drops. No spam.</p>
             </motion.div>
           </div>
         </section>
@@ -819,6 +890,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="flex items-center gap-6 text-sm text-white/40">
+                <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
                 <Link href="/auth/login" className="hover:text-white transition-colors">Login</Link>
                 <Link href="/auth/register" className="hover:text-white transition-colors">Register</Link>
                 <Link href="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>
