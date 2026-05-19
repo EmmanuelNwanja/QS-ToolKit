@@ -77,7 +77,7 @@ const PROBLEMS = [
   },
   {
     title: 'No paper trail',
-    body: 'Scattered notes, lost files, zero project history when you need it most. Your work disappears into thin air.'
+    body: 'Scattered notes. Lost files. Zero history when you need it. Your work vanishes.'
   },
   {
     title: 'Reputation is invisible',
@@ -104,17 +104,17 @@ const CAPABILITIES = [
   {
     num: '04',
     title: 'Project history.',
-    body: 'Every calculation, every BOQ, every invoice — logged, dated, and searchable. Never lose track of a project again.'
+    body: 'Every BOQ, every invoice, every rate — logged and searchable. Your entire history, one search away.'
   },
   {
     num: '05',
     title: 'Client proof.',
-    body: 'Share a unique feedback link. Collect ratings on quality, timeliness, and communication. Let your work speak for itself.'
+    body: 'Collect client ratings with one link. Build proof that wins new business.'
   },
   {
     num: '06',
     title: 'Live leaderboard.',
-    body: 'See where you rank against QS professionals nationwide. By projects completed. By client rating. By reputation.'
+    body: 'See where you stand. Ranked by projects, ratings, and reputation.'
   }
 ];
 
@@ -127,8 +127,8 @@ const STATS = [
 
 const FAQS = [
   {
-    q: 'What makes QSToolkit different from Excel?',
-    a: 'Every calculator is built for Nigerian construction standards — 9-inch blocks, BS 4449 steel, laterite bulking factors. No formulas to break. No unit conversions to forget. Just input and get accurate results.'
+    q: 'What makes QSToolkit different from other QS software?',
+    a: 'Built for Nigerian standards. No installations to manage. Access from any device, collaborate with your team, and scale as you grow. No formulas to break. No licenses to renew.'
   },
   {
     q: 'Can I export BOQs and invoices with my company logo?',
@@ -148,7 +148,7 @@ const FAQS = [
   },
   {
     q: 'What happens to my data?',
-    a: 'Your data is stored securely in Supabase PostgreSQL. We do not train AI on your projects. We do not sell your data. Your work belongs to you.'
+    a: 'Your data is stored securely in Supabase PostgreSQL. We do not sell your data. You control what you share. Your work belongs to you.'
   }
 ];
 
@@ -255,8 +255,8 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>QSToolkit — Quantity Surveying Without the Spreadsheets</title>
-        <meta name="description" content="Calculate, quantify, and invoice from your browser. Built for Nigerian Quantity Surveyors." />
+        <title>QSToolkit — Quantity Surveying Without the Software Headaches</title>
+        <meta name="description" content="Calculate, quantify, and invoice from any device. No installs. No lock-in. Built for QS professionals." />
       </Head>
 
       <div className="min-h-screen bg-white font-sans overflow-x-hidden">
@@ -330,8 +330,8 @@ export default function LandingPage() {
               custom={0.2}
               className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed"
             >
-              Calculate, quantify, and invoice from your browser.
-              No Excel. No errors. No wasted weekends.
+              Calculate, quantify, and invoice from any device.
+              No installs. No lock-in. No wasted weekends.
             </motion.p>
 
             <motion.div
@@ -376,7 +376,7 @@ export default function LandingPage() {
             >
               <SectionLabel text="The Problem" light />
               <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-16 max-w-3xl">
-                Your tools haven&apos;t changed since university.
+                Your QS software is holding you back.
               </h2>
             </motion.div>
 
@@ -434,7 +434,7 @@ export default function LandingPage() {
               className="grid grid-cols-1 md:grid-cols-3 gap-8"
             >
               {[
-                { title: 'Steep learning curve', body: 'Months to master. One update changes everything. Training new staff is a project itself.' },
+                { title: 'Steep learning curve', body: 'Months to master. One update breaks your workflow. Training staff takes weeks.' },
                 { title: 'One device, one point of failure', body: 'Laptop crashes? Software corrupts? Left it at home? Your entire practice stops dead.' },
                 { title: 'Solo by design', body: 'No shared workspace. No real-time collaboration. Teamwork means passing files around on a flash drive.' }
               ].map((item, i) => (
@@ -477,8 +477,7 @@ export default function LandingPage() {
                   <span className="text-gold-400">Every QS task.</span>
                 </h2>
                 <p className="text-white/40 text-lg leading-relaxed mb-8 max-w-lg">
-                  From concrete volume to final invoice — every tool shares the same data.
-                  No re-typing. No context switching. One place for your entire practice.
+                  From concrete to invoice — one system, one login, zero installation.
                 </p>
                 <ul className="space-y-4">
                   {['Concrete, blockwork, steel, plastering & more', 'BOQs with your branding', 'Invoices, quotes, valuations', 'Client feedback collection', 'Live national leaderboard'].map((item) => (
@@ -564,10 +563,10 @@ export default function LandingPage() {
                   <span className="text-gold-400">We keep them that way.</span>
                 </h2>
                 <p className="text-white/40 text-lg leading-relaxed mb-8">
-                  In this market, a leaked quote kills a bid. A shared BOQ becomes your competitor&apos;s starting point. QSToolkit isolates every project, encrypts your data at rest, and never trains models on your work.
+                  In this market, a leaked quote kills a bid. A shared BOQ becomes your competitor&apos;s starting point. QSToolkit isolates every project, encrypts your data at rest, and gives you full control over what you share.
                 </p>
                 <ul className="space-y-4">
-                  {['Encrypted data at rest', 'Isolated project workspaces', 'No AI training on your documents', 'Granular team permissions', 'Audit trail for every access'].map((item) => (
+                  {['Encrypted data at rest', 'Isolated project workspaces', 'Your data shapes your AI', 'Granular team permissions', 'Audit trail for every access', 'Export anytime. Full ownership.'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-white/60">
                       <span className="w-5 h-5 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-gold-400 text-xs">✓</span>
@@ -590,8 +589,8 @@ export default function LandingPage() {
                     {[
                       { label: 'Encryption', value: 'AES-256', status: 'Active' },
                       { label: 'Data residency', value: 'Your account only', status: 'Isolated' },
-                      { label: 'AI training', value: 'Never', status: 'Disabled' },
-                      { label: 'Third-party sharing', value: 'None', status: 'Blocked' }
+                      { label: 'Access logging', value: 'Every view tracked', status: 'Transparent' },
+                      { label: 'Data ownership', value: 'You hold the keys', status: 'Yours' }
                     ].map((row) => (
                       <div key={row.label} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
                         <div>
@@ -715,9 +714,9 @@ export default function LandingPage() {
               className="grid md:grid-cols-3 gap-8"
             >
               {[
-                { step: '01', title: 'Calculate', body: 'Pick a calculator. Enter your dimensions. Get quantities in seconds — with Nigerian standards baked in.' },
-                { step: '02', title: 'Document', body: 'Build BOQs, invoices, and quotes with your branding. Export to PDF or Excel. Send to clients instantly.' },
-                { step: '03', title: 'Build Reputation', body: 'Collect client feedback, track project history, and climb the national leaderboard. Your work speaks louder than words.' }
+                { step: '01', title: 'Calculate', body: 'Enter dimensions. Get quantities. Nigerian standards built in.' },
+                { step: '02', title: 'Document', body: 'Build branded documents. Export PDF or Excel. Send in seconds.' },
+                { step: '03', title: 'Build Reputation', body: 'Collect feedback. Track history. Climb the leaderboard.' }
               ].map((s) => (
                 <motion.div
                   key={s.step}
@@ -754,12 +753,12 @@ export default function LandingPage() {
                 <span className="text-xs font-semibold uppercase tracking-widest text-gold-600">Coming Soon</span>
               </div>
               <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-800 leading-tight mb-6">
-                QS AI Engine.
+                Smarter QS.
                 <br />
-                <span className="text-gold-500">Your digital surveyor.</span>
+                <span className="text-gold-500">Coming soon.</span>
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                We are building an AI that understands construction documents, not just text. Upload drawings. Ask questions. Get quantities.
+                An AI that understands your local needs.
               </p>
             </motion.div>
 
@@ -771,10 +770,10 @@ export default function LandingPage() {
               className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
               {[
-                { title: 'Auto-BOQ', body: 'Upload architectural drawings and specifications. The AI generates a draft BOQ with line items, quantities, and descriptions.' },
-                { title: 'Cost forecasting', body: 'Trend analysis across your project history and market data. Predict cost overruns before they happen.' },
-                { title: 'Variance detection', body: 'Compare estimate vs actuals automatically. Flag discrepancies between revisions without manual line-by-line checks.' },
-                { title: 'Natural language', body: '"What changed between Rev A and Rev B?" Ask in plain English. Get answers in seconds, not hours.' }
+                { title: 'Auto-BOQ', body: 'Upload drawings. Get draft BOQs in seconds.' },
+                { title: 'Cost forecasting', body: 'Spot overruns before they happen.' },
+                { title: 'Variance detection', body: 'Catch what changed between revisions. Instantly.' },
+                { title: 'Natural language', body: 'Ask questions. Get answers. No manuals.' }
               ].map((feat, i) => (
                 <motion.div
                   key={i}
