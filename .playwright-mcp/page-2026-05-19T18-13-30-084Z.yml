@@ -1,0 +1,326 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation [ref=e4]:
+      - generic [ref=e5]:
+        - link "QS QSToolkit" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e8]: QS
+          - generic [ref=e9]: QSToolkit
+        - generic [ref=e10]:
+          - link "Leaderboard" [ref=e11] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Sign In" [ref=e12] [cursor=pointer]:
+            - /url: /auth/login
+          - link "Get Started" [ref=e13] [cursor=pointer]:
+            - /url: /auth/register
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: 🇳🇬
+          - generic [ref=e18]: Built for Nigerian Quantity Surveyors
+        - heading "Quantity Surveying. Without the spreadsheets." [level=1] [ref=e19]:
+          - text: Quantity Surveying.
+          - text: Without the spreadsheets.
+        - paragraph [ref=e20]: Calculate, quantify, and invoice from your browser. No Excel. No errors. No wasted weekends.
+        - generic [ref=e21]:
+          - link "Start Free — No Card" [ref=e22] [cursor=pointer]:
+            - /url: /auth/register
+          - link "Try a Calculator →" [ref=e23] [cursor=pointer]:
+            - /url: /calculators
+      - generic [ref=e25]:
+        - generic [ref=e26]: Nigerian Construction Standards
+        - generic [ref=e28]: 10+ QS Calculators
+        - generic [ref=e30]: PDF & Excel Exports
+        - generic [ref=e32]: BOQ Generator
+        - generic [ref=e34]: Client Feedback System
+        - generic [ref=e36]: Live Leaderboard
+        - generic [ref=e38]: Invoice & Quote Builder
+        - generic [ref=e40]: Project Tracker
+        - generic [ref=e42]: Zero Setup Required
+        - generic [ref=e44]: Nigerian Construction Standards
+        - generic [ref=e46]: 10+ QS Calculators
+        - generic [ref=e48]: PDF & Excel Exports
+        - generic [ref=e50]: BOQ Generator
+        - generic [ref=e52]: Client Feedback System
+        - generic [ref=e54]: Live Leaderboard
+        - generic [ref=e56]: Invoice & Quote Builder
+        - generic [ref=e58]: Project Tracker
+        - generic [ref=e60]: Zero Setup Required
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e67]: The Problem
+        - heading "Your tools haven't changed since university." [level=2] [ref=e68]
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e72]: "01"
+          - heading "Excel breaks silently" [level=3] [ref=e73]
+          - paragraph [ref=e74]: One wrong cell, entire BOQ is wrong. No validation. No guardrails. You only find out when the client does.
+        - generic [ref=e75]:
+          - generic [ref=e77]: "02"
+          - heading "Clients wait too long" [level=3] [ref=e78]
+          - paragraph [ref=e79]: Manual calculations take days. Your competitors deliver in hours. Speed is the new credibility.
+        - generic [ref=e80]:
+          - generic [ref=e82]: "03"
+          - heading "No paper trail" [level=3] [ref=e83]
+          - paragraph [ref=e84]: Scattered notes, lost files, zero project history when you need it most. Your work disappears into thin air.
+        - generic [ref=e85]:
+          - generic [ref=e87]: "04"
+          - heading "Reputation is invisible" [level=3] [ref=e88]
+          - paragraph [ref=e89]: No feedback system. No proof of quality for new clients. You are only as good as your last conversation.
+    - generic [ref=e92]:
+      - generic [ref=e93]:
+        - generic [ref=e96]: The Platform
+        - heading "One system. Every QS task." [level=2] [ref=e97]:
+          - text: One system.
+          - text: Every QS task.
+        - paragraph [ref=e98]: From concrete volume to final invoice — every tool shares the same data. No re-typing. No context switching. One place for your entire practice.
+        - list [ref=e99]:
+          - listitem [ref=e100]:
+            - generic [ref=e102]: ✓
+            - text: Concrete, blockwork, steel, plastering & more
+          - listitem [ref=e103]:
+            - generic [ref=e105]: ✓
+            - text: BOQs with your branding
+          - listitem [ref=e106]:
+            - generic [ref=e108]: ✓
+            - text: Invoices, quotes, valuations
+          - listitem [ref=e109]:
+            - generic [ref=e111]: ✓
+            - text: Client feedback collection
+          - listitem [ref=e112]:
+            - generic [ref=e114]: ✓
+            - text: Live national leaderboard
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e119]: Dimensions
+          - generic [ref=e120]: Specs
+          - generic [ref=e121]: Rates
+        - generic [ref=e126]:
+          - text: QSToolkit
+          - generic [ref=e127]: Engine · Database · Export
+        - generic [ref=e132]:
+          - generic [ref=e133]: BOQ
+          - generic [ref=e134]: Invoice
+          - generic [ref=e135]: Report
+    - generic [ref=e139]:
+      - generic [ref=e140]:
+        - generic [ref=e143]: Capabilities
+        - heading "Built for how you actually work." [level=2] [ref=e144]
+      - generic [ref=e145]:
+        - generic [ref=e147]:
+          - generic [ref=e148]: "[01]"
+          - generic [ref=e149]:
+            - heading "Nigerian standards first." [level=3] [ref=e150]
+            - paragraph [ref=e151]: 9-inch sandcrete blocks. BS 4449 steel. Laterite bulking factors. Every calculator uses the units and standards you actually work with.
+        - generic [ref=e153]:
+          - generic [ref=e154]: "[02]"
+          - generic [ref=e155]:
+            - heading "BOQs in minutes." [level=3] [ref=e156]
+            - paragraph [ref=e157]: Input your quantities, get a professional itemised document. Export to PDF or Excel — with your logo and branding.
+        - generic [ref=e159]:
+          - generic [ref=e160]: "[03]"
+          - generic [ref=e161]:
+            - heading "Branded documents." [level=3] [ref=e162]
+            - paragraph [ref=e163]: Your logo. Your colours. Your signature on every invoice, quote, and valuation. Look like the firm you are.
+        - generic [ref=e165]:
+          - generic [ref=e166]: "[04]"
+          - generic [ref=e167]:
+            - heading "Project history." [level=3] [ref=e168]
+            - paragraph [ref=e169]: Every calculation, every BOQ, every invoice — logged, dated, and searchable. Never lose track of a project again.
+        - generic [ref=e171]:
+          - generic [ref=e172]: "[05]"
+          - generic [ref=e173]:
+            - heading "Client proof." [level=3] [ref=e174]
+            - paragraph [ref=e175]: Share a unique feedback link. Collect ratings on quality, timeliness, and communication. Let your work speak for itself.
+        - generic [ref=e177]:
+          - generic [ref=e178]: "[06]"
+          - generic [ref=e179]:
+            - heading "Live leaderboard." [level=3] [ref=e180]
+            - paragraph [ref=e181]: See where you rank against QS professionals nationwide. By projects completed. By client rating. By reputation.
+    - generic [ref=e184]:
+      - generic [ref=e185]:
+        - text: 0+
+        - generic [ref=e186]: Calculators
+        - generic [ref=e187]: All Nigerian standards
+      - generic [ref=e188]:
+        - text: 0x
+        - generic [ref=e189]: Faster BOQs
+        - generic [ref=e190]: From days to minutes
+      - generic [ref=e191]:
+        - text: ₦0
+        - generic [ref=e192]: Setup Cost
+        - generic [ref=e193]: Start in 60 seconds
+      - generic [ref=e194]:
+        - text: 0%
+        - generic [ref=e195]: Cloud Based
+        - generic [ref=e196]: Access from any device
+    - generic [ref=e198]:
+      - generic [ref=e199]:
+        - generic [ref=e202]: How It Works
+        - heading "Three steps. No setup." [level=2] [ref=e203]
+      - generic [ref=e204]:
+        - generic [ref=e205]:
+          - generic [ref=e207]: "01"
+          - heading "Calculate" [level=3] [ref=e208]
+          - paragraph [ref=e209]: Pick a calculator. Enter your dimensions. Get quantities in seconds — with Nigerian standards baked in.
+        - generic [ref=e210]:
+          - generic [ref=e212]: "02"
+          - heading "Document" [level=3] [ref=e213]
+          - paragraph [ref=e214]: Build BOQs, invoices, and quotes with your branding. Export to PDF or Excel. Send to clients instantly.
+        - generic [ref=e215]:
+          - generic [ref=e217]: "03"
+          - heading "Build Reputation" [level=3] [ref=e218]
+          - paragraph [ref=e219]: Collect client feedback, track project history, and climb the national leaderboard. Your work speaks louder than words.
+    - generic [ref=e221]:
+      - generic [ref=e222]:
+        - generic [ref=e225]: Pricing
+        - heading "Simple. Transparent. Nigerian." [level=2] [ref=e226]
+        - paragraph [ref=e227]: No hidden fees. No surprise charges. Pick what fits your practice.
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - generic [ref=e230]:
+            - heading "Basic" [level=3] [ref=e231]
+            - paragraph [ref=e232]: For students and entry-level QSs getting started.
+            - generic [ref=e233]:
+              - generic [ref=e234]: ₦5,000
+              - generic [ref=e235]: /month
+          - list [ref=e236]:
+            - listitem [ref=e237]:
+              - generic [ref=e238]: ✓
+              - text: 2 projects/month
+            - listitem [ref=e239]:
+              - generic [ref=e240]: ✓
+              - text: 30 calculator uses
+            - listitem [ref=e241]:
+              - generic [ref=e242]: ✓
+              - text: 2 BOQs
+            - listitem [ref=e243]:
+              - generic [ref=e244]: ✓
+              - text: 2 invoices & quotes
+            - listitem [ref=e245]:
+              - generic [ref=e246]: ✓
+              - text: PDF & Excel exports
+            - listitem [ref=e247]:
+              - generic [ref=e248]: ✓
+              - text: 1 user, 1 device
+          - link "Get Basic" [ref=e249] [cursor=pointer]:
+            - /url: /auth/register
+        - generic [ref=e250]:
+          - generic [ref=e251]: Most Popular
+          - generic [ref=e252]:
+            - heading "Pro" [level=3] [ref=e253]
+            - paragraph [ref=e254]: For practicing professionals who need more volume.
+            - generic [ref=e255]:
+              - generic [ref=e256]: ₦15,000
+              - generic [ref=e257]: /month
+          - list [ref=e258]:
+            - listitem [ref=e259]:
+              - generic [ref=e260]: ✓
+              - text: 5 projects/month
+            - listitem [ref=e261]:
+              - generic [ref=e262]: ✓
+              - text: 80 calculator uses
+            - listitem [ref=e263]:
+              - generic [ref=e264]: ✓
+              - text: 5 BOQs
+            - listitem [ref=e265]:
+              - generic [ref=e266]: ✓
+              - text: 5 invoices & quotes
+            - listitem [ref=e267]:
+              - generic [ref=e268]: ✓
+              - text: PDF & Excel exports
+            - listitem [ref=e269]:
+              - generic [ref=e270]: ✓
+              - text: 1 user, 2 devices
+            - listitem [ref=e271]:
+              - generic [ref=e272]: ✓
+              - text: Priority support
+          - link "Get Pro" [ref=e273] [cursor=pointer]:
+            - /url: /auth/register
+        - generic [ref=e274]:
+          - generic [ref=e275]:
+            - heading "Enterprise" [level=3] [ref=e276]
+            - paragraph [ref=e277]: For firms and teams managing multiple projects.
+            - generic [ref=e278]:
+              - generic [ref=e279]: ₦70,000
+              - generic [ref=e280]: /month
+          - list [ref=e281]:
+            - listitem [ref=e282]:
+              - generic [ref=e283]: ✓
+              - text: 50 projects/month
+            - listitem [ref=e284]:
+              - generic [ref=e285]: ✓
+              - text: 700 calculator uses
+            - listitem [ref=e286]:
+              - generic [ref=e287]: ✓
+              - text: 50 BOQs
+            - listitem [ref=e288]:
+              - generic [ref=e289]: ✓
+              - text: 50 invoices & quotes
+            - listitem [ref=e290]:
+              - generic [ref=e291]: ✓
+              - text: PDF & Excel exports
+            - listitem [ref=e292]:
+              - generic [ref=e293]: ✓
+              - text: 5 users, 15 devices
+            - listitem [ref=e294]:
+              - generic [ref=e295]: ✓
+              - text: Team roles
+            - listitem [ref=e296]:
+              - generic [ref=e297]: ✓
+              - text: Top priority support
+          - link "Get Enterprise" [ref=e298] [cursor=pointer]:
+            - /url: /auth/register
+    - generic [ref=e300]:
+      - generic [ref=e301]:
+        - generic [ref=e304]: FAQ
+        - heading "Questions? Answered." [level=2] [ref=e305]
+      - generic [ref=e306]:
+        - generic [ref=e307]:
+          - button "What makes QSToolkit different from Excel? +" [ref=e308] [cursor=pointer]:
+            - generic [ref=e309]: What makes QSToolkit different from Excel?
+            - generic [ref=e310]: +
+          - paragraph [ref=e312]: Every calculator is built for Nigerian construction standards — 9-inch blocks, BS 4449 steel, laterite bulking factors. No formulas to break. No unit conversions to forget. Just input and get accurate results.
+        - button "Can I export BOQs and invoices with my company logo? +" [ref=e314] [cursor=pointer]:
+          - generic [ref=e315]: Can I export BOQs and invoices with my company logo?
+          - generic [ref=e316]: +
+        - button "Is there a free trial? +" [ref=e318] [cursor=pointer]:
+          - generic [ref=e319]: Is there a free trial?
+          - generic [ref=e320]: +
+        - button "How does the client feedback system work? +" [ref=e322] [cursor=pointer]:
+          - generic [ref=e323]: How does the client feedback system work?
+          - generic [ref=e324]: +
+        - button "Can I use this on my phone? +" [ref=e326] [cursor=pointer]:
+          - generic [ref=e327]: Can I use this on my phone?
+          - generic [ref=e328]: +
+        - button "What happens to my data? +" [ref=e330] [cursor=pointer]:
+          - generic [ref=e331]: What happens to my data?
+          - generic [ref=e332]: +
+    - generic [ref=e335]:
+      - heading "Work smarter. Build your reputation." [level=2] [ref=e336]:
+        - text: Work smarter.
+        - text: Build your reputation.
+      - paragraph [ref=e337]: No credit card. No setup. Start in 60 seconds.
+      - link "Create Free Account →" [ref=e338] [cursor=pointer]:
+        - /url: /auth/register
+    - contentinfo [ref=e339]:
+      - generic [ref=e340]:
+        - generic [ref=e341]:
+          - generic [ref=e342]:
+            - generic [ref=e343]:
+              - generic [ref=e345]: QS
+              - generic [ref=e346]: QSToolkit
+            - paragraph [ref=e347]: Quantity Surveying Toolkit for Nigerian professionals.
+          - generic [ref=e348]:
+            - link "Login" [ref=e349] [cursor=pointer]:
+              - /url: /auth/login
+            - link "Register" [ref=e350] [cursor=pointer]:
+              - /url: /auth/register
+            - link "Leaderboard" [ref=e351] [cursor=pointer]:
+              - /url: /leaderboard
+            - link "Calculators" [ref=e352] [cursor=pointer]:
+              - /url: /calculators
+        - generic [ref=e353]:
+          - paragraph [ref=e354]: © 2026 QSToolkit. Built by Fudo Greentech Ltd.
+          - paragraph [ref=e355]: All calculations follow Nigerian construction standards.
+  - alert [ref=e356]

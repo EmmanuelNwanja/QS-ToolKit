@@ -1,0 +1,503 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "SolNuv" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e11]: SolNuv
+        - navigation "Primary" [ref=e12]:
+          - link "AI Engine" [ref=e13] [cursor=pointer]:
+            - /url: /ai-engine
+          - link "Contact" [ref=e14] [cursor=pointer]:
+            - /url: /contact
+          - button "Resources" [ref=e16] [cursor=pointer]:
+            - text: Resources
+            - img [ref=e18]
+        - generic [ref=e20]:
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /login
+          - link "Get started" [ref=e22] [cursor=pointer]:
+            - /url: /register
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - status [ref=e25]:
+          - generic [ref=e26]: Motion debug
+          - generic [ref=e27]: "Animations: on"
+          - generic [ref=e28]: "OS prefers-reduced-motion: no"
+          - generic [ref=e29]:
+            - code [ref=e30]: "?motion=off"
+            - text: — disable animations
+            - code [ref=e31]: "?motion=on"
+            - text: — re-enable
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - generic:
+              - img:
+                - generic: SolNuv
+            - generic [ref=e34]:
+              - heading "From design to recovery . One platform." [level=1] [ref=e35]:
+                - generic [ref=e36]: From
+                - generic [ref=e37]: design
+                - text: to
+                - generic [ref=e38]: recovery
+                - text: .
+                - generic [ref=e39]: One platform.
+              - generic [ref=e40]:
+                - generic [ref=e41]: Design. Track. Report. Recover.
+                - generic [ref=e42]: The solar lifecycle platform for Nigeria.
+              - generic [ref=e43]:
+                - link "Get Started" [ref=e45] [cursor=pointer]:
+                  - /url: /register
+                  - text: Get Started
+                  - img [ref=e46]
+                - link "Start AI Engine" [ref=e49] [cursor=pointer]:
+                  - /url: /ai-engine
+            - generic [ref=e52]:
+              - generic [ref=e53]: LAGOS 5.8 KWH/M²
+              - generic [ref=e54]: ABUJA 6.2 KWH/M²
+              - generic [ref=e55]: 847 SYSTEMS DESIGNED
+              - generic [ref=e56]: 3.2× VALUE FROM REFURBISHMENT
+              - generic [ref=e57]: NIGERIA-OPTIMIZED
+              - generic [ref=e58]: NASA POWER DATA
+              - generic [ref=e59]: LAGOS 5.8 KWH/M²
+              - generic [ref=e60]: ABUJA 6.2 KWH/M²
+              - generic [ref=e61]: 847 SYSTEMS DESIGNED
+              - generic [ref=e62]: 3.2× VALUE FROM REFURBISHMENT
+              - generic [ref=e63]: NIGERIA-OPTIMIZED
+              - generic [ref=e64]: NASA POWER DATA
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - generic [ref=e69]: The Gap
+              - heading "Stop losing excess value at end-of-life." [level=2] [ref=e70]:
+                - text: Stop losing excess value
+                - text: at end-of-life.
+              - paragraph [ref=e71]: Most solar systems are commissioned, then forgotten. No tracking. No compliance trail. And when panels and batteries degrade, they're scrapped for base materials — even when refurbishment can return 3.2× more value.
+              - generic [ref=e72]:
+                - generic [ref=e73]: 1. No connected lifecycle workflow from design to recovery.
+                - generic [ref=e74]: 2. Compliance reporting is manual and delayed.
+                - generic [ref=e75]: 3 End-of-life value is lost through raw-material-only recovery.
+            - generic [ref=e76]:
+              - img "SolNuv dashboard showing fleet recovery tracking" [ref=e79]
+              - generic [ref=e82]: Live fleet data
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - generic [ref=e87]: One Lifecycle OS
+              - heading "Replace fragmented workflows with one connected system." [level=2] [ref=e88]:
+                - text: Replace fragmented workflows
+                - text: with one connected system.
+            - generic [ref=e89]:
+              - generic [ref=e92]:
+                - paragraph [ref=e93]: Fragmented stack
+                - generic [ref=e94]:
+                  - generic [ref=e95]: 01Spreadsheet model
+                  - generic [ref=e96]: 02Manual monitoring
+                  - generic [ref=e97]: 03Delayed compliance report
+                  - generic [ref=e98]: 04Scrap at end-of-life
+              - generic [ref=e101]:
+                - paragraph [ref=e102]: SolNuv unified flow
+                - generic [ref=e103]:
+                  - generic [ref=e104]: 01Design + sizing
+                  - generic [ref=e105]: 02Live asset health
+                  - generic [ref=e106]: 03Auto NESREA-ready reporting
+                  - generic [ref=e107]: 04Refurbishment-first recovery
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: End-of-Life
+              - heading "Refurbishment beats raw recovery." [level=2] [ref=e113]:
+                - text: Refurbishment beats
+                - text: raw recovery.
+              - paragraph [ref=e114]: When panels and batteries reach end-of-life, most operators scrap them. SolNuv routes viable cells to refurbishment, yielding 3.2× more value while extending the asset lifecycle.
+              - generic [ref=e115]:
+                - generic [ref=e116]:
+                  - text: 3.2×
+                  - paragraph [ref=e117]: Value from refurbishment
+                - generic [ref=e118]:
+                  - text: 78%
+                  - paragraph [ref=e119]: SOH threshold for routing
+            - generic [ref=e311]:
+              - generic [ref=e312]: Active
+              - generic [ref=e313]: Refurbish
+              - generic [ref=e314]: Degrade
+          - generic [ref=e317]:
+            - heading "Design → Track → Report → Recover. One platform." [level=2] [ref=e319]:
+              - text: Design → Track → Report → Recover.
+              - text: One platform.
+            - generic [ref=e321]:
+              - generic [ref=e325]:
+                - generic [ref=e326]: "01"
+                - generic [ref=e327]: DESIGN
+                - generic [ref=e328]: PV + BESS Modeling
+              - generic [ref=e333]:
+                - generic [ref=e334]: "02"
+                - generic [ref=e335]: TRACK
+                - generic [ref=e336]: Lifecycle Monitoring
+              - generic [ref=e341]:
+                - generic [ref=e342]: "03"
+                - generic [ref=e343]: REPORT
+                - generic [ref=e344]: Regulatory Compliance
+              - generic [ref=e349]:
+                - generic [ref=e350]: "04"
+                - generic [ref=e351]: RECOVER
+                - generic [ref=e352]: Refurbishment > Recycling
+          - generic [ref=e354]:
+            - heading "Design to recovery" [level=2] [ref=e356]
+            - generic [ref=e357]:
+              - generic [ref=e359]:
+                - button "01 DESIGN System sizing with NASA POWER + AI" [ref=e360] [cursor=pointer]:
+                  - generic [ref=e362]:
+                    - generic [ref=e363]: "01"
+                    - generic [ref=e364]:
+                      - generic [ref=e365]: DESIGN
+                      - generic [ref=e366]: System sizing with NASA POWER + AI
+                - button "02 TRACK Real-time performance & degradation" [ref=e367] [cursor=pointer]:
+                  - generic [ref=e368]:
+                    - generic [ref=e369]: "02"
+                    - generic [ref=e370]:
+                      - generic [ref=e371]: TRACK
+                      - generic [ref=e372]: Real-time performance & degradation
+                - button "03 REPORT Auto-generated compliance & financier docs" [ref=e373] [cursor=pointer]:
+                  - generic [ref=e374]:
+                    - generic [ref=e375]: "03"
+                    - generic [ref=e376]:
+                      - generic [ref=e377]: REPORT
+                      - generic [ref=e378]: Auto-generated compliance & financier docs
+                - button "04 RECOVER End-of-life value maximization" [ref=e379] [cursor=pointer]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: "04"
+                    - generic [ref=e382]:
+                      - generic [ref=e383]: RECOVER
+                      - generic [ref=e384]: End-of-life value maximization
+              - generic [ref=e388]:
+                - generic [ref=e389]: STEP 01
+                - heading "DESIGN" [level=3] [ref=e390]
+                - paragraph [ref=e391]: Pull satellite irradiance for any West African location. Get optimal PV and BESS sizing based on load, tariff, and budget.
+          - generic [ref=e393]:
+            - heading "Built for the full lifecycle" [level=2] [ref=e395]
+            - generic [ref=e396]:
+              - generic [ref=e399]:
+                - generic [ref=e400]:
+                  - generic [ref=e401]: "[01]"
+                  - img [ref=e403]
+                - heading "PV + BESS co-design" [level=3] [ref=e405]
+                - paragraph [ref=e406]: Simultaneous panel and battery sizing
+              - generic [ref=e409]:
+                - generic [ref=e410]:
+                  - generic [ref=e411]: "[02]"
+                  - img [ref=e413]
+                - heading "Hourly simulation" [level=3] [ref=e415]
+                - paragraph [ref=e416]: 8,760 data points per year
+              - generic [ref=e419]:
+                - generic [ref=e420]:
+                  - generic [ref=e421]: "[03]"
+                  - img [ref=e423]
+                - heading "Asset Recovery & Refurbishing" [level=3] [ref=e425]
+                - paragraph [ref=e426]: End-of-life value maximization — refurbishment over raw material recovery
+              - generic [ref=e429]:
+                - generic [ref=e430]:
+                  - generic [ref=e431]: "[04]"
+                  - img [ref=e433]
+                - heading "NESREA compliance" [level=3] [ref=e435]
+                - paragraph [ref=e436]: Auto-generated regulatory reports
+              - generic [ref=e439]:
+                - generic [ref=e440]:
+                  - generic [ref=e441]: "[05]"
+                  - img [ref=e443]
+                - heading "Geospatial verification" [level=3] [ref=e445]
+                - paragraph [ref=e446]: GPS-tagged project validation
+              - generic [ref=e449]:
+                - generic [ref=e450]:
+                  - generic [ref=e451]: "[06]"
+                  - img [ref=e453]
+                - heading "Lifecycle tracking" [level=3] [ref=e455]
+                - paragraph [ref=e456]: 25-year asset monitoring
+          - generic [ref=e458]:
+            - generic [ref=e459]:
+              - generic [ref=e460]: Made for everyone
+              - heading "One platform for every lifecycle stakeholder." [level=2] [ref=e461]
+            - generic [ref=e462]:
+              - link "Installers Design faster, produce cleaner handover documentation, and prove quality from day one. Explore" [ref=e464] [cursor=pointer]:
+                - /url: /register
+                - paragraph [ref=e465]: Installers
+                - paragraph [ref=e466]: Design faster, produce cleaner handover documentation, and prove quality from day one.
+                - generic [ref=e467]:
+                  - text: Explore
+                  - img [ref=e468]
+              - link "Operators Monitor degradation, report reliably, and protect long-term asset value. Explore" [ref=e471] [cursor=pointer]:
+                - /url: /register
+                - paragraph [ref=e472]: Operators
+                - paragraph [ref=e473]: Monitor degradation, report reliably, and protect long-term asset value.
+                - generic [ref=e474]:
+                  - text: Explore
+                  - img [ref=e475]
+              - link "Partners Collaborate across financing, training, and recovery with role-specific workflows. Explore" [ref=e478] [cursor=pointer]:
+                - /url: /partners/training/signup
+                - paragraph [ref=e479]: Partners
+                - paragraph [ref=e480]: Collaborate across financing, training, and recovery with role-specific workflows.
+                - generic [ref=e481]:
+                  - text: Explore
+                  - img [ref=e482]
+              - link "Regulators Review auditable project data, compliance artifacts, and verified lifecycle records. Explore" [ref=e485] [cursor=pointer]:
+                - /url: /project-verification
+                - paragraph [ref=e486]: Regulators
+                - paragraph [ref=e487]: Review auditable project data, compliance artifacts, and verified lifecycle records.
+                - generic [ref=e488]:
+                  - text: Explore
+                  - img [ref=e489]
+          - generic [ref=e492]:
+            - heading "SolNuv AI engine at every phase" [level=2] [ref=e494]
+            - generic [ref=e498]:
+              - generic [ref=e499]: "> Scanning location... Lagos, NG"
+              - generic [ref=e500]: "> Irradiance: 5.8 kWh/m2/day"
+              - generic [ref=e501]: "> Load profile: 24 kWh/day"
+              - generic [ref=e502]: "> Optimizing PV + BESS..."
+              - generic [ref=e503]: "> Recommended: 5.2 kWp / 10.4 kWh"
+              - generic [ref=e504]: "> NPV: N12.4M over 25 years"
+              - generic [ref=e505]: "> Year 18 SOH: 78% — REFURBISHMENT ROUTE"
+              - generic [ref=e506]: "> Recovery value: N2.1M (3.2x vs silver)"
+              - generic [ref=e507]: "> Ready."
+          - generic [ref=e509]:
+            - generic [ref=e510]:
+              - heading "Meet the SolNuv AI Engine" [level=2] [ref=e511]
+              - paragraph [ref=e512]: Trained for solar engineering. Smarter decisions at every phase.
+            - generic [ref=e513]:
+              - generic [ref=e515]:
+                - generic [ref=e516]:
+                  - img [ref=e518]
+                  - generic [ref=e520]:
+                    - heading "SolNuv Flash" [level=3] [ref=e521]
+                    - paragraph [ref=e522]: Fast answers. Zero friction.
+                - list [ref=e523]:
+                  - listitem [ref=e524]:
+                    - img [ref=e525]
+                    - text: Solar system sizing guidance
+                  - listitem [ref=e527]:
+                    - img [ref=e528]
+                    - text: Panel & battery basics
+                  - listitem [ref=e530]:
+                    - img [ref=e531]
+                    - text: NESREA compliance overview
+                  - listitem [ref=e533]:
+                    - img [ref=e534]
+                    - text: Quick ROI estimates
+                - link "Try Flash" [ref=e536] [cursor=pointer]:
+                  - /url: /ai-engine
+                  - text: Try Flash
+                  - img [ref=e537]
+              - generic [ref=e540]:
+                - generic [ref=e541]:
+                  - img [ref=e543]
+                  - generic [ref=e545]:
+                    - heading "SolNuv Pro" [level=3] [ref=e546]
+                    - paragraph [ref=e547]: Deeper expertise.
+                - list [ref=e548]:
+                  - listitem [ref=e549]:
+                    - img [ref=e550]
+                    - text: Detailed system design analysis
+                  - listitem [ref=e552]:
+                    - img [ref=e553]
+                    - text: Battery chemistry comparisons
+                  - listitem [ref=e555]:
+                    - img [ref=e556]
+                    - text: Silver recovery valuation
+                  - listitem [ref=e558]:
+                    - img [ref=e559]
+                    - text: Load profile & tariff optimization
+                - link "Unlock Pro" [ref=e561] [cursor=pointer]:
+                  - /url: /ai-engine
+                  - text: Unlock Pro
+                  - img [ref=e562]
+            - generic [ref=e564]:
+              - generic [ref=e565]:
+                - img [ref=e566]
+                - heading "Instant Answers" [level=4] [ref=e568]
+                - paragraph [ref=e569]: Flash delivers rapid solar insights for common questions and quick decisions.
+              - generic [ref=e570]:
+                - img [ref=e571]
+                - heading "Deep Analysis" [level=4] [ref=e573]
+                - paragraph [ref=e574]: Pro provides detailed technical breakdowns, system sizing, and engineering guidance.
+              - generic [ref=e575]:
+                - img [ref=e576]
+                - heading "NESREA-Ready" [level=4] [ref=e578]
+                - paragraph [ref=e579]: Both models understand Nigerian compliance, EPR rules, and solar waste regulations.
+            - link "Start AI Engine" [ref=e581] [cursor=pointer]:
+              - /url: /ai-engine
+              - img [ref=e582]
+              - text: Start AI Engine
+          - generic [ref=e585]:
+            - generic [ref=e586]:
+              - generic [ref=e587]: Try It Now
+              - heading "What's your recovery value?" [level=2] [ref=e588]
+            - generic [ref=e591]:
+              - generic [ref=e592]:
+                - generic [ref=e593]: Calculator
+                - generic [ref=e594]: Calculator
+              - generic [ref=e595]:
+                - generic [ref=e596]:
+                  - generic [ref=e597]:
+                    - generic [ref=e598]:
+                      - generic [ref=e599]: Wattage (W)
+                      - spinbutton [ref=e600]: "400"
+                    - generic [ref=e601]:
+                      - generic [ref=e602]: Panels
+                      - spinbutton [ref=e603]: "10"
+                  - generic [ref=e604]:
+                    - generic [ref=e605]: Installation Date
+                    - textbox [ref=e606]: 2018-01-01
+                  - generic [ref=e607]:
+                    - generic [ref=e608]: Climate Zone
+                    - combobox [ref=e609]:
+                      - option "Coastal / humid" [selected]
+                      - option "Sahel / dry heat"
+                      - option "Southeast humid"
+                      - option "Mixed / inland"
+                  - button "Calculate" [ref=e610] [cursor=pointer]
+                - generic [ref=e612]: Results will appear here
+          - generic [ref=e614]:
+            - paragraph [ref=e616]: Connected across compliance, payments, and data
+            - generic [ref=e617]:
+              - generic [ref=e619]: NESREA
+              - generic [ref=e621]: NERC
+              - generic [ref=e623]: REA Nigeria
+              - generic [ref=e625]: Paystack
+              - generic [ref=e627]: Supabase
+              - generic [ref=e629]: OpenStreetMap
+              - generic [ref=e631]: NASA POWER
+              - generic [ref=e633]: WhatsApp Alerts
+          - generic [ref=e635]:
+            - generic [ref=e637]: New trust for regulators and OEMs
+            - generic [ref=e638]:
+              - generic [ref=e640]:
+                - text: NESREA
+                - generic [ref=e641]: EPR Framework
+              - generic [ref=e643]:
+                - text: REA Nigeria
+                - generic [ref=e644]: Electrification
+              - generic [ref=e646]:
+                - text: NERC
+                - generic [ref=e647]: Tariff Regulator
+              - generic [ref=e649]:
+                - text: Jinko Solar
+                - generic [ref=e650]: OEM
+              - generic [ref=e652]:
+                - text: BYD
+                - generic [ref=e653]: OEM
+              - generic [ref=e655]:
+                - text: Growatt
+                - generic [ref=e656]: OEM
+              - generic [ref=e658]:
+                - text: Schneider Electric
+                - generic [ref=e659]: OEM
+              - generic [ref=e661]:
+                - text: UNDP Nigeria
+                - generic [ref=e662]: Development
+              - generic [ref=e664]:
+                - text: Longi Solar
+                - generic [ref=e665]: OEM
+              - generic [ref=e667]:
+                - text: Victron Energy
+                - generic [ref=e668]: OEM
+              - generic [ref=e670]:
+                - text: Pylontech
+                - generic [ref=e671]: OEM
+              - generic [ref=e673]:
+                - text: Trina Solar
+                - generic [ref=e674]: OEM
+              - generic [ref=e676]:
+                - text: Huawei
+                - generic [ref=e677]: OEM
+              - generic [ref=e679]:
+                - text: Deye
+                - generic [ref=e680]: OEM
+          - generic [ref=e682]:
+            - generic [ref=e683]:
+              - generic [ref=e684]: FAQ
+              - heading "Questions teams ask before rollout" [level=2] [ref=e685]
+            - generic [ref=e686]:
+              - generic [ref=e688]:
+                - button "How does SolNuv support NESREA and EPR reporting?" [expanded] [ref=e689] [cursor=pointer]:
+                  - generic [ref=e690]: How does SolNuv support NESREA and EPR reporting?
+                  - img [ref=e692]
+                - paragraph [ref=e695]: SolNuv structures design, asset, and end-of-life data into auditable report outputs so teams can generate regulator-ready submissions faster.
+              - button "Can I use SolNuv for both new installations and existing assets?" [ref=e698] [cursor=pointer]:
+                - generic [ref=e699]: Can I use SolNuv for both new installations and existing assets?
+                - img [ref=e701]
+              - button "How is refurbishment value estimated?" [ref=e705] [cursor=pointer]:
+                - generic [ref=e706]: How is refurbishment value estimated?
+                - img [ref=e708]
+              - button "Do partners get dedicated workflows?" [ref=e712] [cursor=pointer]:
+                - generic [ref=e713]: Do partners get dedicated workflows?
+                - img [ref=e715]
+              - button "Is there a free way to get started?" [ref=e719] [cursor=pointer]:
+                - generic [ref=e720]: Is there a free way to get started?
+                - img [ref=e722]
+              - button "Can field teams verify projects on-site?" [ref=e726] [cursor=pointer]:
+                - generic [ref=e727]: Can field teams verify projects on-site?
+                - img [ref=e729]
+          - generic [ref=e732]:
+            - heading "Start recovering value." [level=2] [ref=e734]:
+              - generic [ref=e735]:
+                - generic [ref=e736]: Start
+                - generic [ref=e737]: recovering
+                - generic [ref=e738]: value.
+            - paragraph [ref=e740]: Design. Track. Report. Recover. One platform for the full solar lifecycle.
+            - generic [ref=e743]:
+              - link "Get Started" [ref=e744] [cursor=pointer]:
+                - /url: /register
+                - text: Get Started
+                - img [ref=e745]
+              - link "Book a Demo" [ref=e747] [cursor=pointer]:
+                - /url: /contact
+            - generic [ref=e748]:
+              - paragraph [ref=e749]: Trusted by installers, operators, and lifecycle partners across Nigeria
+              - paragraph [ref=e750]: No credit card - Free tier available
+    - contentinfo [ref=e751]:
+      - generic [ref=e752]:
+        - generic [ref=e753]:
+          - generic [ref=e754]:
+            - img [ref=e756]
+            - generic [ref=e758]: SolNuv
+          - paragraph [ref=e759]: Solar engineering, lifecycle intelligence, and compliance workflow support for project teams and partners.
+        - generic [ref=e760]:
+          - paragraph [ref=e761]: Platform
+          - generic [ref=e762]:
+            - link "How it works" [ref=e763] [cursor=pointer]:
+              - /url: /#how-it-works
+            - link "Capabilities" [ref=e764] [cursor=pointer]:
+              - /url: /#platform
+            - link "Pricing" [ref=e765] [cursor=pointer]:
+              - /url: /pricing
+            - link "Book a demo" [ref=e766] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e767]:
+          - paragraph [ref=e768]: Resources
+          - generic [ref=e769]:
+            - link "Blog" [ref=e770] [cursor=pointer]:
+              - /url: /blog
+            - link "FAQ" [ref=e771] [cursor=pointer]:
+              - /url: /faq
+            - link "Jobs & Opportunities" [ref=e772] [cursor=pointer]:
+              - /url: /jobs-opportunities
+            - link "Project Verification" [ref=e773] [cursor=pointer]:
+              - /url: /project-verification
+            - link "Professional Verification" [ref=e774] [cursor=pointer]:
+              - /url: /project-verification?tab=professional
+            - link "Terms" [ref=e775] [cursor=pointer]:
+              - /url: /terms
+            - link "Privacy" [ref=e776] [cursor=pointer]:
+              - /url: /privacy
+        - generic [ref=e777]:
+          - paragraph [ref=e778]: Conversion
+          - generic [ref=e779]:
+            - link "Create account" [ref=e780] [cursor=pointer]:
+              - /url: /register
+              - text: Create account
+              - img [ref=e781]
+            - link "Partner or enterprise enquiries" [ref=e783] [cursor=pointer]:
+              - /url: /contact
+              - text: Partner or enterprise enquiries
+              - img [ref=e784]
+      - generic [ref=e786]:
+        - paragraph [ref=e787]: © 2026 SolNuv Technologies Ltd.
+        - paragraph [ref=e788]: Built for dependable solar operations.
+  - alert [ref=e789]

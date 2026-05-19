@@ -1,57 +1,272 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 
-const FEATURES = [
-  { icon: '🧮', title: 'QS Calculators', desc: 'Concrete, blockwork, steel, plastering, roofing, tiling & more — all calibrated for Nigerian construction standards.' },
-  { icon: '📋', title: 'Bill of Quantities', desc: 'Build professional, itemised BOQs in minutes. Export to PDF or Excel with your own logo and branding.' },
-  { icon: '🧾', title: 'Invoices & Quotations', desc: 'Generate branded invoices and quotes for clients. Include VAT, discounts, and send directly by email.' },
-  { icon: '📁', title: 'Project Tracker', desc: 'Log all your projects — track status, estimated vs final values, and project history in one place.' },
-  { icon: '⭐', title: 'Client Feedback', desc: 'Share a unique link with clients to collect ratings (1–10) on quality, timeliness, and communication.' },
-  { icon: '🏆', title: 'Live Leaderboard', desc: 'See how you rank against other surveyors nationwide — by projects completed and average client rating.' }
+/* ═══════════════════════════════════════════════════════════
+   ANIMATION VARIANTS
+   ═══════════════════════════════════════════════════════════ */
+
+const fadeUp = {
+  hidden: { opacity: 0.15, y: 24 },
+  visible: (delay = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }
+  })
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1, delayChildren: 0.15 }
+  }
+};
+
+const scaleIn = {
+  hidden: { opacity: 0.2, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+const slideFromLeft = {
+  hidden: { opacity: 0.15, x: -30 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+const slideFromRight = {
+  hidden: { opacity: 0.15, x: 30 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+
+const MARQUEE_ITEMS = [
+  'Nigerian Construction Standards',
+  '10+ QS Calculators',
+  'PDF & Excel Exports',
+  'BOQ Generator',
+  'Client Feedback System',
+  'Live Leaderboard',
+  'Invoice & Quote Builder',
+  'Project Tracker',
+  'Zero Setup Required'
+];
+
+const PROBLEMS = [
+  {
+    title: 'Excel breaks silently',
+    body: 'One wrong cell, entire BOQ is wrong. No validation. No guardrails. You only find out when the client does.'
+  },
+  {
+    title: 'Clients wait too long',
+    body: 'Manual calculations take days. Your competitors deliver in hours. Speed is the new credibility.'
+  },
+  {
+    title: 'No paper trail',
+    body: 'Scattered notes, lost files, zero project history when you need it most. Your work disappears into thin air.'
+  },
+  {
+    title: 'Reputation is invisible',
+    body: 'No feedback system. No proof of quality for new clients. You are only as good as your last conversation.'
+  }
+];
+
+const CAPABILITIES = [
+  {
+    num: '01',
+    title: 'Nigerian standards first.',
+    body: '9-inch sandcrete blocks. BS 4449 steel. Laterite bulking factors. Every calculator uses the units and standards you actually work with.'
+  },
+  {
+    num: '02',
+    title: 'BOQs in minutes.',
+    body: 'Input your quantities, get a professional itemised document. Export to PDF or Excel — with your logo and branding.'
+  },
+  {
+    num: '03',
+    title: 'Branded documents.',
+    body: 'Your logo. Your colours. Your signature on every invoice, quote, and valuation. Look like the firm you are.'
+  },
+  {
+    num: '04',
+    title: 'Project history.',
+    body: 'Every calculation, every BOQ, every invoice — logged, dated, and searchable. Never lose track of a project again.'
+  },
+  {
+    num: '05',
+    title: 'Client proof.',
+    body: 'Share a unique feedback link. Collect ratings on quality, timeliness, and communication. Let your work speak for itself.'
+  },
+  {
+    num: '06',
+    title: 'Live leaderboard.',
+    body: 'See where you rank against QS professionals nationwide. By projects completed. By client rating. By reputation.'
+  }
+];
+
+const STATS = [
+  { value: '12+', label: 'Calculators', sub: 'All Nigerian standards' },
+  { value: '50x', label: 'Faster BOQs', sub: 'From days to minutes' },
+  { value: '₦0', label: 'Setup Cost', sub: 'Start in 60 seconds' },
+  { value: '100%', label: 'Cloud Based', sub: 'Access from any device' }
 ];
 
 const PLANS = [
   {
     name: 'Basic',
-    price: '₦5000',
+    price: '₦5,000',
     period: '/month',
-    color: 'border-gray-200',
-    badge: null,
-    features: ['2 project logs/month', '30 calculator uses/month', '2 BOQ/month', '2 invoices, 2 valuations, 2 quotations/month', 'PDF & Excel exports', '1 user, 1 device', 'Standard support']
+    desc: 'For students and entry-level QSs getting started.',
+    features: ['2 projects/month', '30 calculator uses', '2 BOQs', '2 invoices & quotes', 'PDF & Excel exports', '1 user, 1 device']
   },
   {
     name: 'Pro',
     price: '₦15,000',
     period: '/month',
-    color: 'border-primary-700',
-    badge: 'Most Popular',
-    features: ['5 project logs/month', '80 calculator uses/month', '5 BOQ/month', '5 invoices, 5 valuations, 5 quotations/month', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support']
+    desc: 'For practicing professionals who need more volume.',
+    features: ['5 projects/month', '80 calculator uses', '5 BOQs', '5 invoices & quotes', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support'],
+    popular: true
   },
   {
     name: 'Enterprise',
     price: '₦70,000',
     period: '/month',
-    color: 'border-gold-500',
-    badge: 'Teams',
-    features: ['50 project logs/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices, 50 valuations, 50 quotations/month', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles & permissions', 'Top priority support']
+    desc: 'For firms and teams managing multiple projects.',
+    features: ['50 projects/month', '700 calculator uses', '50 BOQs', '50 invoices & quotes', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles', 'Top priority support']
   }
 ];
+
+const FAQS = [
+  {
+    q: 'What makes QSToolkit different from Excel?',
+    a: 'Every calculator is built for Nigerian construction standards — 9-inch blocks, BS 4449 steel, laterite bulking factors. No formulas to break. No unit conversions to forget. Just input and get accurate results.'
+  },
+  {
+    q: 'Can I export BOQs and invoices with my company logo?',
+    a: 'Yes. Upload your logo and brand colours in Settings. Every PDF and Excel export carries your identity — professionally formatted and ready to send.'
+  },
+  {
+    q: 'Is there a free trial?',
+    a: 'You can explore the calculators and create a limited number of documents on signup without paying. Upgrade when you are ready to unlock full limits.'
+  },
+  {
+    q: 'How does the client feedback system work?',
+    a: 'Generate a unique link for each client. They rate you on quality, timeliness, and communication. Your average score feeds into the live leaderboard — turning reputation into a competitive edge.'
+  },
+  {
+    q: 'Can I use this on my phone?',
+    a: 'QSToolkit is a progressive web app. Use it on phone, tablet, or desktop. You can even install it to your home screen for offline-like access.'
+  },
+  {
+    q: 'What happens to my data?',
+    a: 'Your data is stored securely in Supabase PostgreSQL. We do not train AI on your projects. We do not sell your data. Your work belongs to you.'
+  }
+];
+
+/* ═══════════════════════════════════════════════════════════
+   SUB-COMPONENTS
+   ═══════════════════════════════════════════════════════════ */
+
+function AnimatedCounter({ target, suffix = '', prefix = '' }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    const numeric = parseFloat(target.replace(/[^0-9.]/g, '')) || 0;
+    const duration = 1500;
+    const start = performance.now();
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * numeric));
+      if (progress < 1) requestAnimationFrame(tick);
+      else setCount(numeric);
+    };
+    requestAnimationFrame(tick);
+  }, [isInView, target]);
+
+  const display = target.replace(/[0-9.]+/, String(count));
+  return (
+    <span ref={ref} className="font-display text-4xl md:text-5xl font-bold text-white">
+      {prefix}{display}{suffix}
+    </span>
+  );
+}
+
+function SectionLabel({ text, light = false }) {
+  return (
+    <div className="inline-flex items-center gap-2 mb-5">
+      <span className={`w-1.5 h-1.5 rounded-full ${light ? 'bg-gold-400' : 'bg-primary-500'}`} />
+      <span className={`text-xs font-semibold uppercase tracking-widest ${light ? 'text-gold-400' : 'text-primary-500'}`}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function FaqItem({ item, isOpen, onToggle }) {
+  return (
+    <div className="border-b border-white/10">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between py-5 text-left group"
+      >
+        <span className="text-sm md:text-base font-medium text-white/90 group-hover:text-white transition-colors pr-4">
+          {item.q}
+        </span>
+        <span className={`text-gold-400 text-xl transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-45' : ''}`}>
+          +
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <p className="text-sm text-white/60 leading-relaxed pb-5 max-w-3xl">
+              {item.a}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════════════════════════ */
 
 export default function LandingPage() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
+  const [openFaq, setOpenFaq] = useState(0);
 
   useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setInstalled(true));
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstall = async () => {
@@ -65,193 +280,559 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>QSToolkit — Your Quantity Surveying Toolkit</title>
+        <title>QSToolkit — Quantity Surveying Without the Spreadsheets</title>
+        <meta name="description" content="Calculate, quantify, and invoice from your browser. Built for Nigerian Quantity Surveyors." />
       </Head>
 
-      <div className="min-h-screen bg-white font-sans">
-        {/* ── Navbar ──────────────────────────────────────── */}
-        <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
+      <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+
+        {/* ═══════════════════════════════════════════════════════
+            NAVBAR
+            ═══════════════════════════════════════════════════════ */}
+        <motion.nav
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="fixed top-0 left-0 right-0 z-50 bg-primary-900/80 backdrop-blur-md border-b border-white/5"
+        >
           <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary-700 rounded-lg flex items-center justify-center">
-                <span className="text-gold-400 font-bold text-sm">QS</span>
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 bg-gold-500 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                <span className="text-primary-900 font-bold text-sm">QS</span>
               </div>
-              <span className="font-display text-xl font-bold text-primary-800">QSToolkit</span>
-            </div>
+              <span className="font-display text-lg font-bold text-white">QSToolkit</span>
+            </Link>
             <div className="flex items-center gap-3">
               {!installed && installPrompt && (
                 <button
                   onClick={handleInstall}
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 border border-primary-200 bg-primary-50 px-3 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-gold-400 border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 rounded-full hover:bg-gold-500/20 transition-colors"
                 >
-                  ⬇ Install App
+                  ⬇ Install
                 </button>
               )}
-              <Link href="/leaderboard" className="text-sm text-gray-600 hover:text-primary-700 hidden md:inline">
+              <Link href="/leaderboard" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
                 Leaderboard
               </Link>
-              <Link href="/auth/login" className="btn-secondary text-sm">
+              <Link href="/auth/login" className="text-sm text-white/80 hover:text-white px-3 py-1.5 hidden sm:inline transition-colors">
                 Sign In
               </Link>
-              <Link href="/auth/register" className="btn-primary text-sm">
+              <Link href="/auth/register" className="btn-gold text-sm px-4 py-2">
                 Get Started
               </Link>
             </div>
           </div>
-        </nav>
+        </motion.nav>
 
-        {/* ── Hero ────────────────────────────────────────── */}
-        <section className="bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900 text-white pt-20 pb-28 px-4 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 right-10 w-64 h-64 rounded-full border border-white" />
-            <div className="absolute bottom-0 left-20 w-96 h-96 rounded-full border border-white" />
+        {/* ═══════════════════════════════════════════════════════
+            HERO
+            ═══════════════════════════════════════════════════════ */}
+        <section className="relative bg-primary-900 text-white pt-32 pb-20 md:pt-44 md:pb-28 px-4 overflow-hidden">
+          {/* Background ambient shapes */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-gold-500/[0.03] blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] rounded-full bg-primary-500/10 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-white/[0.03]" />
           </div>
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm mb-6">
-              <span className="text-gold-400">🇳🇬</span> Built for Nigerian Quantity Surveyors
-            </div>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-              Every QS Tool You Need,<br />
-              <span className="text-gold-400">All in One Place</span>
-            </h1>
-            <p className="text-lg text-primary-200 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Calculate quantities, generate Bills of Quantities, create branded invoices, track projects,
-              collect client feedback — without installing a single software. From any device.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={0}
+              className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm mb-8"
+            >
+              <span className="text-gold-400">🇳🇬</span>
+              <span className="text-white/80">Built for Nigerian Quantity Surveyors</span>
+            </motion.div>
+
+            <motion.h1
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={0.1}
+              className="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] mb-8 tracking-tight"
+            >
+              Quantity Surveying.
+              <br />
+              <span className="text-gold-400">Without the spreadsheets.</span>
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={0.2}
+              className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed"
+            >
+              Calculate, quantify, and invoice from your browser.
+              No Excel. No errors. No wasted weekends.
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={0.3}
+              className="flex flex-col sm:flex-row gap-3 justify-center"
+            >
               <Link href="/auth/register" className="btn-gold text-base px-8 py-3">
-                Start Free — No Credit Card
+                Start Free — No Card
               </Link>
               <Link href="/calculators" className="btn-ghost text-base px-8 py-3">
                 Try a Calculator →
               </Link>
-            </div>
+            </motion.div>
           </div>
-        </section>
 
-        {/* ── Features ───────────────────────────────────── */}
-        <section className="py-20 px-4 bg-gray-50">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-800 mb-4">
-                Everything a Nigerian QS Professional Needs
-              </h2>
-              <p className="text-gray-600 max-w-xl mx-auto">
-                No more switching between Excel sheets, WhatsApp messages, and handwritten BOQs.
-                QSToolkit keeps it all together.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {FEATURES.map((f) => (
-                <div key={f.title} className="card hover:shadow-card-md transition-shadow">
-                  <div className="text-3xl mb-4">{f.icon}</div>
-                  <h3 className="font-display text-lg font-bold text-primary-800 mb-2">{f.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{f.desc}</p>
-                </div>
+          {/* Marquee */}
+          <div className="mt-16 md:mt-24 relative z-10 border-y border-white/5 bg-white/[0.02] overflow-hidden">
+            <div className="flex animate-marquee whitespace-nowrap py-3">
+              {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+                <span key={i} className="inline-flex items-center mx-6 text-xs font-medium text-white/30 uppercase tracking-widest">
+                  <span className="w-1 h-1 rounded-full bg-gold-500/50 mr-3" />
+                  {item}
+                </span>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── Calculators Showcase ────────────────────────── */}
-        <section className="py-20 px-4 bg-white">
+        {/* ═══════════════════════════════════════════════════════
+            THE PROBLEM
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-900 py-24 md:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-800 mb-6">
-                  Calculators Built for<br />Nigerian Construction
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+            >
+              <SectionLabel text="The Problem" light />
+              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-16 max-w-3xl">
+                Your tools haven&apos;t changed since university.
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={staggerContainer}
+              className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5"
+            >
+              {PROBLEMS.map((p, i) => (
+                <motion.div
+                  key={i}
+                  variants={scaleIn}
+                  className="bg-primary-900 p-8 md:p-10 card-shine group hover:bg-primary-800/50 transition-colors duration-500"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5 group-hover:bg-gold-500/20 transition-colors">
+                    <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
+                  </div>
+                  <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-3">
+                    {p.title}
+                  </h3>
+                  <p className="text-sm md:text-base text-white/40 leading-relaxed">
+                    {p.body}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            THE PLATFORM
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-800 py-24 md:py-32 px-4 relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-gold-500/[0.02] blur-3xl" />
+          </div>
+
+          <div className="max-w-6xl mx-auto relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-80px' }}
+                variants={slideFromLeft}
+              >
+                <SectionLabel text="The Platform" light />
+                <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+                  One system.
+                  <br />
+                  <span className="text-gold-400">Every QS task.</span>
                 </h2>
-                <p className="text-gray-600 mb-8 leading-relaxed">
-                  From 9-inch sandcrete blocks to BS 4449 reinforcement bars, our calculators use
-                  the standards, materials, and units Nigerian QS professionals work with every day.
-                  No need to adjust for foreign assumptions.
+                <p className="text-white/40 text-lg leading-relaxed mb-8 max-w-lg">
+                  From concrete volume to final invoice — every tool shares the same data.
+                  No re-typing. No context switching. One place for your entire practice.
                 </p>
-                <ul className="space-y-3">
-                  {['Concrete volume with dry-to-wet conversion', '9" & 6" block quantities with mortar', 'Longspan aluminium roofing sheets', 'Steel rebar (6mm–32mm) by BS 4449 weight', 'Laterite & soil bulking factors'].map(p => (
-                    <li key={p} className="flex items-center gap-3 text-sm text-gray-700">
-                      <span className="text-emerald-500 font-bold">✓</span> {p}
+                <ul className="space-y-4">
+                  {['Concrete, blockwork, steel, plastering & more', 'BOQs with your branding', 'Invoices, quotes, valuations', 'Client feedback collection', 'Live national leaderboard'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-white/60">
+                      <span className="w-5 h-5 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-gold-400 text-xs">✓</span>
+                      </span>
+                      {item}
                     </li>
                   ))}
                 </ul>
-                <Link href="/auth/register" className="btn-primary mt-8 inline-flex">
-                  Access All Calculators
-                </Link>
-              </div>
-              <div className="bg-primary-50 rounded-2xl p-6 grid grid-cols-2 gap-3">
-                {['🏗️ Concrete', '🧱 Blockwork', '🖼️ Plastering', '🎨 Painting', '🏠 Roofing', '⚙️ Steel', '🚜 Earthwork', '⬛ Tiling'].map(c => (
-                  <div key={c} className="bg-white rounded-xl p-4 flex items-center gap-2 shadow-card text-sm font-medium text-primary-700">
-                    {c}
+              </motion.div>
+
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-80px' }}
+                variants={slideFromRight}
+                className="relative"
+              >
+                {/* Hub diagram */}
+                <div className="relative bg-primary-900/60 border border-white/5 rounded-2xl p-8 md:p-10">
+                  <div className="flex flex-col items-center gap-4">
+                    {/* Input layer */}
+                    <div className="grid grid-cols-3 gap-3 w-full">
+                      {['Dimensions', 'Specs', 'Rates'].map((t) => (
+                        <div key={t} className="bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-center">
+                          <span className="text-xs text-white/50">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Arrows */}
+                    <div className="flex justify-center gap-8">
+                      <div className="w-px h-4 bg-white/10" />
+                      <div className="w-px h-4 bg-white/10" />
+                      <div className="w-px h-4 bg-white/10" />
+                    </div>
+                    {/* Hub */}
+                    <div className="bg-gold-500/10 border border-gold-500/20 rounded-xl px-8 py-4 text-center w-full">
+                      <span className="font-display text-lg font-bold text-gold-400">QSToolkit</span>
+                      <div className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Engine · Database · Export</div>
+                    </div>
+                    {/* Arrows */}
+                    <div className="flex justify-center gap-8">
+                      <div className="w-px h-4 bg-white/10" />
+                      <div className="w-px h-4 bg-white/10" />
+                      <div className="w-px h-4 bg-white/10" />
+                    </div>
+                    {/* Output layer */}
+                    <div className="grid grid-cols-3 gap-3 w-full">
+                      {['BOQ', 'Invoice', 'Report'].map((t) => (
+                        <div key={t} className="bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-center">
+                          <span className="text-xs text-white/50">{t}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {/* Decorative corner accents */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t border-l border-gold-500/20 rounded-tl-2xl" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b border-r border-gold-500/20 rounded-br-2xl" />
+                </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        {/* ── Pricing ─────────────────────────────────────── */}
-        <section className="py-20 px-4 bg-gray-50" id="pricing">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-800 mb-4">
-                Simple, Transparent Pricing
+        {/* ═══════════════════════════════════════════════════════
+            CAPABILITIES
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-white py-24 md:py-32 px-4">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="mb-16"
+            >
+              <SectionLabel text="Capabilities" />
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-primary-800 leading-tight max-w-2xl">
+                Built for how you actually work.
               </h2>
-              <p className="text-gray-600">Affordable plans for students, professionals, and enterprises across Nigeria.</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={staggerContainer}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {CAPABILITIES.map((cap) => (
+                <motion.div
+                  key={cap.num}
+                  variants={fadeUp}
+                  className="group"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className="font-display text-sm font-bold text-gold-500 mt-1 flex-shrink-0">
+                      [{cap.num}]
+                    </span>
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-primary-800 mb-2 group-hover:text-primary-600 transition-colors">
+                        {cap.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 leading-relaxed">
+                        {cap.body}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            STATS
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-900 py-16 md:py-20 px-4 border-y border-white/5">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-50px' }}
+              variants={staggerContainer}
+              className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12"
+            >
+              {STATS.map((stat) => (
+                <motion.div
+                  key={stat.label}
+                  variants={fadeUp}
+                  className="text-center md:text-left"
+                >
+                  <AnimatedCounter target={stat.value} />
+                  <div className="text-sm font-semibold text-white/70 mt-2">{stat.label}</div>
+                  <div className="text-xs text-white/30 mt-0.5">{stat.sub}</div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            HOW IT WORKS
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-gray-50 py-24 md:py-32 px-4">
+          <div className="max-w-5xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="text-center mb-16"
+            >
+              <SectionLabel text="How It Works" />
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-primary-800 leading-tight">
+                Three steps. No setup.
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={staggerContainer}
+              className="grid md:grid-cols-3 gap-8"
+            >
+              {[
+                { step: '01', title: 'Calculate', body: 'Pick a calculator. Enter your dimensions. Get quantities in seconds — with Nigerian standards baked in.' },
+                { step: '02', title: 'Document', body: 'Build BOQs, invoices, and quotes with your branding. Export to PDF or Excel. Send to clients instantly.' },
+                { step: '03', title: 'Build Reputation', body: 'Collect client feedback, track project history, and climb the national leaderboard. Your work speaks louder than words.' }
+              ].map((s) => (
+                <motion.div
+                  key={s.step}
+                  variants={fadeUp}
+                  className="relative bg-white rounded-2xl p-8 border border-gray-100 shadow-card hover:shadow-card-md transition-shadow"
+                >
+                  <div className="w-12 h-12 bg-primary-700 rounded-xl flex items-center justify-center mb-6">
+                    <span className="font-display text-lg font-bold text-gold-400">{s.step}</span>
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-primary-800 mb-3">{s.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{s.body}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            PRICING
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-white py-24 md:py-32 px-4" id="pricing">
+          <div className="max-w-5xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="text-center mb-16"
+            >
+              <SectionLabel text="Pricing" />
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-primary-800 leading-tight mb-4">
+                Simple. Transparent. Nigerian.
+              </h2>
+              <p className="text-gray-500 max-w-lg mx-auto">
+                No hidden fees. No surprise charges. Pick what fits your practice.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={staggerContainer}
+              className="grid md:grid-cols-3 gap-6"
+            >
               {PLANS.map((plan) => (
-                <div key={plan.name} className={`card border-2 ${plan.color} relative flex flex-col`}>
-                  {plan.badge && (
+                <motion.div
+                  key={plan.name}
+                  variants={scaleIn}
+                  className={`relative rounded-2xl border p-8 flex flex-col ${
+                    plan.popular
+                      ? 'border-gold-500 bg-gold-500/[0.02]'
+                      : 'border-gray-100 bg-white'
+                  }`}
+                >
+                  {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-primary-700 text-white text-xs font-bold px-4 py-1 rounded-full">
-                        {plan.badge}
+                      <span className="bg-gold-500 text-white text-xs font-bold px-4 py-1 rounded-full">
+                        Most Popular
                       </span>
                     </div>
                   )}
                   <div className="mb-6">
                     <h3 className="font-display text-xl font-bold text-primary-800">{plan.name}</h3>
-                    <div className="flex items-end gap-1 mt-2">
+                    <p className="text-xs text-gray-400 mt-1">{plan.desc}</p>
+                    <div className="flex items-end gap-1 mt-4">
                       <span className="text-3xl font-bold text-primary-700">{plan.price}</span>
-                      <span className="text-gray-500 text-sm mb-1">{plan.period}</span>
+                      <span className="text-gray-400 text-sm mb-1">{plan.period}</span>
                     </div>
                   </div>
-                  <ul className="space-y-2.5 flex-1 mb-8">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                        <span className="text-emerald-500 font-bold mt-0.5">✓</span> {f}
+                  <ul className="space-y-3 flex-1 mb-8">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
+                        <span className="text-gold-500 font-bold mt-0.5 flex-shrink-0">✓</span>
+                        {f}
                       </li>
                     ))}
                   </ul>
-                  <Link href="/auth/register" className={plan.name === 'Pro' ? 'btn-primary w-full text-center' : 'btn-secondary w-full text-center'}>
+                  <Link
+                    href="/auth/register"
+                    className={plan.popular
+                      ? 'btn-gold w-full text-center justify-center'
+                      : 'btn-secondary w-full text-center justify-center'
+                    }
+                  >
                     Get {plan.name}
                   </Link>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </section>
 
-        {/* ── CTA ─────────────────────────────────────────── */}
-        <section className="bg-primary-800 text-white py-20 px-4 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-            Ready to Professionalise Your Practice?
-          </h2>
-          <p className="text-primary-300 mb-8 max-w-xl mx-auto">
-            Join QS professionals across Nigeria using QSToolkit to work smarter, win more clients, and build their reputation.
-          </p>
-          <Link href="/auth/register" className="btn-gold text-base px-10 py-3">
-            Create Free Account →
-          </Link>
+        {/* ═══════════════════════════════════════════════════════
+            FAQ
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-900 py-24 md:py-32 px-4">
+          <div className="max-w-3xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="mb-12"
+            >
+              <SectionLabel text="FAQ" light />
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight">
+                Questions? Answered.
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={fadeUp}
+            >
+              {FAQS.map((faq, i) => (
+                <FaqItem
+                  key={i}
+                  item={faq}
+                  isOpen={openFaq === i}
+                  onToggle={() => setOpenFaq(openFaq === i ? -1 : i)}
+                />
+              ))}
+            </motion.div>
+          </div>
         </section>
 
-        {/* ── Footer ──────────────────────────────────────── */}
-        <footer className="bg-primary-900 text-primary-400 py-10 px-4 text-center text-sm">
-          <p className="font-display text-white text-lg mb-2">QSToolkit</p>
-          <p>Your Quantity Surveying Toolkit · qs.solnuv.com</p>
-          <p>Built by Fudo Greentech Ltd.</p>
-          <div className="flex items-center justify-center gap-4 mt-4 text-xs">
-            <Link href="/auth/login" className="hover:text-white">Login</Link>
-            <Link href="/auth/register" className="hover:text-white">Register</Link>
-            <Link href="/leaderboard" className="hover:text-white">Leaderboard</Link>
+        {/* ═══════════════════════════════════════════════════════
+            FINAL CTA
+            ═══════════════════════════════════════════════════════ */}
+        <section className="bg-primary-800 py-24 md:py-32 px-4 relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-white/[0.03]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-white/[0.02]" />
+          </div>
+
+          <div className="max-w-3xl mx-auto text-center relative z-10">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+            >
+              <h2 className="font-display text-5xl md:text-7xl font-bold text-white leading-[0.95] mb-6">
+                Work smarter.
+                <br />
+                <span className="text-gold-400">Build your reputation.</span>
+              </h2>
+              <p className="text-white/40 text-lg mb-10 max-w-md mx-auto">
+                No credit card. No setup. Start in 60 seconds.
+              </p>
+              <Link href="/auth/register" className="btn-gold text-base px-10 py-3.5 inline-flex">
+                Create Free Account →
+              </Link>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════
+            FOOTER
+            ═══════════════════════════════════════════════════════ */}
+        <footer className="bg-primary-900 border-t border-white/5 py-12 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 bg-gold-500 rounded-md flex items-center justify-center">
+                    <span className="text-primary-900 font-bold text-xs">QS</span>
+                  </div>
+                  <span className="font-display text-lg font-bold text-white">QSToolkit</span>
+                </div>
+                <p className="text-sm text-white/30">
+                  Quantity Surveying Toolkit for Nigerian professionals.
+                </p>
+              </div>
+              <div className="flex items-center gap-6 text-sm text-white/40">
+                <Link href="/auth/login" className="hover:text-white transition-colors">Login</Link>
+                <Link href="/auth/register" className="hover:text-white transition-colors">Register</Link>
+                <Link href="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>
+                <Link href="/calculators" className="hover:text-white transition-colors">Calculators</Link>
+              </div>
+            </div>
+            <div className="mt-10 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3">
+              <p className="text-xs text-white/20">
+                © {new Date().getFullYear()} QSToolkit. Built by Fudo Greentech Ltd.
+              </p>
+              <p className="text-xs text-white/20">
+                All calculations follow Nigerian construction standards.
+              </p>
+            </div>
           </div>
         </footer>
       </div>
