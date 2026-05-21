@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import DrawingUploader from '../components/DrawingUploader';
-import { aiAPI, revisionAPI, integrityAPI } from '../services/api';
+import { aiAPI, revisionAPI } from '../services/api';
 import { formatNaira, formatDate } from '../utils/helpers';
 
 const TOOLS = [
@@ -271,7 +271,7 @@ export default function EnginePage() {
               {activeTool === 'forecast' && (
                 <motion.div key="forecast" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full overflow-y-auto p-6">
                   <h3 className="font-display font-bold text-primary-800 text-lg mb-1">🔮 Cost Forecasting</h3>
-                  <p className="text-sm text-gray-500 mb-5">Predict your project's final cost based on your historical overrun patterns.</p>
+                  <p className="text-sm text-gray-500 mb-5">Predict your project&apos;s final cost based on your historical overrun patterns.</p>
 
                   <div className="max-w-lg space-y-4">
                     <div className="flex gap-2">
