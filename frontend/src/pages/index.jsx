@@ -773,7 +773,7 @@ export default function LandingPage() {
                 { title: 'Auto-BOQ', body: 'Upload architectural drawings. Get draft BOQs with rooms, dimensions, and material takeoff in seconds.', icon: '🏗️' },
                 { title: 'Cost Forecasting', body: 'Predict final project costs based on your historical overrun patterns. Spot overruns before they happen.', icon: '🔮' },
                 { title: 'Variance Detection', body: 'Compare any two BOQ revisions side-by-side. See exactly what changed — items, rates, quantities.', icon: '📊' },
-                { title: 'QSAI Assistant', body: 'Ask anything in plain English. "How many blocks for a 12m wall?" Get instant, accurate answers.', icon: '🤖' }
+                { title: 'Dr. Q Assistant', body: 'Ask anything in plain English. "How many blocks for a 12m wall?" Get instant, accurate answers.', icon: '🤖' }
               ].map((feat, i) => (
                 <motion.div
                   key={i}

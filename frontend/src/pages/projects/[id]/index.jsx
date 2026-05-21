@@ -173,7 +173,7 @@ export default function ProjectDetailPage() {
             )}
             {!showAutoBoq && (
               <p className="text-sm text-gray-500">
-                Upload architectural drawings and let QSAI generate a draft BOQ in seconds.
+                Upload architectural drawings and let Dr. Q generate a draft BOQ in seconds.
               </p>
             )}
           </div>

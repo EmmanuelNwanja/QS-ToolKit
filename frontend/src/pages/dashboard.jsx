@@ -172,7 +172,7 @@ export default function DashboardPage() {
             {/* AI Quick Actions */}
           <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title text-white">🤖 QSAI Assistant</h2>
+              <h2 className="section-title text-white">🤖 Dr. Q Assistant</h2>
             </div>
             <p className="text-sm text-primary-200 mb-4">
               Your AI Quantity Surveying expert. Ask about standards, calculations, or get help with BOQs.
@@ -192,6 +192,28 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* AI Tools Quick Access */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Link href="/engine?tool=forecast" className="card hover:shadow-md transition-shadow border-l-4 border-l-purple-400">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🔮</span>
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">Cost Forecasting</h3>
+                  <p className="text-xs text-gray-500 mt-1">Predict overruns before they happen. Based on your project history.</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/engine?tool=variance" className="card hover:shadow-md transition-shadow border-l-4 border-l-blue-400">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📊</span>
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">Variance Detection</h3>
+                  <p className="text-xs text-gray-500 mt-1">Compare BOQ revisions and catch changes instantly.</p>
+                </div>
+              </div>
+            </Link>
           </div>
 
           {/* Quick calculators */}

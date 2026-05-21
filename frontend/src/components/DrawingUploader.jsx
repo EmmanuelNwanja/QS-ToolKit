@@ -136,7 +136,7 @@ export default function DrawingUploader({ projectId, onSuccess }) {
       {analyzing && (
         <div className="text-center py-6">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700 mx-auto mb-3" />
-          <p className="text-sm text-gray-600">QSAI is analyzing your drawing...</p>
+          <p className="text-sm text-gray-600">Dr. Q is analyzing your drawing...</p>
           <p className="text-xs text-gray-400 mt-1">Extracting rooms, dimensions, and materials</p>
         </div>
       )}

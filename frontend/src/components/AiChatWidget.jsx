@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { aiAPI } from '../services/api';
 
-const QS_AI_AVATAR = (
+const DR_Q_AVATAR = (
   <div className="w-8 h-8 rounded-full bg-primary-700 flex items-center justify-center flex-shrink-0">
-    <span className="text-gold-400 text-xs font-bold">QS</span>
+    <span className="text-gold-400 text-[10px] font-bold">Dr.Q</span>
   </div>
 );
 
@@ -15,11 +15,13 @@ const SUGGESTIONS = [
   'What is the dry-to-wet factor for concrete?',
   'Suggest a rate for 150mm concrete slab per m²'
 ];
+const WIDGET_TITLE = 'Dr. Q';
+const WIDGET_SUBTITLE = 'Nigerian construction standards expert';
 
 export default function AiChatWidget({ context = {} }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'model', content: 'Hello! I am QSAI, your Quantity Surveying assistant. Ask me anything about Nigerian construction standards, calculations, or BOQs.' }
+    { role: 'model', content: 'Hello! I am Dr. Q, your Quantity Surveying assistant. Ask me anything about Nigerian construction standards, calculations, or BOQs.' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ export default function AiChatWidget({ context = {} }) {
       });
       setMessages((prev) => [...prev, { role: 'model', content: data.reply }]);
     } catch (err) {
-      const msg = err.response?.data?.message || 'QSAI is temporarily unavailable.';
+      const msg = err.response?.data?.message || 'Dr. Q is temporarily unavailable.';
       toast.error(msg);
       setMessages((prev) => [...prev, { role: 'model', content: msg, error: true }]);
     } finally {
@@ -91,10 +93,10 @@ export default function AiChatWidget({ context = {} }) {
           >
             {/* Header */}
             <div className="bg-primary-800 text-white px-4 py-3 flex items-center gap-3">
-              {QS_AI_AVATAR}
+              {DR_Q_AVATAR}
               <div>
-                <p className="text-sm font-semibold">QSAI Assistant</p>
-                <p className="text-[10px] text-primary-200">Nigerian construction standards expert</p>
+                <p className="text-sm font-semibold">{WIDGET_TITLE}</p>
+                <p className="text-[10px] text-primary-200">{WIDGET_SUBTITLE}</p>
               </div>
             </div>
 
@@ -102,7 +104,7 @@ export default function AiChatWidget({ context = {} }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((m, i) => (
                 <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {m.role === 'model' && QS_AI_AVATAR}
+                  {m.role === 'model' && DR_Q_AVATAR}
                   <div
                     className={`max-w-[80%] text-sm px-3 py-2 rounded-xl ${
                       m.role === 'user'
@@ -153,7 +155,7 @@ export default function AiChatWidget({ context = {} }) {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && send(input)}
-                  placeholder="Ask QSAI anything..."
+                  placeholder={`Ask ${WIDGET_TITLE} anything...`}
                   className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <button

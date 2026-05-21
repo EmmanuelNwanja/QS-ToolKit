@@ -12,12 +12,13 @@ const logger = require('../utils/logger');
 // ─── Configuration ────────────────────────────────────────────
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const JINA_API_KEY = process.env.JINA_API_KEY; // optional, Jina has generous free tier without key
+const JINA_API_KEY = process.env.JINA_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const MOCK_AI_MODE = process.env.MOCK_AI_MODE === 'true';
 
 // ─── System Prompts (Domain-Calibrated for Nigerian QS) ───────
 const SYSTEM_PROMPTS = {
-  chat: `You are QSAI, an expert Quantity Surveying assistant specialized in Nigerian construction standards. 
+  chat: `You are Dr. Q, an expert Quantity Surveying assistant specialized in Nigerian construction standards. 
 You understand SMM7, NRM2, Nigerian building codes, and local practices.
 Key facts you know:
 - 9-inch sandcrete blocks: 10 blocks/m² (standard Nigerian rate)
@@ -157,7 +158,7 @@ async function callAI(prompt, options = {}) {
   return result;
 }
 
-// ─── Chat with QSAI ───────────────────────────────────────────
+// ─── Chat with Dr. Q ─────────────────────────────────--------
 exports.chat = async (userId, sessionId, message, context = {}) => {
   // Fetch recent conversation history (last 10 messages)
   const { data: history } = await supabase
@@ -181,12 +182,18 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
 
   const prompt = `${SYSTEM_PROMPTS.chat}\n${contextText}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
 
-  const responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
+  let responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
+
+  // Graceful fallback: if no external AI is configured, use knowledge-base mock responses
+  if (!responseText && !GEMINI_API_KEY && !OPENROUTER_API_KEY) {
+    responseText = await mockDrQResponse(message, context);
+  }
 
   if (!responseText) {
     return {
-      reply: 'The AI assistant is temporarily unavailable. Please try again in a moment.',
-      error: true
+      reply: 'Dr. Q is temporarily unavailable — the AI service is not configured or encountered an error. Please contact support or try again shortly.',
+      error: true,
+      code: 'AI_SERVICE_UNAVAILABLE'
     };
   }
 
@@ -359,6 +366,59 @@ exports.getEmbedding = async (text) => {
     return null;
   }
 };
+
+// ─── Mock Dr. Q Fallback (zero API cost, uses local knowledge) ─
+async function mockDrQResponse(message, context) {
+  const lower = message.toLowerCase();
+
+  // Block coverage
+  if (lower.includes('block') && (lower.includes('how many') || lower.includes('quantity') || lower.includes('m2') || lower.includes('square'))) {
+    return 'For sandcrete blockwork in Nigeria:\n• 9-inch blocks: 10 blocks per m²\n• 6-inch blocks: 12 blocks per m²\n• 5-inch blocks: 14 blocks per m²\n\nExample: A 12m × 3m wall = 36 m². For 9-inch blocks: 36 × 10 = 360 blocks. Add 5-10% for wastage.';
+  }
+
+  // Concrete
+  if (lower.includes('concrete') && (lower.includes('mix') || lower.includes('ratio') || lower.includes('cement'))) {
+    return 'Common Nigerian concrete mix ratios:\n• 1:2:4 — Rich concrete for columns and beams\n• 1:3:6 — Standard for slabs and foundations\n• 1:4:8 — Lean concrete for blinding\n\nDry-to-wet volume factor = 1.54. One 50kg cement bag ≈ 0.0347 m³.';
+  }
+
+  // Steel
+  if (lower.includes('steel') || lower.includes('rebar') || lower.includes('reinforcement')) {
+    return 'BS 4449 steel bar unit weights (kg/m):\n• 8mm = 0.395\n• 10mm = 0.617\n• 12mm = 0.888\n• 16mm = 1.579\n• 20mm = 2.466\n• 25mm = 3.854\n\nOverlap length = 40 × bar diameter. For a 12mm bar: 40 × 12 = 480mm overlap.';
+  }
+
+  // SMM7 vs NRM2
+  if (lower.includes('smm7') || lower.includes('nrm2') || lower.includes('measurement')) {
+    return 'SMM7 (Standard Method of Measurement 7th Edition) is the traditional UK-based method. NRM2 (New Rules of Measurement) replaces it with more detailed preliminaries and greater emphasis on risk allocation. Both quantify work net as fixed in position.';
+  }
+
+  // Paint
+  if (lower.includes('paint') || lower.includes('coverage')) {
+    return 'Standard emulsion paint coverage in Nigeria = 10 m² per litre per coat. Standard tin sizes: 5L, 4L, 1L. Two coats are standard for new plastered surfaces. For a 50 m² room: 50 ÷ 10 = 5L per coat × 2 coats = 10L total (two 5L tins).';
+  }
+
+  // Roofing
+  if (lower.includes('roof') || lower.includes('aluminium')) {
+    return 'Longspan aluminium roofing sheets in Nigeria: 3.6m × 0.9m (0.9m effective cover) = 3.24 m² per sheet. Standard gauges: 0.45mm or 0.55mm. Allow 10-15% waste on gable roofs, 15-20% on hipped roofs.';
+  }
+
+  // Bulking
+  if (lower.includes('bulk') || lower.includes('laterite') || lower.includes('excavation')) {
+    return 'Soil bulking factors for Nigerian earthwork:\n• Laterite = 1.35\n• Clay = 1.25\n• Loam = 1.20\n• Sandy soil = 1.10\n\nExample: 100 m³ of laterite excavation × 1.35 = 135 m³ haulage volume.';
+  }
+
+  // Plastering
+  if (lower.includes('plaster')) {
+    return 'Standard plastering thickness in Nigeria = 15mm. Common mix ratio = 1:4 (cement:sand). Coverage varies by wall texture — typically 12-15 m² per 50kg cement bag for 15mm thickness.';
+  }
+
+  // Tiles
+  if (lower.includes('tile')) {
+    return 'Floor tile quantities per m²:\n• 600×600mm = 2.78 tiles/m²\n• 400×400mm = 6.25 tiles/m²\n• 300×300mm = 11.11 tiles/m²\n\nAllow 5-10% cutting waste. Example: 20 m² room with 600×600 tiles = 20 × 2.78 = 55.6 → 62 tiles (with 10% waste).';
+  }
+
+  // General fallback
+  return `I'm Dr. Q, your Quantity Surveying assistant. I can help with Nigerian construction standards, BOQ preparation, material quantities, and cost calculations.\n\nTry asking me about:\n• Block quantities for walls\n• Concrete mix ratios\n• Steel reinforcement weights\n• Paint or tiling coverage\n• SMM7 vs NRM2 standards\n\n*Note: Dr. Q is currently running in offline knowledge mode. For full AI capabilities, ask your admin to configure an AI API key.*`;
+}
 
 // Expose raw Gemini for advanced use
 exports.callGemini = callGemini;

@@ -27,7 +27,7 @@ async function checkFeature(userId, featureKey) {
   return { allowed: false, reason: 'Upgrade your plan to access this feature' };
 }
 
-// ─── Chat with QSAI ───────────────────────────────────────────
+// ─── Chat with Dr. Q ─────────────────────────────────────────-
 exports.chat = async (req, res, next) => {
   try {
     const { message, session_id, context = {} } = req.body;
