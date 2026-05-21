@@ -749,8 +749,7 @@ export default function LandingPage() {
               className="text-center mb-16"
             >
               <div className="inline-flex items-center gap-2 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Now Live — V1.10</span>
+               <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Now Live</span>
               </div>
               <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-800 leading-tight mb-6">
                 Smarter QS.
@@ -758,7 +757,7 @@ export default function LandingPage() {
                 <span className="text-gold-500">Powered by AI.</span>
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                The first AI-native Quantity Surveying platform in Africa. Built for Nigerian standards.
+                Afirca's first AI-native Quantity Surveying platform. Built for Nigerian on global standards.
               </p>
             </motion.div>
 
@@ -857,7 +856,7 @@ export default function LandingPage() {
               <h2 className="font-display text-5xl md:text-7xl font-bold text-white leading-[0.95] mb-6">
                 Work smarter.
                 <br />
-                <span className="text-gold-400">Build your reputation.</span>
+                <span className="text-gold-400">Reduce Stress.</span>
               </h2>
               <p className="text-white/40 text-lg mb-10 max-w-md mx-auto">
                 No credit card. No setup. Start in 60 seconds.
