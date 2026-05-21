@@ -735,7 +735,7 @@ export default function LandingPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════
-            QS AI ENGINE
+            QS AI ENGINE — LIVE
             ═══════════════════════════════════════════════════════ */}
         <section className="bg-white py-24 md:py-32 px-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gold-500/[0.04] blur-3xl pointer-events-none" />
@@ -749,16 +749,16 @@ export default function LandingPage() {
               className="text-center mb-16"
             >
               <div className="inline-flex items-center gap-2 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-gold-600">Coming Soon</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Now Live — V1.10</span>
               </div>
               <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-800 leading-tight mb-6">
                 Smarter QS.
                 <br />
-                <span className="text-gold-500">Coming soon.</span>
+                <span className="text-gold-500">Powered by AI.</span>
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                An AI that understands your local needs.
+                The first AI-native Quantity Surveying platform in Africa. Built for Nigerian standards.
               </p>
             </motion.div>
 
@@ -770,19 +770,17 @@ export default function LandingPage() {
               className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
               {[
-                { title: 'Auto-BOQ', body: 'Upload drawings. Get draft BOQs in seconds.' },
-                { title: 'Cost forecasting', body: 'Spot overruns before they happen.' },
-                { title: 'Variance detection', body: 'Catch what changed between revisions. Instantly.' },
-                { title: 'Natural language', body: 'Ask questions. Get answers. No manuals.' }
+                { title: 'Auto-BOQ', body: 'Upload architectural drawings. Get draft BOQs with rooms, dimensions, and material takeoff in seconds.', icon: '🏗️' },
+                { title: 'Cost Forecasting', body: 'Predict final project costs based on your historical overrun patterns. Spot overruns before they happen.', icon: '🔮' },
+                { title: 'Variance Detection', body: 'Compare any two BOQ revisions side-by-side. See exactly what changed — items, rates, quantities.', icon: '📊' },
+                { title: 'QSAI Assistant', body: 'Ask anything in plain English. "How many blocks for a 12m wall?" Get instant, accurate answers.', icon: '🤖' }
               ].map((feat, i) => (
                 <motion.div
                   key={i}
                   variants={fadeUp}
                   className="bg-white rounded-2xl p-6 border border-gray-100 shadow-card hover:shadow-card-md transition-shadow"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-primary-700 flex items-center justify-center mb-4">
-                    <span className="font-display text-sm font-bold text-gold-400">0{i + 1}</span>
-                  </div>
+                  <div className="text-2xl mb-3">{feat.icon}</div>
                   <h3 className="font-display text-lg font-bold text-primary-800 mb-2">{feat.title}</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">{feat.body}</p>
                 </motion.div>
@@ -797,9 +795,9 @@ export default function LandingPage() {
               className="mt-12 text-center"
             >
               <Link href="/auth/register" className="btn-primary px-8 py-3 inline-flex">
-                Join the Waitlist →
+                Try AI Features Free →
               </Link>
-              <p className="text-xs text-gray-400 mt-3">Be the first to know when it drops. No spam.</p>
+              <p className="text-xs text-gray-400 mt-3">Available on Pro and Enterprise plans. Student plan includes limited trial.</p>
             </motion.div>
           </div>
         </section>

@@ -7,6 +7,8 @@ import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { projectAPI, feedbackAPI } from '../../../services/api';
 import { formatNaira, formatDate, statusBadge } from '../../../utils/helpers';
+import ForecastCard from '../../../components/ForecastCard';
+import DrawingUploader from '../../../components/DrawingUploader';
 
 export default function ProjectDetailPage() {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [milestoneForm, setMilestoneForm] = useState({ title: '', due_date: '', note: '' });
   const [savingMilestone, setSavingMilestone] = useState(false);
+  const [showAutoBoq, setShowAutoBoq] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -145,6 +148,33 @@ export default function ProjectDetailPage() {
 
             {project.description && (
               <p className="mt-4 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{project.description}</p>
+            )}
+          </div>
+
+          {/* AI Forecast */}
+          <ForecastCard projectId={id} />
+
+          {/* Auto-BOQ from Drawings */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display font-bold text-primary-800 text-base">🏗️ Auto-BOQ</h3>
+              <button
+                onClick={() => setShowAutoBoq((s) => !s)}
+                className="text-xs text-primary-600 hover:underline"
+              >
+                {showAutoBoq ? 'Hide' : 'Upload Drawing'}
+              </button>
+            </div>
+            {showAutoBoq && (
+              <DrawingUploader
+                projectId={id}
+                onSuccess={(boq) => router.push(`/boq/${boq.id}`)}
+              />
+            )}
+            {!showAutoBoq && (
+              <p className="text-sm text-gray-500">
+                Upload architectural drawings and let QSAI generate a draft BOQ in seconds.
+              </p>
             )}
           </div>
 

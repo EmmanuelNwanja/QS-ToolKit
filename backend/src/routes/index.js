@@ -15,5 +15,8 @@ router.use('/admin',        require('./adminRoutes'));
 router.use('/push-notifications', require('./pushRoutes'));
 router.use('/billing',      require('./billingRoutes'));
 router.use('/analytics',    require('./analyticsRoutes'));
+router.use('/ai',            require('./aiRoutes'));
+router.use('/integrity',     require('./integrityRoutes'));
+router.use('/',              require('./boqRevisionRoutes'));
 
 module.exports = router;

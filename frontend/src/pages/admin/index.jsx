@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
-import { adminAPI } from '../../services/api';
+import { adminAPI, aiAPI } from '../../services/api';
 import useAuthStore from '../../context/authStore';
 
 export default function AdminDashboard() {
@@ -14,6 +15,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [adminQuery, setAdminQuery] = useState('');
+  const [adminQueryResult, setAdminQueryResult] = useState(null);
+  const [queryLoading, setQueryLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -29,6 +33,20 @@ export default function AdminDashboard() {
       setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runAdminQuery = async (e) => {
+    e.preventDefault();
+    if (!adminQuery.trim()) return;
+    setQueryLoading(true);
+    try {
+      const { data } = await aiAPI.adminQuery({ query: adminQuery });
+      setAdminQueryResult(data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Query failed');
+    } finally {
+      setQueryLoading(false);
     }
   };
 
@@ -374,6 +392,36 @@ export default function AdminDashboard() {
               </div>
             )}
             </>
+          )}
+
+          {/* Admin AI Query */}
+          {user?.admin_role === 'super_admin' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🧠 Admin AI Query</h3>
+              <form onSubmit={runAdminQuery} className="flex gap-2 mb-4">
+                <input
+                  value={adminQuery}
+                  onChange={(e) => setAdminQuery(e.target.value)}
+                  placeholder="e.g. 'Show me revenue last month' or 'List churned users'"
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <button
+                  type="submit"
+                  disabled={queryLoading}
+                  className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-primary-800"
+                >
+                  {queryLoading ? 'Thinking...' : 'Ask'}
+                </button>
+              </form>
+              {adminQueryResult && (
+                <div className="bg-gray-50 rounded-lg p-4 text-sm">
+                  <p className="font-semibold text-gray-700 mb-2">Intent: {adminQueryResult.intent?.intent}</p>
+                  <pre className="text-xs text-gray-600 overflow-x-auto">
+                    {JSON.stringify(adminQueryResult.data, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Quick Actions */}

@@ -4,6 +4,7 @@ const pdfService = require('../services/pdfService');
 const excelService = require('../services/excelService');
 const { singleOrNull } = require('../utils/supabaseQuery');
 const { normalizeStandard, validateBoqForFinalization } = require('../services/measurementStandardService');
+const boqRevisionController = require('./boqRevisionController');
 
 // ─── List BOQs ────────────────────────────────────────────────
 exports.list = async (req, res, next) => {
@@ -154,6 +155,8 @@ exports.update = async (req, res, next) => {
           errors: validation.errors
         }));
       }
+      // Auto-create revision snapshot for variance detection
+      await boqRevisionController.createRevision(req.params.id, req.user.id);
     }
 
     return res.json(success('BOQ updated', { boq: data }));

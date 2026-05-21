@@ -40,3 +40,16 @@ coverage/
 # Misc
 .vercel
 .render
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Cursor editor logs
+.cursor/
+
+# Git temp files
+.git/*.swp
+.git/*.swo
+
+# Temp snapshot files
+awesome-mcp-servers.yml

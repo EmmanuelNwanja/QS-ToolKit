@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
+import AiChatWidget from './AiChatWidget';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
@@ -193,6 +194,9 @@ export default function Layout({ children, title }) {
           {children}
         </main>
       </div>
+
+      {/* Global AI Chat */}
+      <AiChatWidget />
     </div>
   );
 }

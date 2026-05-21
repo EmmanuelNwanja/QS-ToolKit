@@ -225,6 +225,34 @@ export const pushAPI = {
   markActivityRead:      (id)   => api.patch(`/push-notifications/activity/${id}/read`)
 };
 
+// ─── AI ────────────────────────────────────────────────────────
+export const aiAPI = {
+  chat:              (data)   => api.post('/ai/chat', data),
+  chatHistory:       (params) => api.get('/ai/chat/history', { params }),
+  analyzeDrawing:    (data)   => api.post('/ai/drawings/analyze', data),
+  drawingJobs:       ()       => api.get('/ai/drawings/jobs'),
+  drawingJob:        (id)     => api.get(`/ai/drawings/jobs/${id}`),
+  forecast:          (projectId) => api.get(`/ai/forecast/${projectId}`),
+  suggestRate:       (params) => api.get('/ai/rates/suggest', { params }),
+  adminQuery:        (data)   => api.post('/ai/admin/query', data)
+};
+
+// ─── Integrity / Blockchain-lite ───────────────────────────────
+export const integrityAPI = {
+  certifyBoq:     (id) => api.post(`/integrity/boq/${id}/certify`),
+  certifyInvoice: (id) => api.post(`/integrity/invoice/${id}/certify`),
+  verify:         (token) => api.get(`/integrity/verify/${token}`),
+  history:        (type, id) => api.get(`/integrity/history/${type}/${id}`),
+  downloadCert:   (token) => api.get(`/integrity/certificate/${token}/download`, { responseType: 'blob' })
+};
+
+// ─── BOQ Revisions / Variance ──────────────────────────────────
+export const revisionAPI = {
+  list:     (boqId) => api.get(`/boq/${boqId}/revisions`),
+  get:      (boqId, revId) => api.get(`/boq/${boqId}/revisions/${revId}`),
+  variance: (boqId, revA, revB) => api.get(`/boq/${boqId}/variance`, { params: { rev_a: revA, rev_b: revB } })
+};
+
 // ─── Utilities ─────────────────────────────────────────────────
 export const downloadBlob = (blob, filename) => {
   const url = URL.createObjectURL(new Blob([blob]));

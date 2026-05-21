@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+// import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
-import { projectAPI, feedbackAPI, leaderboardAPI, userAPI } from '../services/api';
-import { formatNaira, formatCompact, formatDate, CALCULATORS } from '../utils/helpers';
+import { projectAPI, leaderboardAPI, userAPI } from '../services/api';
+import { formatNaira, formatCompact, CALCULATORS } from '../utils/helpers';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -169,7 +169,32 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Quick calculators */}
+            {/* AI Quick Actions */}
+          <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="section-title text-white">🤖 QSAI Assistant</h2>
+            </div>
+            <p className="text-sm text-primary-200 mb-4">
+              Your AI Quantity Surveying expert. Ask about standards, calculations, or get help with BOQs.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {['How many blocks for 100m²?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => {
+                    // Trigger global chat widget with this question
+                    const event = new CustomEvent('qst-ai-ask', { detail: q });
+                    window.dispatchEvent(event);
+                  }}
+                  className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick calculators */}
             <div className="lg:col-span-2 card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="section-title">🧮 Calculators</h2>

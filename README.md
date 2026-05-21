@@ -219,6 +219,34 @@ Current platform marketing uses **10+ calculators** across all QS categories.
 
 ---
 
+## 🤖 V1.10 AI-Native Features
+
+| Feature | What It Does | Plan |
+|---------|-------------|------|
+| **Auto-BOQ** | Upload architectural drawings → AI extracts rooms, dimensions, materials → draft BOQ in seconds | Pro+ |
+| **Cost Forecasting** | Predicts final project cost based on your historical overrun patterns. Flags risk before it becomes expensive | Pro+ |
+| **Variance Detection** | Compare any two BOQ revisions. See exactly what changed — items added, removed, modified | Pro+ |
+| **QSAI Assistant** | Natural language QS expert. Ask "How many blocks for a 12m wall?" Get instant answers calibrated to Nigerian standards | Pro+ |
+| **Smart Rate Suggestions** | AI suggests rates from your own BOQ history as you type | Pro+ |
+| **Document Integrity** | SHA-256 tamper-evident certification for finalized BOQs and invoices | Pro+ |
+| **Admin AI Query** | Super-admins query platform data in plain English | Enterprise |
+
+**AI Provider Stack (Free Tier Only):**
+- Google Gemini 2.0 Flash (1,500 req/day) — vision + text
+- Jina AI Embeddings — RAG knowledge retrieval
+- Local statistical algorithms — forecasting, variance, rate suggestions
+- SHA-256 hash chain — blockchain-lite document integrity
+
+---
+
+## 🗄️ Database Migrations
+
+Run migrations in order. For V1.10, add:
+- `database/migrations/028_ai_features_v1_10.sql`
+- `database/seeds/002_knowledge_base_nigerian_qs.sql`
+
+---
+
 ## 📧 Support
 
 - Built for Nigeria by QSToolkit

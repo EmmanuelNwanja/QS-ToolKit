@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { boqAPI, downloadBlob } from '../../services/api';
+import { boqAPI, downloadBlob, integrityAPI, revisionAPI } from '../../services/api';
 import { formatNaira, formatDate } from '../../utils/helpers';
 
 function blankItem() {
@@ -31,6 +31,12 @@ export default function BoqDetailPage() {
   const [savingDoc, setSavingDoc] = useState(false);
   const [boq, setBoq] = useState(null);
   const [docForm, setDocForm] = useState({ title: '', notes: '', status: 'draft', measurement_standard: '' });
+  const [certifying, setCertifying] = useState(false);
+  const [certResult, setCertResult] = useState(null);
+  const [revisions, setRevisions] = useState([]);
+  const [showVariance, setShowVariance] = useState(false);
+  const [variance, setVariance] = useState(null);
+  const [loadingVariance, setLoadingVariance] = useState(false);
 
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [newSectionType, setNewSectionType] = useState('measured_work');
@@ -55,6 +61,9 @@ export default function BoqDetailPage() {
         status: next.status || 'draft',
         measurement_standard: next.measurement_standard || ''
       });
+      // Load revisions
+      const { data: revData } = await revisionAPI.list(id);
+      setRevisions(revData.revisions || []);
     } catch (err) {
       toast.error(err.response?.data?.message || 'BOQ not found');
       router.push('/projects');
@@ -189,6 +198,31 @@ export default function BoqDetailPage() {
     }
   };
 
+  const certifyBoq = async () => {
+    setCertifying(true);
+    try {
+      const { data } = await integrityAPI.certifyBoq(id);
+      setCertResult(data);
+      toast.success('BOQ certified — tamper-evident hash generated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Certification failed');
+    } finally {
+      setCertifying(false);
+    }
+  };
+
+  const compareVariance = async (revA, revB) => {
+    setLoadingVariance(true);
+    try {
+      const { data } = await revisionAPI.variance(id, revA, revB);
+      setVariance(data);
+    } catch (err) {
+      toast.error('Could not compare revisions');
+    } finally {
+      setLoadingVariance(false);
+    }
+  };
+
   if (loading) {
     return (
       <ProtectedRoute>
@@ -214,11 +248,27 @@ export default function BoqDetailPage() {
                   Project: {boq.projects?.title || 'N/A'} • Created {formatDate(boq.created_at)}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button onClick={exportPdf} className="btn-secondary text-sm">Export PDF</button>
                 <button onClick={exportExcel} className="btn-secondary text-sm">Export Excel</button>
+                <button
+                  onClick={certifyBoq}
+                  disabled={certifying || boq.status !== 'final' && boq.status !== 'submitted'}
+                  className="btn-secondary text-sm disabled:opacity-50"
+                  title={boq.status !== 'final' && boq.status !== 'submitted' ? 'Finalize BOQ first' : 'Generate integrity certificate'}
+                >
+                  {certifying ? 'Certifying...' : '🔐 Certify'}
+                </button>
               </div>
             </div>
+
+            {certResult && (
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-xs font-semibold text-emerald-800 mb-1">✓ Document Certified</p>
+                <p className="text-[10px] text-emerald-700 font-mono break-all">Hash: {certResult.hash}</p>
+                <p className="text-[10px] text-emerald-700">Token: {certResult.certToken?.slice(0, 16)}...</p>
+              </div>
+            )}
 
             <form className="mt-5 grid sm:grid-cols-3 gap-4" onSubmit={saveBoqMeta}>
               <div className="sm:col-span-2">
@@ -271,6 +321,65 @@ export default function BoqDetailPage() {
               </div>
             </form>
           </div>
+
+          {/* Variance Detection */}
+          {revisions.length >= 2 && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="section-title">📊 Variance Detection</h3>
+                <button
+                  onClick={() => setShowVariance((s) => !s)}
+                  className="text-xs text-primary-600 hover:underline"
+                >
+                  {showVariance ? 'Hide' : 'Compare Revisions'}
+                </button>
+              </div>
+              {showVariance && (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <select
+                      className="input text-sm"
+                      onChange={(e) => {
+                        const revA = e.target.value;
+                        const revB = revisions[revisions.length - 1]?.id;
+                        if (revA && revB) compareVariance(revA, revB);
+                      }}
+                    >
+                      <option value="">Select older revision...</option>
+                      {revisions.slice(0, -1).map((r) => (
+                        <option key={r.id} value={r.id}>Rev {r.revision_number} — {formatDate(r.created_at)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {loadingVariance && <p className="text-sm text-gray-500">Analyzing changes...</p>}
+                  {variance && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="p-2 bg-gray-50 rounded-lg">
+                          <span className="text-gray-500">Old Total</span>
+                          <p className="font-semibold">{formatNaira(variance.diff?.summary?.old_total)}</p>
+                        </div>
+                        <div className="p-2 bg-gray-50 rounded-lg">
+                          <span className="text-gray-500">New Total</span>
+                          <p className="font-semibold">{formatNaira(variance.diff?.summary?.new_total)}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 text-xs">
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">+{variance.diff?.summary?.items_added} added</span>
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full">-{variance.diff?.summary?.items_removed} removed</span>
+                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full">~{variance.diff?.summary?.items_modified} modified</span>
+                      </div>
+                      {variance.ai_summary && (
+                        <div className="p-3 bg-primary-50 border border-primary-100 rounded-lg text-sm text-primary-800">
+                          <span className="font-semibold">AI Summary:</span> {variance.ai_summary.summary}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="card">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
