@@ -10,7 +10,7 @@ export default function ProtectedRoute({ children, requirePlan }) {
   useEffect(() => {
     if (!initialized) return;
     if (!token || !user) {
-      router.replace(`/auth/login?redirect=${encodeURIComponent(router.pathname)}`);
+      router.replace(`/auth/login?redirect=${encodeURIComponent(router.asPath)}`);
       return;
     }
     if (!user.onboarding_completed) {
