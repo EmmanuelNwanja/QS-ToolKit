@@ -9,6 +9,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: true
       - key: NODE_ENV
         value: production
       - key: PORT
