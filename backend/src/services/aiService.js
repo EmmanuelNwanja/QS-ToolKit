@@ -566,6 +566,17 @@ async function trackUsage(userId, type) {
 
 // ─── Daily Limit Check ────────────────────────────────────────
 exports.checkDailyLimit = async (userId, type) => {
+  // Check platform admin first
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('admin_role')
+    .eq('user_id', userId)
+    .single();
+
+  if (adminUser?.admin_role === 'super_admin') {
+    return { allowed: true, used: 0, limit: 99999, planName: 'admin' };
+  }
+
   const { data: user } = await supabase
     .from('users')
     .select('plan_id, subscription_plans(name), org_role')

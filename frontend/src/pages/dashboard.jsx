@@ -169,71 +169,73 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* AI Quick Actions */}
-          <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title text-white">🤖 Dr. Q Assistant</h2>
-            </div>
-            <p className="text-sm text-primary-200 mb-4">
-              Your AI Quantity Surveying expert. Ask about standards, calculations, or get help with BOQs.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {['How many blocks for 100m²?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => {
-                    // Trigger global chat widget with this question
-                    const event = new CustomEvent('qst-ai-ask', { detail: q });
-                    window.dispatchEvent(event);
-                  }}
-                  className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* AI Tools Quick Access */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <Link href="/engine?tool=forecast" className="card hover:shadow-md transition-shadow border-l-4 border-l-purple-400">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">🔮</span>
-                <div>
-                  <h3 className="font-semibold text-gray-900 text-sm">Cost Forecasting</h3>
-                  <p className="text-xs text-gray-500 mt-1">Predict overruns before they happen. Based on your project history.</p>
+            {/* Right Sidebar: AI + Calculators */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Dr. Q Assistant */}
+              <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="section-title text-white">🤖 Dr. Q Assistant</h2>
+                </div>
+                <p className="text-sm text-primary-200 mb-4">
+                  Your AI Quantity Surveying expert. Ask about standards, calculations, or get help with BOQs.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['How many blocks for 100m²?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => {
+                        const event = new CustomEvent('qst-ai-ask', { detail: q });
+                        window.dispatchEvent(event);
+                      }}
+                      className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </Link>
-            <Link href="/engine?tool=variance" className="card hover:shadow-md transition-shadow border-l-4 border-l-blue-400">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">📊</span>
-                <div>
-                  <h3 className="font-semibold text-gray-900 text-sm">Variance Detection</h3>
-                  <p className="text-xs text-gray-500 mt-1">Compare BOQ revisions and catch changes instantly.</p>
-                </div>
-              </div>
-            </Link>
-          </div>
 
-          {/* Quick calculators */}
-            <div className="lg:col-span-2 card">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">🧮 Calculators</h2>
-                <Link href="/calculators" className="text-sm text-primary-600 hover:underline">All →</Link>
+              {/* AI Tools Quick Access */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Link href="/engine?tool=forecast" className="card hover:shadow-md transition-shadow border-l-4 border-l-purple-400 min-w-0">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl flex-shrink-0">🔮</span>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-sm truncate">Cost Forecasting</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Predict overruns before they happen. Based on your project history.</p>
+                    </div>
+                  </div>
+                </Link>
+                <Link href="/engine?tool=variance" className="card hover:shadow-md transition-shadow border-l-4 border-l-blue-400 min-w-0">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl flex-shrink-0">📊</span>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-sm truncate">Variance Detection</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Compare BOQ revisions and catch changes instantly.</p>
+                    </div>
+                  </div>
+                </Link>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {CALCULATORS.slice(0, 6).map(c => (
-                  <Link key={c.id} href={`/calculators/${c.id}`}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-all text-center group">
-                    <span className="text-xl mb-1">{c.icon}</span>
-                    <span className="text-xs font-medium text-gray-700 group-hover:text-primary-700 leading-tight">{c.label.split(' ').slice(0, 2).join(' ')}</span>
-                  </Link>
-                ))}
+
+              {/* Quick calculators */}
+              <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="section-title">🧮 Calculators</h2>
+                  <Link href="/calculators" className="text-sm text-primary-600 hover:underline">All →</Link>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {CALCULATORS.slice(0, 6).map(c => (
+                    <Link key={c.id} href={`/calculators/${c.id}`}
+                      className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-all text-center group">
+                      <span className="text-xl mb-1">{c.icon}</span>
+                      <span className="text-xs font-medium text-gray-700 group-hover:text-primary-700 leading-tight">{c.label.split(' ').slice(0, 2).join(' ')}</span>
+                    </Link>
+                  ))}
+                </div>
+                <Link href="/calculators" className="btn-secondary w-full text-center mt-3 text-sm">
+                  View 10+ Calculators
+                </Link>
               </div>
-              <Link href="/calculators" className="btn-secondary w-full text-center mt-3 text-sm">
-                View 10+ Calculators
-              </Link>
             </div>
           </div>
 

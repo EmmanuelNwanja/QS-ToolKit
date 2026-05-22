@@ -13,6 +13,18 @@ exports.health = async (req, res) => {
 
 // ─── Feature Flag Check ───────────────────────────────────────
 async function checkFeature(userId, featureKey) {
+  // Check platform admin first
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('admin_role')
+    .eq('user_id', userId)
+    .single();
+
+  if (adminUser?.admin_role === 'super_admin') {
+    logger.info('Admin AI bypass granted (platform admin) for user', userId, 'feature:', featureKey);
+    return { allowed: true, planName: 'admin' };
+  }
+
   const { data: user, error: userErr } = await supabase
     .from('users')
     .select('plan_id, subscription_plans(name), org_role')
@@ -28,7 +40,7 @@ async function checkFeature(userId, featureKey) {
   // Admins (super_admin / admin) bypass all plan checks for AI features
   const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
   if (isAdmin) {
-    logger.info('Admin AI bypass granted for user', userId, 'feature:', featureKey);
+    logger.info('Admin AI bypass granted (org role) for user', userId, 'feature:', featureKey);
     return { allowed: true, planName: 'admin' };
   }
 
@@ -47,16 +59,31 @@ async function checkFeature(userId, featureKey) {
 }
 
 // ─── Admin AI Access Check ────────────────────────────────────
-// super_admin gets automatic access. Regular admin needs explicit grant.
+// super_admin gets automatic access via admin_users table or users.org_role.
+// Regular admin needs explicit grant.
 async function checkAdminAIAccess(userId) {
-  const { data: user } = await supabase
-    .from('users')
-    .select('org_role')
-    .eq('id', userId)
+  // Check platform admin table first (most reliable)
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('admin_role')
+    .eq('user_id', userId)
     .single();
 
-  if (user?.org_role === 'super_admin') return { allowed: true, role: 'super_admin' };
+  if (adminUser?.admin_role === 'super_admin') return { allowed: true, role: 'super_admin' };
 
+  // Fallback: check users.org_role if column exists
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('org_role')
+      .eq('id', userId)
+      .single();
+    if (user?.org_role === 'super_admin') return { allowed: true, role: 'super_admin' };
+  } catch {
+    // org_role may not exist; ignore
+  }
+
+  // Check explicit grant
   const { data: grant } = await supabase
     .from('admin_ai_grants')
     .select('id, granted_by, created_at')
