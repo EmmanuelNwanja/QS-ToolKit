@@ -13,15 +13,24 @@ exports.health = async (req, res) => {
 
 // ─── Feature Flag Check ───────────────────────────────────────
 async function checkFeature(userId, featureKey) {
-  const { data: user } = await supabase
+  const { data: user, error: userErr } = await supabase
     .from('users')
     .select('plan_id, subscription_plans(name), org_role')
     .eq('id', userId)
     .single();
 
+  if (userErr) {
+    logger.error('checkFeature user lookup error:', userErr);
+  }
+
+  logger.debug('checkFeature for user', userId, 'org_role:', user?.org_role, 'plan:', user?.subscription_plans?.name);
+
   // Admins (super_admin / admin) bypass all plan checks for AI features
   const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
-  if (isAdmin) return { allowed: true, planName: 'admin' };
+  if (isAdmin) {
+    logger.info('Admin AI bypass granted for user', userId, 'feature:', featureKey);
+    return { allowed: true, planName: 'admin' };
+  }
 
   const planName = user?.subscription_plans?.name || 'free';
 
