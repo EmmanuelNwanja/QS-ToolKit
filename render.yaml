@@ -5,7 +5,7 @@ services:
     region: oregon           # Closest available free region to West Africa
     plan: free
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm install
     startCommand: npm start
     healthCheckPath: /health
     envVars:
