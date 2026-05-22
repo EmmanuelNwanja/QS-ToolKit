@@ -10,7 +10,8 @@ const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
 
 // ─── Configuration ────────────────────────────────────────────
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY_RAW = process.env.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = GEMINI_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const JINA_API_KEY = process.env.JINA_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -85,7 +86,8 @@ async function callGemini(prompt, options = {}) {
     return null;
   }
 
-  const url = `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  // Fallback model names if the primary fails
+  const modelsToTry = [model, 'gemini-2.0-flash-latest', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
 
   const parts = [{ text: prompt }];
   if (imageBase64) {
@@ -106,14 +108,26 @@ async function callGemini(prompt, options = {}) {
     }
   };
 
-  try {
-    const { data } = await axios.post(url, payload, { timeout: 60000 });
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return text;
-  } catch (err) {
-    logger.error('Gemini API error:', err.response?.data?.error?.message || err.message);
-    return null;
+  for (const m of modelsToTry) {
+    const url = `${GEMINI_BASE_URL}/models/${m}:generateContent?key=${GEMINI_API_KEY}`;
+    try {
+      const { data } = await axios.post(url, payload, { timeout: 60000 });
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (text) return text;
+    } catch (err) {
+      const status = err.response?.status;
+      const resData = err.response?.data;
+      logger.error(`Gemini API error (model=${m}, status=${status}):`, JSON.stringify(resData), err.message);
+      // Continue to next model on 404 (model not found); abort on auth errors
+      if (status === 401 || status === 403) {
+        logger.error('Gemini API auth error — check that the Generative Language API is enabled in Google Cloud Console and the key is valid.');
+        break;
+      }
+      // For other errors (429, 500, etc.), try next model
+      continue;
+    }
   }
+  return null;
 }
 
 // ─── Fallback: OpenRouter ─────────────────────────────────────
@@ -419,6 +433,40 @@ async function mockDrQResponse(message, context) {
   // General fallback
   return `I'm Dr. Q, your Quantity Surveying assistant. I can help with Nigerian construction standards, BOQ preparation, material quantities, and cost calculations.\n\nTry asking me about:\n• Block quantities for walls\n• Concrete mix ratios\n• Steel reinforcement weights\n• Paint or tiling coverage\n• SMM7 vs NRM2 standards\n\n*Note: Dr. Q is currently running in offline knowledge mode. For full AI capabilities, ask your admin to configure an AI API key.*`;
 }
+
+// ─── Health Check (diagnostic) ────────────────────────────────
+exports.healthCheck = async () => {
+  const checks = {
+    gemini_key_present: !!GEMINI_API_KEY,
+    gemini_key_preview: GEMINI_API_KEY ? `${GEMINI_API_KEY.slice(0, 8)}...${GEMINI_API_KEY.slice(-4)}` : null,
+    gemini_key_length: GEMINI_API_KEY.length,
+    gemini_key_starts_with_aiza: GEMINI_API_KEY.startsWith('AIza'),
+    openrouter_key_present: !!OPENROUTER_API_KEY,
+    jina_key_present: !!JINA_API_KEY,
+    mock_mode: MOCK_AI_MODE
+  };
+
+  // Try a minimal Gemini ping
+  if (GEMINI_API_KEY) {
+    const url = `${GEMINI_BASE_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    try {
+      const { data } = await axios.post(url, {
+        contents: [{ role: 'user', parts: [{ text: 'Say "OK"' }] }],
+        generationConfig: { maxOutputTokens: 10 }
+      }, { timeout: 15000 });
+      checks.gemini_ping = 'success';
+      checks.gemini_ping_response = data?.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 50) || 'empty';
+    } catch (err) {
+      checks.gemini_ping = 'failed';
+      checks.gemini_ping_status = err.response?.status;
+      checks.gemini_ping_error = err.response?.data || err.message;
+    }
+  } else {
+    checks.gemini_ping = 'skipped_no_key';
+  }
+
+  return checks;
+};
 
 // Expose raw Gemini for advanced use
 exports.callGemini = callGemini;

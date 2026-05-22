@@ -5,6 +5,12 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 
+// ─── AI Health / Diagnostics ──────────────────────────────────
+exports.health = async (req, res) => {
+  const checks = await aiService.healthCheck();
+  return res.json(success('AI health check', { checks }));
+};
+
 // ─── Feature Flag Check ───────────────────────────────────────
 async function checkFeature(userId, featureKey) {
   const { data: user } = await supabase

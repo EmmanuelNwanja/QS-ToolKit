@@ -3,6 +3,9 @@ const ctrl = require('../controllers/aiController');
 const { protect } = require('../middlewares/authMiddleware');
 const { adminAuth } = require('../middlewares/adminMiddleware');
 
+// Public health check (no auth required for diagnostics)
+router.get('/health', ctrl.health);
+
 router.use(protect);
 
 // Chat
