@@ -13,6 +13,7 @@ const logger = require('../utils/logger');
 const GEMINI_API_KEY_RAW = process.env.GEMINI_API_KEY || '';
 const GEMINI_API_KEY = GEMINI_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const JINA_API_KEY = process.env.JINA_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MOCK_AI_MODE = process.env.MOCK_AI_MODE === 'true';
@@ -130,6 +131,46 @@ async function callGemini(prompt, options = {}) {
   return null;
 }
 
+// ─── Fallback: GROQ ───────────────────────────────────────────
+async function callGroq(prompt, options = {}) {
+  if (!GROQ_API_KEY) return null;
+  const { model = 'llama-3.1-70b-versatile', jsonMode = true, temperature = 0.3 } = options;
+
+  const messages = [];
+  // Extract system prompt if present at start of prompt
+  const systemMatch = prompt.match(/^([\s\S]*?)\n\nConversation history:/);
+  if (systemMatch) {
+    messages.push({ role: 'system', content: systemMatch[1].trim() });
+    messages.push({ role: 'user', content: prompt.replace(systemMatch[0], '').trim() });
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
+
+  try {
+    const { data } = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model,
+        messages,
+        temperature,
+        max_tokens: 8192,
+        response_format: jsonMode ? { type: 'json_object' } : undefined
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000
+      }
+    );
+    return data?.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    logger.error('GROQ error:', JSON.stringify(err.response?.data) || err.message);
+    return null;
+  }
+}
+
 // ─── Fallback: OpenRouter ─────────────────────────────────────
 async function callOpenRouter(prompt, options = {}) {
   if (!OPENROUTER_API_KEY) return null;
@@ -162,9 +203,13 @@ async function callOpenRouter(prompt, options = {}) {
   }
 }
 
-// ─── Unified AI Call (with fallback) ──────────────────────────
+// ─── Unified AI Call (with fallback chain) ────────────────────
 async function callAI(prompt, options = {}) {
   let result = await callGemini(prompt, options);
+  if (!result && GROQ_API_KEY) {
+    logger.info('Falling back to GROQ');
+    result = await callGroq(prompt, options);
+  }
   if (!result && OPENROUTER_API_KEY) {
     logger.info('Falling back to OpenRouter');
     result = await callOpenRouter(prompt, options);
@@ -199,7 +244,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
   let responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
 
   // Graceful fallback: if no external AI is configured, use knowledge-base mock responses
-  if (!responseText && !GEMINI_API_KEY && !OPENROUTER_API_KEY) {
+  if (!responseText && !GEMINI_API_KEY && !GROQ_API_KEY && !OPENROUTER_API_KEY) {
     responseText = await mockDrQResponse(message, context);
   }
 
@@ -441,6 +486,7 @@ exports.healthCheck = async () => {
     gemini_key_preview: GEMINI_API_KEY ? `${GEMINI_API_KEY.slice(0, 8)}...${GEMINI_API_KEY.slice(-4)}` : null,
     gemini_key_length: GEMINI_API_KEY.length,
     gemini_key_starts_with_aiza: GEMINI_API_KEY.startsWith('AIza'),
+    groq_key_present: !!GROQ_API_KEY,
     openrouter_key_present: !!OPENROUTER_API_KEY,
     jina_key_present: !!JINA_API_KEY,
     mock_mode: MOCK_AI_MODE
@@ -463,6 +509,32 @@ exports.healthCheck = async () => {
     }
   } else {
     checks.gemini_ping = 'skipped_no_key';
+  }
+
+  // Try a minimal GROQ ping
+  if (GROQ_API_KEY) {
+    try {
+      const { data } = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: 'Say OK' }],
+          max_tokens: 5
+        },
+        {
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+          timeout: 15000
+        }
+      );
+      checks.groq_ping = 'success';
+      checks.groq_ping_response = data?.choices?.[0]?.message?.content?.substring(0, 50) || 'empty';
+    } catch (err) {
+      checks.groq_ping = 'failed';
+      checks.groq_ping_status = err.response?.status;
+      checks.groq_ping_error = err.response?.data || err.message;
+    }
+  } else {
+    checks.groq_ping = 'skipped_no_key';
   }
 
   return checks;
