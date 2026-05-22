@@ -234,7 +234,12 @@ export const aiAPI = {
   drawingJob:        (id)     => api.get(`/ai/drawings/jobs/${id}`),
   forecast:          (projectId) => api.get(`/ai/forecast/${projectId}`),
   suggestRate:       (params) => api.get('/ai/rates/suggest', { params }),
-  adminQuery:        (data)   => api.post('/ai/admin/query', data)
+  adminQuery:        (data)   => api.post('/ai/admin/query', data),
+  adminChat:         (data)   => api.post('/ai/admin/chat', data),
+  adminChatHistory:  ()       => api.get('/ai/admin/chat/history'),
+  grantAdminAI:      (data)   => api.post('/ai/admin/grant', data),
+  revokeAdminAI:     (userId) => api.delete(`/ai/admin/grant/${userId}`),
+  listAdminAIGrants: ()       => api.get('/ai/admin/grants')
 };
 
 // ─── Integrity / Blockchain-lite ───────────────────────────────

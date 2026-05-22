@@ -76,7 +76,18 @@ Output JSON: {"summary": "...", "changes": [{"type": "added|removed|modified", "
 Output JSON: {"predicted_final_value": 0, "confidence_score": 0-100, "risk_level": "low|medium|high|critical", "factors": [{"name": "...", "impact": "..."}], "recommendation": "..."}`,
 
   adminQuery: `You help admin users query platform analytics. Translate natural language to structured intent.
-Output JSON: {"intent": "user_growth|revenue|churn|subscriptions|activity", "filters": {"date_range": "..."}, "aggregation": "..."}`
+Output JSON: {"intent": "user_growth|revenue|churn|subscriptions|activity", "filters": {"date_range": "..."}, "aggregation": "..."}`,
+
+  adminChat: `You are Dr. Q Admin, the AI assistant for QSToolkit platform administrators.
+You have access to real-time platform analytics and can help with:
+- User growth, churn, and engagement metrics
+- Revenue, subscriptions, and billing insights
+- Platform health and activity monitoring
+- Content drafting (announcements, emails, policies)
+- Operational recommendations based on data
+
+When answering, cite specific numbers from the context. Be concise but thorough.
+If asked to take an action you cannot perform, explain what you can do instead.`
 };
 
 // ─── Generic Gemini Call ──────────────────────────────────────
@@ -332,6 +343,100 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
 
   // Track usage
   await trackUsage(userId, 'chat');
+
+  return { reply: responseText, error: false };
+};
+
+// ─── Fetch real-time admin platform context ───────────────────
+async function fetchAdminContext() {
+  try {
+    const today = new Date().toISOString();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+
+    // User stats
+    const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true });
+    const { count: newUsers7d } = await supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo);
+    const { count: newUsers30d } = await supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo);
+
+    // Subscriptions
+    const { count: activeSubs } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active');
+    const { data: plans } = await supabase.from('users').select('plan_id, subscription_plans(name)').eq('subscription_status', 'active');
+    const planBreakdown = {};
+    (plans || []).forEach(p => {
+      const name = p.subscription_plans?.name || 'unknown';
+      planBreakdown[name] = (planBreakdown[name] || 0) + 1;
+    });
+
+    // Revenue
+    const { data: revenue30d } = await supabase
+      .from('billing_transactions')
+      .select('amount')
+      .eq('status', 'success')
+      .gte('transaction_date', thirtyDaysAgo);
+    const revenueTotal = (revenue30d || []).reduce((s, t) => s + Number(t.amount || 0), 0);
+
+    // Pending invoices/quotes
+    const { count: pendingInvoices } = await supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+    const { count: draftBoqs } = await supabase.from('boq_documents').select('*', { count: 'exact', head: true }).eq('status', 'draft');
+
+    // Recent activity
+    const { data: recentUsers } = await supabase
+      .from('users')
+      .select('name, email, created_at, user_type')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    return `Platform Snapshot (as of ${today.split('T')[0]}):
+- Total Users: ${totalUsers || 0}
+- New Users (7d): ${newUsers7d || 0} | (30d): ${newUsers30d || 0}
+- Active Subscriptions: ${activeSubs || 0}
+- Plan Breakdown: ${JSON.stringify(planBreakdown)}
+- Revenue (30d): ₦${revenueTotal.toLocaleString()}
+- Pending Invoices: ${pendingInvoices || 0}
+- Draft BOQs: ${draftBoqs || 0}
+- Recent Signups: ${(recentUsers || []).map(u => `${u.name} (${u.user_type}) — ${u.created_at.split('T')[0]}`).join('; ') || 'None'}`;
+  } catch (err) {
+    logger.warn('Failed to fetch admin context:', err.message);
+    return 'Platform data temporarily unavailable.';
+  }
+}
+
+// ─── Admin Chat with Dr. Q Admin ──────────────────────────────
+exports.adminChat = async (userId, sessionId, message) => {
+  // Fetch recent admin conversation history
+  const { data: history } = await supabase
+    .from('ai_conversations')
+    .select('role, content')
+    .eq('user_id', userId)
+    .eq('session_id', sessionId)
+    .eq('context_type', 'admin')
+    .order('created_at', { ascending: true })
+    .limit(20);
+
+  const historyText = (history || [])
+    .map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`)
+    .join('\n');
+
+  const adminContext = await fetchAdminContext();
+
+  const prompt = `${SYSTEM_PROMPTS.adminChat}\n\n${adminContext}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
+
+  let responseText = await callAI(prompt, { temperature: 0.3, jsonMode: false });
+
+  if (!responseText) {
+    return {
+      reply: 'Dr. Q Admin is temporarily unavailable — the AI service encountered an error. Please try again shortly.',
+      error: true,
+      code: 'AI_SERVICE_UNAVAILABLE'
+    };
+  }
+
+  // Store conversation
+  await supabase.from('ai_conversations').insert([
+    { user_id: userId, session_id: sessionId, role: 'user', content: message, context_type: 'admin' },
+    { user_id: userId, session_id: sessionId, role: 'model', content: responseText, context_type: 'admin', model_used: 'gemini-flash' }
+  ]);
 
   return { reply: responseText, error: false };
 };

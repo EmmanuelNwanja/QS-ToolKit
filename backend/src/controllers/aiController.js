@@ -46,7 +46,29 @@ async function checkFeature(userId, featureKey) {
   return { allowed: false, reason: 'Upgrade your plan to access this feature' };
 }
 
-// ─── Chat with Dr. Q ─────────────────────────────────────────-
+// ─── Admin AI Access Check ────────────────────────────────────
+// super_admin gets automatic access. Regular admin needs explicit grant.
+async function checkAdminAIAccess(userId) {
+  const { data: user } = await supabase
+    .from('users')
+    .select('org_role')
+    .eq('id', userId)
+    .single();
+
+  if (user?.org_role === 'super_admin') return { allowed: true, role: 'super_admin' };
+
+  const { data: grant } = await supabase
+    .from('admin_ai_grants')
+    .select('id, granted_by, created_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (grant) return { allowed: true, role: 'admin', granted_by: grant.granted_by, granted_at: grant.created_at };
+
+  return { allowed: false, reason: 'Admin AI Engine access requires super admin privileges or an explicit grant.' };
+}
+
+// ─── Chat with Dr. Q ─────────────────────────────────---------
 exports.chat = async (req, res, next) => {
   try {
     const { message, session_id, context = {} } = req.body;
@@ -284,6 +306,155 @@ exports.adminQuery = async (req, res, next) => {
     return res.json(success('Admin query result', { intent, data }));
   } catch (err) {
     logger.error('Admin AI query error:', err.message);
+    next(err);
+  }
+};
+
+
+// ─── Admin AI Engine Chat ─────────────────────────────────────
+exports.adminChat = async (req, res, next) => {
+  try {
+    const { message, session_id } = req.body;
+    if (!message || !session_id) {
+      return res.status(400).json(error('Message and session_id are required'));
+    }
+
+    const access = await checkAdminAIAccess(req.user.id);
+    if (!access.allowed) {
+      return res.status(403).json(error(access.reason, { code: 'ADMIN_AI_ACCESS_DENIED' }));
+    }
+
+    const result = await aiService.adminChat(req.user.id, session_id, message);
+    return res.json(success('Admin AI response', { reply: result.reply, role: access.role }));
+  } catch (err) {
+    logger.error('Admin AI chat error:', err.message);
+    next(err);
+  }
+};
+
+// ─── List admin chat history ──────────────────────────────────
+exports.getAdminChatHistory = async (req, res, next) => {
+  try {
+    const access = await checkAdminAIAccess(req.user.id);
+    if (!access.allowed) {
+      return res.status(403).json(error(access.reason, { code: 'ADMIN_AI_ACCESS_DENIED' }));
+    }
+
+    const { data, error: err } = await supabase
+      .from('ai_conversations')
+      .select('role, content, created_at')
+      .eq('user_id', req.user.id)
+      .eq('context_type', 'admin')
+      .order('created_at', { ascending: true })
+      .limit(100);
+
+    if (err) throw err;
+    return res.json(success('Admin chat history', { messages: data }));
+  } catch (err) { next(err); }
+};
+
+
+// ─── Grant Admin AI Access ────────────────────────────────────
+exports.grantAdminAI = async (req, res, next) => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id) return res.status(400).json(error('user_id is required'));
+
+    // Verify requester is super_admin
+    const { data: requester } = await supabase
+      .from('users')
+      .select('org_role')
+      .eq('id', req.user.id)
+      .single();
+
+    if (requester?.org_role !== 'super_admin') {
+      return res.status(403).json(error('Only super admins can grant Admin AI access'));
+    }
+
+    // Verify target user exists and is an admin
+    const { data: target } = await supabase
+      .from('users')
+      .select('org_role, name, email')
+      .eq('id', user_id)
+      .single();
+
+    if (!target) return res.status(404).json(error('User not found'));
+    if (!['admin', 'super_admin'].includes(target.org_role)) {
+      return res.status(400).json(error('Target user must have admin role'));
+    }
+
+    const { data: grant, error: insertErr } = await supabase
+      .from('admin_ai_grants')
+      .insert({ user_id, granted_by: req.user.id })
+      .select()
+      .single();
+
+    if (insertErr) {
+      if (insertErr.code === '23505') {
+        return res.status(409).json(error('User already has Admin AI access'));
+      }
+      throw insertErr;
+    }
+
+    return res.json(success('Admin AI access granted', { grant, user: target }));
+  } catch (err) {
+    logger.error('Grant admin AI error:', err.message);
+    next(err);
+  }
+};
+
+// ─── Revoke Admin AI Access ───────────────────────────────────
+exports.revokeAdminAI = async (req, res, next) => {
+  try {
+    const { user_id } = req.params;
+
+    const { data: requester } = await supabase
+      .from('users')
+      .select('org_role')
+      .eq('id', req.user.id)
+      .single();
+
+    if (requester?.org_role !== 'super_admin') {
+      return res.status(403).json(error('Only super admins can revoke Admin AI access'));
+    }
+
+    const { error: delErr } = await supabase
+      .from('admin_ai_grants')
+      .delete()
+      .eq('user_id', user_id);
+
+    if (delErr) throw delErr;
+
+    return res.json(success('Admin AI access revoked'));
+  } catch (err) {
+    logger.error('Revoke admin AI error:', err.message);
+    next(err);
+  }
+};
+
+// ─── List Admin AI Grants ─────────────────────────────────────
+exports.listAdminAIGrants = async (req, res, next) => {
+  try {
+    const { data: requester } = await supabase
+      .from('users')
+      .select('org_role')
+      .eq('id', req.user.id)
+      .single();
+
+    if (requester?.org_role !== 'super_admin') {
+      return res.status(403).json(error('Only super admins can view Admin AI grants'));
+    }
+
+    const { data: grants, error: err } = await supabase
+      .from('admin_ai_grants')
+      .select('id, user_id, granted_by, created_at, users:user_id(name, email, org_role)')
+      .order('created_at', { ascending: false });
+
+    if (err) throw err;
+
+    return res.json(success('Admin AI grants', { grants: grants || [] }));
+  } catch (err) {
+    logger.error('List admin AI grants error:', err.message);
     next(err);
   }
 };

@@ -7,6 +7,86 @@ import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI, aiAPI } from '../../services/api';
 import useAuthStore from '../../context/authStore';
 
+// ─── Sub-component: Admin AI Grant Manager ──────────────────────
+function AdminAIGrantManager() {
+  const [grants, setGrants] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+
+  const fetchGrants = async () => {
+    try {
+      setLoading(true);
+      const { data } = await aiAPI.listAdminAIGrants();
+      setGrants(data?.data?.grants || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load grants');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGrants();
+  }, []);
+
+  const handleGrant = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      // First find user by email
+      const { data: usersRes } = await adminAPI.getUsers?.() || { data: { users: [] } };
+      // Fallback: we'll need the user_id. For now, require user_id directly.
+      toast.error('Please use the user ID directly for now. Email lookup coming soon.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Grant failed');
+    }
+  };
+
+  const handleRevoke = async (userId) => {
+    if (!confirm('Revoke Admin AI access for this user?')) return;
+    try {
+      await aiAPI.revokeAdminAI(userId);
+      toast.success('Access revoked');
+      fetchGrants();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Revoke failed');
+    }
+  };
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-gray-700 mb-2">Granted Admins ({grants.length})</h4>
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : grants.length === 0 ? (
+        <p className="text-sm text-gray-500">No grants yet. Super admins have automatic access.</p>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {grants.map((g) => (
+            <div key={g.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+              <div>
+                <span className="font-medium">{g.users?.name || 'Unknown'}</span>
+                <span className="text-gray-500 ml-2">{g.users?.email}</span>
+                <span className="text-gray-400 ml-2 text-xs">({g.users?.org_role})</span>
+              </div>
+              <button
+                onClick={() => handleRevoke(g.user_id)}
+                className="text-red-600 hover:text-red-800 text-xs font-medium"
+              >
+                Revoke
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-gray-400 mt-2">
+        To grant access, add a row to the <code>admin_ai_grants</code> table with the admin&apos;s user_id.
+        A full grant UI is coming in the next release.
+      </p>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -394,33 +474,21 @@ export default function AdminDashboard() {
             </>
           )}
 
-          {/* Admin AI Query */}
+          {/* Admin AI Engine + Grant Management */}
           {user?.admin_role === 'super_admin' && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">🧠 Admin AI Query</h3>
-              <form onSubmit={runAdminQuery} className="flex gap-2 mb-4">
-                <input
-                  value={adminQuery}
-                  onChange={(e) => setAdminQuery(e.target.value)}
-                  placeholder="e.g. 'Show me revenue last month' or 'List churned users'"
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <button
-                  type="submit"
-                  disabled={queryLoading}
-                  className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-primary-800"
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">🧠 Admin AI Engine</h3>
+                <Link href="/admin/ai-engine"
+                  className="text-sm bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-primary-800 transition-colors"
                 >
-                  {queryLoading ? 'Thinking...' : 'Ask'}
-                </button>
-              </form>
-              {adminQueryResult && (
-                <div className="bg-gray-50 rounded-lg p-4 text-sm">
-                  <p className="font-semibold text-gray-700 mb-2">Intent: {adminQueryResult.intent?.intent}</p>
-                  <pre className="text-xs text-gray-600 overflow-x-auto">
-                    {JSON.stringify(adminQueryResult.data, null, 2)}
-                  </pre>
-                </div>
-              )}
+                  Open AI Engine →
+                </Link>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Dr. Q Admin has real-time access to platform analytics. Only super admins and explicitly granted admins can use it.
+              </p>
+              <AdminAIGrantManager />
             </div>
           )}
 
@@ -428,13 +496,13 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link href="/engine"
+              <Link href="/admin/ai-engine"
                 className="flex items-center gap-3 p-4 border-2 border-primary-200 rounded-lg hover:bg-primary-50 transition-colors"
               >
                 <span className="text-2xl">🤖</span>
                 <div>
                   <p className="font-medium text-gray-900">AI Engine</p>
-                  <p className="text-sm text-gray-600">Chat with Dr. Q, forecast costs, analyze variance</p>
+                  <p className="text-sm text-gray-600">Dr. Q Admin — platform analytics, user insights, revenue</p>
                 </div>
               </Link>
 
