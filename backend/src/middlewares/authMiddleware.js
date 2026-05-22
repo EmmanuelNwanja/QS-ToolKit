@@ -14,9 +14,19 @@ exports.protect = async (req, res, next) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, user_type, plan_id, subscription_status, org_role, organization_id, account_status, force_password_change')
+      .select('id, email, user_type, plan_id, subscription_status, subscription_expires_at, org_role, organization_id, account_status, force_password_change')
       .eq('id', decoded.id)
       .single();
+
+    // Auto-downgrade expired subscriptions in-memory (enforced on every request)
+    if (user?.subscription_expires_at && new Date(user.subscription_expires_at) <= new Date()) {
+      if (user.subscription_status !== 'inactive') {
+        // Async fire-and-forget: update DB so cron doesn't have to catch it
+        supabase.from('users').update({ subscription_status: 'inactive' }).eq('id', user.id).then();
+      }
+      user.subscription_status = 'inactive';
+      user.plan_id = null;
+    }
 
     if (!user) return res.status(401).json(error('User not found'));
 

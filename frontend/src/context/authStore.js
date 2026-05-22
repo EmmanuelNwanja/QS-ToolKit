@@ -21,6 +21,16 @@ const useAuthStore = create((set, get) => ({
     // Safely parse cached user — corrupted JSON must not freeze the app.
     let cachedUser = null;
     try { cachedUser = cached ? JSON.parse(cached) : null; } catch { /* ignore */ }
+
+    // If cached subscription is expired, clear plan so UI downgrades immediately
+    // while /auth/me refreshes in the background.
+    const isExpired = cachedUser?.subscription_expires_at && new Date(cachedUser.subscription_expires_at) <= new Date();
+    if (isExpired && cachedUser) {
+      cachedUser.subscription_status = 'inactive';
+      cachedUser.subscription_plans = null;
+      localStorage.setItem('qst_user', JSON.stringify(cachedUser));
+    }
+
     set({ token, user: cachedUser });
 
     // Add a 15-second hard timeout so a hanging /auth/me never blocks forever.
@@ -105,10 +115,17 @@ const useAuthStore = create((set, get) => ({
 
   // ── Computed helpers ──────────────────────────────────────
   isAuthenticated: () => !!get().token,
-  isPro:           () => ['pro', 'enterprise'].includes(get().user?.subscription_plans?.name),
-  isEnterprise:    () => get().user?.subscription_plans?.name === 'enterprise',
-  isStudent:       () => ['basic', 'student'].includes(get().user?.subscription_plans?.name),
-  planName:        () => get().user?.subscription_plans?.name || 'free',
+  _isSubExpired:   () => {
+    const exp = get().user?.subscription_expires_at;
+    return exp && new Date(exp) <= new Date();
+  },
+  isPro:           () => !get()._isSubExpired() && ['pro', 'enterprise'].includes(get().user?.subscription_plans?.name),
+  isEnterprise:    () => !get()._isSubExpired() && get().user?.subscription_plans?.name === 'enterprise',
+  isStudent:       () => !get()._isSubExpired() && ['basic', 'student'].includes(get().user?.subscription_plans?.name),
+  planName:        () => {
+    if (get()._isSubExpired()) return 'free';
+    return get().user?.subscription_plans?.name || 'free';
+  },
   isAdmin:         () => ['super_admin', 'admin'].includes(get().user?.org_role),
   isSuperAdmin:    () => get().user?.org_role === 'super_admin'
 }));

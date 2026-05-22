@@ -358,6 +358,16 @@ exports.me = async (req, res, next) => {
       .eq('user_id', req.user.id)
       .single();
 
+    // Auto-downgrade expired subscriptions before returning to frontend
+    if (user?.subscription_expires_at && new Date(user.subscription_expires_at) <= new Date()) {
+      if (user.subscription_status !== 'inactive') {
+        await supabase.from('users').update({ subscription_status: 'inactive' }).eq('id', user.id);
+      }
+      user.subscription_status = 'inactive';
+      user.plan_id = null;
+      user.subscription_plans = null;
+    }
+
     const sanitized = sanitizeUser(user);
 
     // Include admin info if user is an admin

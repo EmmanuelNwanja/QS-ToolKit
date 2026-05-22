@@ -11,6 +11,19 @@ exports.health = async (req, res) => {
   return res.json(success('AI health check', { checks }));
 };
 
+// ─── Subscription Validity Helper ─────────────────────────────
+function isSubscriptionValid(user) {
+  if (!user) return false;
+  const status = String(user.subscription_status || '').trim().toLowerCase();
+  if (status === 'active' || status === 'trial' || status === 'paid') return true;
+  if (status === 'cancelled' || status === 'expired' || status === 'inactive') return false;
+  // Fallback: check expiry date
+  if (user.subscription_expires_at) {
+    return new Date(user.subscription_expires_at) > new Date();
+  }
+  return false;
+}
+
 // ─── Feature Flag Check ───────────────────────────────────────
 async function checkFeature(userId, featureKey) {
   // Check platform admin first
@@ -27,7 +40,7 @@ async function checkFeature(userId, featureKey) {
 
   const { data: user, error: userErr } = await supabase
     .from('users')
-    .select('plan_id, subscription_plans(name), org_role')
+    .select('plan_id, subscription_status, subscription_expires_at, subscription_plans(name), org_role')
     .eq('id', userId)
     .single();
 
@@ -35,7 +48,7 @@ async function checkFeature(userId, featureKey) {
     logger.error('checkFeature user lookup error:', userErr);
   }
 
-  logger.debug('checkFeature for user', userId, 'org_role:', user?.org_role, 'plan:', user?.subscription_plans?.name);
+  logger.debug('checkFeature for user', userId, 'status:', user?.subscription_status, 'expires:', user?.subscription_expires_at, 'plan:', user?.subscription_plans?.name);
 
   // Admins (super_admin / admin) bypass all plan checks for AI features
   const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
@@ -44,7 +57,12 @@ async function checkFeature(userId, featureKey) {
     return { allowed: true, planName: 'admin' };
   }
 
-  const planName = user?.subscription_plans?.name || 'free';
+  // If subscription expired/inactive, treat as free tier
+  let planName = user?.subscription_plans?.name || 'free';
+  if (!isSubscriptionValid(user)) {
+    logger.info('Subscription expired for user', userId, '- downgrading to free tier');
+    planName = 'free';
+  }
 
   const { data: flag } = await supabase
     .from('feature_flags')

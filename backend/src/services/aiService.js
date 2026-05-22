@@ -591,6 +591,18 @@ async function trackUsage(userId, type) {
   }
 }
 
+// ─── Subscription Validity Helper ─────────────────────────────
+function isSubscriptionValid(user) {
+  if (!user) return false;
+  const status = String(user.subscription_status || '').trim().toLowerCase();
+  if (status === 'active' || status === 'trial' || status === 'paid') return true;
+  if (status === 'cancelled' || status === 'expired' || status === 'inactive') return false;
+  if (user.subscription_expires_at) {
+    return new Date(user.subscription_expires_at) > new Date();
+  }
+  return false;
+}
+
 // ─── Daily Limit Check ────────────────────────────────────────
 exports.checkDailyLimit = async (userId, type) => {
   // Check platform admin first
@@ -606,13 +618,20 @@ exports.checkDailyLimit = async (userId, type) => {
 
   const { data: user } = await supabase
     .from('users')
-    .select('plan_id, subscription_plans(name), org_role')
+    .select('plan_id, subscription_status, subscription_expires_at, subscription_plans(name), org_role')
     .eq('id', userId)
     .single();
 
   // Admins get unlimited AI access
   const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
   if (isAdmin) return { allowed: true, used: 0, limit: 99999, planName: 'admin' };
+
+  // If subscription expired/inactive, treat as free tier
+  let planName = user?.subscription_plans?.name || 'free';
+  if (!isSubscriptionValid(user)) {
+    logger.info('Subscription expired for user', userId, '- downgrading to free tier for AI limits');
+    planName = 'free';
+  }
 
   const planLimits = {
     free: { chat: 3, drawing_analysis: 0, forecast: 0 },
@@ -629,7 +648,6 @@ exports.checkDailyLimit = async (userId, type) => {
     .eq('usage_date', today)
     .single();
 
-  const planName = user?.subscription_plans?.name || 'free';
   const limit = planLimits[planName]?.[type] ?? 0;
   const used = usage?.[type === 'drawing_analysis' ? 'drawing_analysis_requests' : type === 'forecast' ? 'forecast_requests' : 'chat_requests'] || 0;
 
