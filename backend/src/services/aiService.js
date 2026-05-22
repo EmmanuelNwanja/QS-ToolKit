@@ -13,7 +13,8 @@ const logger = require('../utils/logger');
 const GEMINI_API_KEY_RAW = process.env.GEMINI_API_KEY || '';
 const GEMINI_API_KEY = GEMINI_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_KEY_RAW = process.env.GROQ_API_KEY || '';
+const GROQ_API_KEY = GROQ_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const JINA_API_KEY = process.env.JINA_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MOCK_AI_MODE = process.env.MOCK_AI_MODE === 'true';
@@ -146,10 +147,12 @@ async function callGemini(prompt, options = {}) {
 // ─── Fallback: GROQ ───────────────────────────────────────────
 async function callGroq(prompt, options = {}) {
   if (!GROQ_API_KEY) return null;
-  const { model = 'llama-3.1-70b-versatile', jsonMode = true, temperature = 0.3 } = options;
+  const { jsonMode = true, temperature = 0.3 } = options;
+
+  // Fallback models if primary is unavailable
+  const modelsToTry = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
 
   const messages = [];
-  // Extract system prompt if present at start of prompt
   const systemMatch = prompt.match(/^([\s\S]*?)\n\nConversation history:/);
   if (systemMatch) {
     messages.push({ role: 'system', content: systemMatch[1].trim() });
@@ -158,29 +161,39 @@ async function callGroq(prompt, options = {}) {
     messages.push({ role: 'user', content: prompt });
   }
 
-  try {
-    const { data } = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
+  for (const model of modelsToTry) {
+    try {
+      const payload = {
         model,
         messages,
         temperature,
-        max_tokens: 8192,
-        response_format: jsonMode ? { type: 'json_object' } : undefined
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000
-      }
-    );
-    return data?.choices?.[0]?.message?.content || '';
-  } catch (err) {
-    logger.error('GROQ error:', JSON.stringify(err.response?.data) || err.message);
-    return null;
+        max_tokens: 8192
+      };
+      if (jsonMode) payload.response_format = { type: 'json_object' };
+
+      const { data } = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+      return data?.choices?.[0]?.message?.content || '';
+    } catch (err) {
+      const status = err.response?.status;
+      const resData = err.response?.data;
+      const dataStr = typeof resData === 'string' ? resData.slice(0, 500) : JSON.stringify(resData)?.slice(0, 500);
+      logger.error(`GROQ error model=${model} status=${status} code=${err.code} msg=${err.message} data=${dataStr}`);
+      // Abort on auth errors; try next model on others
+      if (status === 401 || status === 403) break;
+      continue;
+    }
   }
+  return null;
 }
 
 // ─── Fallback: OpenRouter ─────────────────────────────────────
@@ -210,7 +223,10 @@ async function callOpenRouter(prompt, options = {}) {
     );
     return data?.choices?.[0]?.message?.content || '';
   } catch (err) {
-    logger.error('OpenRouter error:', err.response?.data?.error?.message || err.message);
+    const status = err.response?.status;
+    const resData = err.response?.data;
+    const dataStr = typeof resData === 'string' ? resData.slice(0, 500) : JSON.stringify(resData)?.slice(0, 500);
+    logger.error(`OpenRouter error status=${status} code=${err.code} msg=${err.message} data=${dataStr}`);
     return null;
   }
 }
@@ -664,6 +680,8 @@ exports.healthCheck = async () => {
     gemini_key_length: GEMINI_API_KEY.length,
     gemini_key_starts_with_aiza: GEMINI_API_KEY.startsWith('AIza'),
     groq_key_present: !!GROQ_API_KEY,
+    groq_key_preview: GROQ_API_KEY ? `${GROQ_API_KEY.slice(0, 4)}...${GROQ_API_KEY.slice(-4)}` : null,
+    groq_key_length: GROQ_API_KEY.length,
     openrouter_key_present: !!OPENROUTER_API_KEY,
     jina_key_present: !!JINA_API_KEY,
     mock_mode: MOCK_AI_MODE
@@ -694,7 +712,7 @@ exports.healthCheck = async () => {
       const { data } = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
-          model: 'llama-3.1-8b-instant',
+          model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content: 'Say OK' }],
           max_tokens: 5
         },
@@ -708,7 +726,8 @@ exports.healthCheck = async () => {
     } catch (err) {
       checks.groq_ping = 'failed';
       checks.groq_ping_status = err.response?.status;
-      checks.groq_ping_error = err.response?.data || err.message;
+      checks.groq_ping_code = err.code;
+      checks.groq_ping_error = typeof err.response?.data === 'string' ? err.response.data.slice(0, 300) : JSON.stringify(err.response?.data)?.slice(0, 300) || err.message;
     }
   } else {
     checks.groq_ping = 'skipped_no_key';

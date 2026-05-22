@@ -120,7 +120,7 @@ export default function AiChatWidget({ context = {} }) {
               ))}
               {loading && (
                 <div className="flex gap-2">
-                  {QS_AI_AVATAR}
+                  {DR_Q_AVATAR}
                   <div className="bg-gray-100 rounded-xl rounded-bl-none px-3 py-2">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
