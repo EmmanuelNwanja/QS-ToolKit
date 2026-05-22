@@ -757,7 +757,7 @@ export default function LandingPage() {
                 <span className="text-gold-500">Powered by AI.</span>
               </h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Afirca's first AI-native Quantity Surveying platform. Built for Nigerian on global standards.
+                Africa&apos;s first AI-native Quantity Surveying platform. Built for Nigerian on global standards.
               </p>
             </motion.div>
 

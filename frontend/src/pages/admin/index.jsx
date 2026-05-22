@@ -11,7 +11,6 @@ import useAuthStore from '../../context/authStore';
 function AdminAIGrantManager() {
   const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
 
   const fetchGrants = async () => {
     try {
@@ -28,19 +27,6 @@ function AdminAIGrantManager() {
   useEffect(() => {
     fetchGrants();
   }, []);
-
-  const handleGrant = async (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    try {
-      // First find user by email
-      const { data: usersRes } = await adminAPI.getUsers?.() || { data: { users: [] } };
-      // Fallback: we'll need the user_id. For now, require user_id directly.
-      toast.error('Please use the user ID directly for now. Email lookup coming soon.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Grant failed');
-    }
-  };
 
   const handleRevoke = async (userId) => {
     if (!confirm('Revoke Admin AI access for this user?')) return;
@@ -67,7 +53,7 @@ function AdminAIGrantManager() {
               <div>
                 <span className="font-medium">{g.users?.name || 'Unknown'}</span>
                 <span className="text-gray-500 ml-2">{g.users?.email}</span>
-                <span className="text-gray-400 ml-2 text-xs">({g.users?.org_role})</span>
+                <span className="text-gray-400 ml-2 text-xs">({g.users?.user_type})</span>
               </div>
               <button
                 onClick={() => handleRevoke(g.user_id)}
@@ -95,9 +81,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [adminQuery, setAdminQuery] = useState('');
-  const [adminQueryResult, setAdminQueryResult] = useState(null);
-  const [queryLoading, setQueryLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -113,20 +96,6 @@ export default function AdminDashboard() {
       setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const runAdminQuery = async (e) => {
-    e.preventDefault();
-    if (!adminQuery.trim()) return;
-    setQueryLoading(true);
-    try {
-      const { data } = await aiAPI.adminQuery({ query: adminQuery });
-      setAdminQueryResult(data);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Query failed');
-    } finally {
-      setQueryLoading(false);
     }
   };
 
