@@ -15,9 +15,13 @@ exports.health = async (req, res) => {
 async function checkFeature(userId, featureKey) {
   const { data: user } = await supabase
     .from('users')
-    .select('plan_id, subscription_plans(name)')
+    .select('plan_id, subscription_plans(name), org_role')
     .eq('id', userId)
     .single();
+
+  // Admins (super_admin / admin) bypass all plan checks for AI features
+  const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
+  if (isAdmin) return { allowed: true, planName: 'admin' };
 
   const planName = user?.subscription_plans?.name || 'free';
 

@@ -428,6 +428,16 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link href="/engine"
+                className="flex items-center gap-3 p-4 border-2 border-primary-200 rounded-lg hover:bg-primary-50 transition-colors"
+              >
+                <span className="text-2xl">🤖</span>
+                <div>
+                  <p className="font-medium text-gray-900">AI Engine</p>
+                  <p className="text-sm text-gray-600">Chat with Dr. Q, forecast costs, analyze variance</p>
+                </div>
+              </Link>
+
               <Link href="/admin/promo-codes"
                 className="flex items-center gap-3 p-4 border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
               >

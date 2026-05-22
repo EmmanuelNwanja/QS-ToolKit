@@ -25,6 +25,7 @@ You understand SMM7, NRM2, Nigerian building codes, and local practices.
 Key facts you know:
 - 9-inch sandcrete blocks: 10 blocks/m² (standard Nigerian rate)
 - 6-inch sandcrete blocks: 12 blocks/m²
+- 5-inch sandcrete blocks: 14 blocks/m²
 - Concrete dry-to-wet volume factor: 1.54
 - Cement bags: 50kg standard
 - Steel reinforcement follows BS 4449
@@ -33,7 +34,7 @@ Key facts you know:
 - Paint coverage: 10m²/litre for emulsion
 - Floor tiles 600×600mm: 2.78 tiles/m²; 400×400mm: 6.25 tiles/m²
 - Plastering default thickness: 15mm, mix 1:4
-Be concise, accurate, and practical. When uncertain, say so.`,
+You have access to the user's profile, projects, BOQs, and invoices. Use this context to give personalized, relevant answers. Reference their specific projects or BOQs when appropriate. Be concise, accurate, and practical. When uncertain, say so.`,
 
   drawingAnalysis: `Analyze this architectural drawing and extract quantities for a Bill of Quantities.
 Output valid JSON only with this structure:
@@ -217,6 +218,71 @@ async function callAI(prompt, options = {}) {
   return result;
 }
 
+// ─── Enrich prompt with user-specific data ────────────────────
+async function buildUserContext(userId) {
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('name, email, user_type, company_name, university_name, qs_cert_no, phone, company_address, plan_id, subscription_status, created_at')
+      .eq('id', userId)
+      .single();
+
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('title, project_type, location, state, status, estimated_value, final_value')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const { data: boqs } = await supabase
+      .from('boq_documents')
+      .select('title, contract_no, client_name, location, total_amount, status')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('invoice_no, client_name, total_amount, status, issue_date')
+      .eq('user_id', userId)
+      .order('issue_date', { ascending: false })
+      .limit(3);
+
+    let ctx = '';
+    if (user) {
+      ctx += `User: ${user.name || 'User'} (${user.user_type || 'unknown'})`;
+      if (user.company_name) ctx += `, Company: ${user.company_name}`;
+      if (user.university_name) ctx += `, University: ${user.university_name}`;
+      if (user.qs_cert_no) ctx += `, QS Cert: ${user.qs_cert_no}`;
+      if (user.plan_id) ctx += `, Plan: ${user.plan_id}`;
+      ctx += '\n';
+    }
+
+    if (projects?.length) {
+      ctx += `Recent Projects:\n${projects.map(p =>
+        `  - "${p.title}" (${p.project_type || 'unknown'}) in ${p.location || p.state || 'Nigeria'} — Status: ${p.status || 'N/A'}, Est: ₦${p.estimated_value || 0}`
+      ).join('\n')}\n`;
+    }
+
+    if (boqs?.length) {
+      ctx += `Recent BOQs:\n${boqs.map(b =>
+        `  - "${b.title}" for ${b.client_name || 'unknown client'} — Total: ₦${b.total_amount || 0}, Status: ${b.status || 'draft'}`
+      ).join('\n')}\n`;
+    }
+
+    if (invoices?.length) {
+      ctx += `Recent Invoices:\n${invoices.map(i =>
+        `  - ${i.invoice_no} to ${i.client_name} — ₦${i.total_amount}, Status: ${i.status}`
+      ).join('\n')}\n`;
+    }
+
+    return ctx || 'No additional user context available.';
+  } catch (err) {
+    logger.warn('Failed to build user context:', err.message);
+    return '';
+  }
+}
+
 // ─── Chat with Dr. Q ─────────────────────────────────--------
 exports.chat = async (userId, sessionId, message, context = {}) => {
   // Fetch recent conversation history (last 10 messages)
@@ -228,10 +294,12 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
     .order('created_at', { ascending: true })
     .limit(10);
 
-  // Build prompt with system instruction + history + current message
+  // Build prompt with system instruction + user context + history + current message
   const historyText = (history || [])
     .map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`)
     .join('\n');
+
+  const userContext = await buildUserContext(userId);
 
   const contextText = context.boqTitle
     ? `\n[Context: BOQ "${context.boqTitle}"]`
@@ -239,7 +307,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
     ? `\n[Context: Project "${context.projectTitle}"]`
     : '';
 
-  const prompt = `${SYSTEM_PROMPTS.chat}\n${contextText}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
+  const prompt = `${SYSTEM_PROMPTS.chat}\n\n${userContext}${contextText}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
 
   let responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
 
@@ -377,6 +445,16 @@ async function trackUsage(userId, type) {
 
 // ─── Daily Limit Check ────────────────────────────────────────
 exports.checkDailyLimit = async (userId, type) => {
+  const { data: user } = await supabase
+    .from('users')
+    .select('plan_id, subscription_plans(name), org_role')
+    .eq('id', userId)
+    .single();
+
+  // Admins get unlimited AI access
+  const isAdmin = ['super_admin', 'admin'].includes(user?.org_role);
+  if (isAdmin) return { allowed: true, used: 0, limit: 99999, planName: 'admin' };
+
   const planLimits = {
     free: { chat: 3, drawing_analysis: 0, forecast: 0 },
     student: { chat: 10, drawing_analysis: 1, forecast: 1 },
@@ -390,12 +468,6 @@ exports.checkDailyLimit = async (userId, type) => {
     .select('*')
     .eq('user_id', userId)
     .eq('usage_date', today)
-    .single();
-
-  const { data: user } = await supabase
-    .from('users')
-    .select('plan_id, subscription_plans(name)')
-    .eq('id', userId)
     .single();
 
   const planName = user?.subscription_plans?.name || 'free';

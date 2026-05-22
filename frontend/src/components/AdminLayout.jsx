@@ -6,6 +6,7 @@ import { adminAPI } from '../services/api';
 
 const NAV_ITEMS = [
   { label: 'Dashboard',          href: '/admin',                icon: '📊' },
+  { label: 'AI Engine',          href: '/engine',               icon: '🤖' },
   { label: 'Promo Codes',        href: '/admin/promo-codes',    icon: '🎟️' },
   { label: 'Users',              href: '/admin/users',          icon: '👥' },
   { label: 'Subscriptions',      href: '/admin/subscriptions',  icon: '💳', superAdminOnly: true },
