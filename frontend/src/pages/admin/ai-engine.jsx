@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { aiAPI } from '../../services/api';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 
 const SUGGESTIONS = [
   'How many users signed up this week?',
@@ -133,10 +134,10 @@ export default function AdminAIEngine() {
                 >
                   <div className={`max-w-[80%] md:max-w-[65%] rounded-2xl px-5 py-3 text-sm leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-primary-700 text-white rounded-br-md'
+                      ? 'bg-primary-700 text-white rounded-br-md prose-invert'
                       : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm'
                   }`}>
-                    {msg.content}
+                    {msg.role === 'user' ? msg.content : <MarkdownRenderer content={msg.content} />}
                   </div>
                 </motion.div>
               ))}

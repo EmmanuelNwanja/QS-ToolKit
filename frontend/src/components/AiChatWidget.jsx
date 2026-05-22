@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { aiAPI } from '../services/api';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const DR_Q_AVATAR = (
   <div className="w-8 h-8 rounded-full bg-primary-700 flex items-center justify-center flex-shrink-0">
@@ -108,13 +109,13 @@ export default function AiChatWidget({ context = {} }) {
                   <div
                     className={`max-w-[80%] text-sm px-3 py-2 rounded-xl ${
                       m.role === 'user'
-                        ? 'bg-primary-700 text-white rounded-br-none'
+                        ? 'bg-primary-700 text-white rounded-br-none prose-invert'
                         : m.error
                         ? 'bg-red-50 text-red-700 border border-red-100 rounded-bl-none'
                         : 'bg-gray-100 text-gray-800 rounded-bl-none'
                     }`}
                   >
-                    {m.content}
+                    {m.role === 'user' ? m.content : <MarkdownRenderer content={m.content} />}
                   </div>
                 </div>
               ))}

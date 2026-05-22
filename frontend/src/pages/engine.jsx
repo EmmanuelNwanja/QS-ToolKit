@@ -8,6 +8,7 @@ import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import DrawingUploader from '../components/DrawingUploader';
 import { aiAPI, revisionAPI } from '../services/api';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { formatNaira, formatDate } from '../utils/helpers';
 
 const TOOLS = [
@@ -208,7 +209,7 @@ export default function EnginePage() {
                             ? 'bg-red-50 text-red-700 border border-red-100 rounded-bl-md'
                             : 'bg-gray-100 text-gray-800 rounded-bl-md'
                         }`}>
-                          {m.content}
+                          <MarkdownRenderer content={m.content} />
                         </div>
                       </div>
                     ))}

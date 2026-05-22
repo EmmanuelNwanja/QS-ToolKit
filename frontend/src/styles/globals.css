@@ -224,3 +224,55 @@
 .card-shine:hover::before {
   left: 125%;
 }
+
+
+/* ── Markdown in dark chat bubbles (prose-invert) ──────────── */
+.prose-invert .prose h1,
+.prose-invert .prose h2,
+.prose-invert .prose h3 {
+  color: white !important;
+}
+.prose-invert .prose p,
+.prose-invert .prose li,
+.prose-invert .prose td,
+.prose-invert .prose th {
+  color: rgba(255,255,255,0.95) !important;
+}
+.prose-invert .prose strong {
+  color: white !important;
+}
+.prose-invert .prose code {
+  background: rgba(255,255,255,0.15) !important;
+  color: #fde68a !important;
+}
+.prose-invert .prose pre {
+  background: rgba(0,0,0,0.3) !important;
+}
+.prose-invert .prose blockquote {
+  border-left-color: rgba(255,255,255,0.3) !important;
+  background: rgba(255,255,255,0.08) !important;
+}
+.prose-invert .prose table {
+  border-color: rgba(255,255,255,0.15) !important;
+}
+.prose-invert .prose thead {
+  background: rgba(255,255,255,0.1) !important;
+}
+.prose-invert .prose th,
+.prose-invert .prose td {
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* ── Prose overrides for chat messages ─────────────────────── */
+.prose h1, .prose h2, .prose h3 {
+  font-family: var(--font-display);
+}
+.prose pre {
+  max-width: 100%;
+}
+.prose table {
+  font-size: 0.8rem;
+}
+.prose p:last-child {
+  margin-bottom: 0;
+}
