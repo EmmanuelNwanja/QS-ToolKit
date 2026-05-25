@@ -7,6 +7,7 @@ const {
   trackAdminActivity
 } = require('../middlewares/adminMiddleware');
 const adminController = require('../controllers/adminController');
+const adminPaymentController = require('../controllers/adminPaymentController');
 
 // ── Apply authentication to all admin routes ──────────────────
 router.use(authMiddleware.protect);
@@ -125,6 +126,44 @@ router.patch(
   superAdminAuth,
   trackAdminActivity('updated_paystack_plan_mapping', 'subscription_plan'),
   adminController.updatePaystackPlanMapping
+);
+
+// ── DIRECT PAYMENT MANAGEMENT ──────────────────────────────────
+router.get(
+  '/payments/direct/list',
+  adminAuth,
+  requirePermission('manage_billing'),
+  adminPaymentController.listPayments
+);
+
+router.get(
+  '/payments/direct/:submissionId',
+  adminAuth,
+  requirePermission('manage_billing'),
+  adminPaymentController.getPaymentDetail
+);
+
+router.post(
+  '/payments/direct/:submissionId/verify',
+  adminAuth,
+  requirePermission('manage_billing'),
+  trackAdminActivity('verified_payment', 'direct_payment_submission'),
+  adminPaymentController.verifyPayment
+);
+
+router.post(
+  '/payments/direct/:submissionId/reject',
+  adminAuth,
+  requirePermission('manage_billing'),
+  trackAdminActivity('rejected_payment', 'direct_payment_submission'),
+  adminPaymentController.rejectPayment
+);
+
+router.get(
+  '/payments/direct/stats/overview',
+  adminAuth,
+  requirePermission('manage_billing'),
+  adminPaymentController.getPaymentStats
 );
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────

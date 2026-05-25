@@ -6,6 +6,7 @@ const { getEffectivePermissions, DEFAULT_ADMIN_PERMISSIONS } = require('../middl
 const crypto = require('crypto');
 const pushService = require('../services/pushService');
 const emailService = require('../services/emailService');
+const adminPaymentService = require('../services/adminPaymentService');
 
 const ADMIN_OTP_TTL_MINUTES = 30;
 
