@@ -203,7 +203,7 @@ This certificate confirms that the document has not been altered since certifica
 QSToolkit uses a blockchain-lite hash chain stored in a tamper-evident database.
 
 ================================================================================
-                    Fudo Greentech Ltd · qstoolkit.com
+                    Fudo Greentech Ltd · qs.solnuv.com
 ================================================================================
   `.trim();
 };

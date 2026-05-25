@@ -279,7 +279,7 @@ DATABASE_URL=...
 SUPABASE_STORAGE_BUCKET=payments
 
 # Email (optional, for notifications)
-EMAIL_FROM_ADDRESS=noreply@qstoolkit.com
+EMAIL_FROM_ADDRESS=noreply@qs.solnuv.com
 EMAIL_SERVICE=... (existing config)
 
 # Payment Display

@@ -66,7 +66,7 @@ exports.updateBankTransferSettings = async (req, res, next) => {
           account_number,
           additional_instructions: additional_instructions || null,
           is_active: is_active !== false,
-          updated_by: req.adminUser.id,
+          updated_by: req.adminUser.user_id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
@@ -84,7 +84,7 @@ exports.updateBankTransferSettings = async (req, res, next) => {
           account_number,
           additional_instructions: additional_instructions || null,
           is_active: is_active !== false,
-          updated_by: req.adminUser.id,
+          updated_by: req.adminUser.user_id,
         })
         .select('*')
         .single();

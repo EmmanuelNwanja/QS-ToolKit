@@ -242,7 +242,7 @@ async function callOpenRouter(prompt, options = {}) {
       {
         headers: {
           Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          'HTTP-Referer': process.env.FRONTEND_URL || 'https://qstoolkit.com',
+          'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
           'X-Title': 'QSToolkit'
         },
         timeout: 60000

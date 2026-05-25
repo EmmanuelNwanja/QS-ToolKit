@@ -407,7 +407,7 @@ SUPABASE_STORAGE_BUCKET=payments
 # Email (if using email notifications)
 EMAIL_SMTP_HOST=smtp.gmail.com
 EMAIL_SMTP_PORT=587
-EMAIL_FROM_ADDRESS=noreply@qstoolkit.com
+EMAIL_FROM_ADDRESS=noreply@qs.solnuv.com
 
 # Payment settings
 DIRECT_TRANSFER_BANK_ACCOUNT=1234567890  # Display to users

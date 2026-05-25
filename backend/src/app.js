@@ -22,8 +22,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://qs.solnuv.com',           // current live frontend
   'https://server.solnuv.com',
-  'https://qstoolkit.com',           // future primary domain
-  'https://www.qstoolkit.com'
+  'https://qs.solnuv.com',           // current platform domain
 ].filter(Boolean);                   // remove any undefined/null entries
 
 app.use(cors({

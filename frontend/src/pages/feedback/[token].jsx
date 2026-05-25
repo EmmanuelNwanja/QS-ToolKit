@@ -139,7 +139,7 @@ export default function PublicFeedbackPage() {
           )}
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            Feedback is collected securely by QSToolkit · qstoolkit.com
+            Feedback is collected securely by QSToolkit · qs.solnuv.com
           </p>
         </div>
       </div>

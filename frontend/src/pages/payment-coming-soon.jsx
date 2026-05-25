@@ -35,7 +35,7 @@ export default function PaymentComingSoon() {
               ← Back to Plans
             </button>
             <a
-              href="mailto:support@qstoolkit.com"
+              href="mailto:support@qs.solnuv.com"
               className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-700 text-white font-semibold text-sm hover:bg-primary-800 transition-colors"
             >
               Contact Support
@@ -44,8 +44,8 @@ export default function PaymentComingSoon() {
 
           <p className="text-xs text-slate-400 mt-8">
             Need help? Email us at{' '}
-            <a href="mailto:support@qstoolkit.com" className="text-primary-700 hover:underline">
-              support@qstoolkit.com
+            <a href="mailto:support@qs.solnuv.com" className="text-primary-700 hover:underline">
+              support@qs.solnuv.com
             </a>
           </p>
         </div>

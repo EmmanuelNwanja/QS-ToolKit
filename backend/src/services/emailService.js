@@ -39,7 +39,7 @@ const BRAND = {
   border:     '#e2e8f0',
   name:       'QSToolkit',
   url:        'https://qs.solnuv.com',
-  email:      'hello@qstoolkit.com',
+  email:      'hello@qs.solnuv.com',
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 

@@ -98,3 +98,33 @@ credentials.json
 Desktop.ini
 ehthumbs.db
 *.lnk
+
+# Temp / swap / backup files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# TypeScript build info
+*.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Test output (per-workspace)
+backend/coverage/
+frontend/coverage/
+
+# npm / yarn / pnpm internal files
+.npm/
+.yarn/
+.pnpm-store/
+.pnpm/
+
+# Azure CLI / deployment artifacts
+.azure/
+
+# Terraform (if used)
+.terraform/
+terraform.tfstate*
+*.tfplan

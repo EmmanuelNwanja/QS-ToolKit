@@ -233,7 +233,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/qstoolkit
 SUPABASE_STORAGE_BUCKET=payments
 
 # Email (if using notifications)
-EMAIL_FROM_ADDRESS=noreply@qstoolkit.com
+EMAIL_FROM_ADDRESS=noreply@qs.solnuv.com
 EMAIL_SMTP_HOST=smtp.sendgrid.net
 EMAIL_SMTP_PORT=587
 EMAIL_SMTP_USER=apikey

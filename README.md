@@ -1,6 +1,6 @@
 # 🏗️ QSToolkit — Nigeria's Quantity Surveying Platform
 
-> **qstoolkit.com** · Professional QS tools for Nigerian practitioners: Calculators, BOQs, Invoices, Project Tracking, Client Feedback & Leaderboard.
+> **qs.solnuv.com** · Professional QS tools for Nigerian practitioners: Calculators, BOQs, Invoices, Project Tracking, Client Feedback & Leaderboard.
 
 ---
 
@@ -91,14 +91,14 @@ git push -u origin main
 ```
 NODE_ENV            = production
 PORT                = 5000
-FRONTEND_URL        = https://qstoolkit.com
+FRONTEND_URL        = https://qs.solnuv.com
 SUPABASE_URL        = https://your-project.supabase.co
 SUPABASE_SERVICE_KEY= your-service-role-key
 SUPABASE_ANON_KEY   = your-anon-key
 JWT_SECRET          = (generate: openssl rand -base64 64)
 JWT_EXPIRES_IN      = 7d
 BREVO_API_KEY       = your-brevo-api-key
-BREVO_SENDER_EMAIL  = noreply@qstoolkit.com
+BREVO_SENDER_EMAIL  = noreply@qs.solnuv.com
 BREVO_SENDER_NAME   = QSToolkit
 PAYSTACK_SECRET_KEY = sk_live_xxxxx
 PAYSTACK_PUBLIC_KEY = pk_live_xxxxx
@@ -123,23 +123,23 @@ NEXT_PUBLIC_API_URL             = https://qstoolkit-api.onrender.com/api/v1
 NEXT_PUBLIC_SUPABASE_URL        = https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY   = your-anon-key
 NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY = pk_live_xxxxx
-NEXT_PUBLIC_APP_URL             = https://qstoolkit.com
+NEXT_PUBLIC_APP_URL             = https://qs.solnuv.com
 ```
 
-5. Click **Deploy** — your site will be at `https://qstoolkit.vercel.app`
+5. Click **Deploy** — your site will be at `https://qs-solnuv.vercel.app`
 
 ---
 
-### STEP 5 — Connect Your Custom Domain (qstoolkit.com)
+### STEP 5 — Connect Your Custom Domain (qs.solnuv.com)
 
 **In Vercel:**
 1. Go to your project → Settings → Domains
-2. Add `qstoolkit.com` and `www.qstoolkit.com`
+2. Add `qs.solnuv.com`
 3. Vercel will show you DNS records to add
 
 **In Cloudflare:**
 1. Add the DNS records Vercel provides
-2. For the API: Add a CNAME record `api.qstoolkit.com` → `qstoolkit-api.onrender.com`
+2. For the API: Add a CNAME record `api.qs.solnuv.com` → `qs-toolkit-api.onrender.com`
 3. Enable **SSL/TLS Full** mode
 
 ---
@@ -164,7 +164,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY = your-anon-key
 1. Create account at [paystack.com](https://paystack.com)
 2. Get your **Live Keys** from Dashboard → Settings → API Keys
 3. Add **Webhook URL** in Paystack dashboard:
-   - `https://api.qstoolkit.com/api/v1/subscriptions/webhook`
+   - `https://api.qs.solnuv.com/api/v1/subscriptions/webhook`
 4. Update your environment variables with live keys
 
 ---
@@ -174,7 +174,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY = your-anon-key
 1. Create account at [brevo.com](https://brevo.com)
 2. Go to SMTP & API → API Keys → Generate new key
 3. Add to backend environment variables as `BREVO_API_KEY`
-4. Verify your sender domain `qstoolkit.com` in Brevo settings
+4. Verify your sender domain `qs.solnuv.com` in Brevo settings
 
 ---
 
@@ -250,15 +250,15 @@ Run migrations in order. For V1.10, add:
 ## 📧 Support
 
 - Built for Nigeria by QSToolkit
-- Email: support@qstoolkit.com
-- Website: qstoolkit.com
+- Email: support@qs.solnuv.com
+- Website: qs.solnuv.com
 
 ---
 
 ## 📄 Architecture
 
 ```
-qstoolkit.com (Cloudflare DNS + SSL)
+qs.solnuv.com (Cloudflare DNS + SSL)
         │
         ├── Frontend (Vercel) ─── Next.js 14 + Tailwind
         │

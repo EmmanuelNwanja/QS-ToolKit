@@ -48,7 +48,7 @@ exports.sendSubscriptionExpiryReminder = async (params, emailService) => {
         </div>
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://qstoolkit.com/subscription" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+          <a href="https://qs.solnuv.com/subscription" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
             Renew Subscription
           </a>
         </div>
@@ -56,7 +56,7 @@ exports.sendSubscriptionExpiryReminder = async (params, emailService) => {
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
         
         <p style="font-size: 14px; color: #64748b; margin: 0;">
-          Questions? Reply to this email or contact us at <a href="mailto:support@qstoolkit.com" style="color: #1a3c5e; text-decoration: none;">support@qstoolkit.com</a>
+          Questions? Reply to this email or contact us at <a href="mailto:support@qs.solnuv.com" style="color: #1a3c5e; text-decoration: none;">support@qs.solnuv.com</a>
         </p>
       </div>
     </div>
@@ -71,11 +71,11 @@ Your ${plan.toUpperCase()} subscription will expire on ${expiryDate} (in ${daysU
 
 To continue enjoying uninterrupted access to premium features, please renew your subscription.
 
-Renew now: https://qstoolkit.com/subscription
+Renew now: https://qs.solnuv.com/subscription
 
 After expiration, you will be downgraded to the free tier with limited access to features.
 
-Questions? Contact us at support@qstoolkit.com
+Questions? Contact us at support@qs.solnuv.com
     `;
 
     // Use the provided emailService to send
@@ -135,7 +135,7 @@ exports.sendSubscriptionDowngradeNotice = async (params, emailService) => {
         </p>
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://qstoolkit.com/subscription" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+          <a href="https://qs.solnuv.com/subscription" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
             Renew Now
           </a>
         </div>
@@ -143,7 +143,7 @@ exports.sendSubscriptionDowngradeNotice = async (params, emailService) => {
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
         
         <p style="font-size: 14px; color: #64748b; margin: 0;">
-          Need help? Contact us at <a href="mailto:support@qstoolkit.com" style="color: #1a3c5e; text-decoration: none;">support@qstoolkit.com</a>
+          Need help? Contact us at <a href="mailto:support@qs.solnuv.com" style="color: #1a3c5e; text-decoration: none;">support@qs.solnuv.com</a>
         </p>
       </div>
     </div>
@@ -160,9 +160,9 @@ What changed: You now have access to limited features. To restore full access, p
 
 Your data is safe. Simply renew to regain full access.
 
-Renew now: https://qstoolkit.com/subscription
+Renew now: https://qs.solnuv.com/subscription
 
-Questions? Contact us at support@qstoolkit.com
+Questions? Contact us at support@qs.solnuv.com
     `;
 
     // Use the provided emailService to send

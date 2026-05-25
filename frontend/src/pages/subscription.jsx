@@ -152,7 +152,7 @@ export default function SubscriptionPage() {
   };
 
   function openPaymentModal(planId) {
-    if (planId === 'enterprise') { window.location.href = 'mailto:sales@qstoolkit.com?subject=Enterprise%20Plan%20Inquiry'; return; }
+    if (planId === 'enterprise') { window.location.href = 'mailto:sales@qs.solnuv.com?subject=Enterprise%20Plan%20Inquiry'; return; }
     if (planId === 'free') return;
     setPendingPlan(planId);
     setPaymentMethod(null);
@@ -509,7 +509,7 @@ export default function SubscriptionPage() {
                   {bankSettingsLoading && <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700" /></div>}
 
                   {!bankSettingsLoading && bankSettings?.is_active === false && (
-                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Direct bank transfer is temporarily unavailable. Please contact support@qstoolkit.com.</p>
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Direct bank transfer is temporarily unavailable. Please contact support@qs.solnuv.com.</p>
                   )}
 
                   {!bankSettingsLoading && bankSettings?.is_active !== false && bankSettings && (
@@ -530,7 +530,7 @@ export default function SubscriptionPage() {
                   )}
 
                   {!bankSettingsLoading && !bankSettings && (
-                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Bank account details are not configured yet. Please contact support@qstoolkit.com.</p>
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Bank account details are not configured yet. Please contact support@qs.solnuv.com.</p>
                   )}
 
                   <div className="space-y-4">

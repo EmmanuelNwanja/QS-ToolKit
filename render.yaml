@@ -34,7 +34,7 @@ services:
       - key: MAILJET_API_SECRET
         fromGroup: qstoolkit-secrets
       - key: MAILJET_SENDER_EMAIL
-        value: noreply@qstoolkit.com
+        value: noreply@qs.solnuv.com
       - key: MAILJET_SENDER_NAME
         value: QSToolkit
       - key: PAYSTACK_SECRET_KEY
