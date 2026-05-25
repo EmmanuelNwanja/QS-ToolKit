@@ -9,9 +9,7 @@ let PDFDocument = null;
 try { PDFDocument = require('pdfkit'); } catch (e) { PDFDocument = null; }
 
 let puppeteerCore;
-let puppeteerFull;
 try { puppeteerCore = require('puppeteer-core'); } catch (e) { puppeteerCore = null; }
-try { puppeteerFull = require('puppeteer'); } catch (e) { puppeteerFull = null; }
 
 function pdfUnavailableError(message, details = {}) {
   const err = new Error(message);
@@ -93,7 +91,7 @@ exports.generateInvoicePdf = async (invoice, branding) => {
 
 // ─── HTML → PDF ───────────────────────────────────────────────
 async function htmlToPdf(html) {
-  if (!puppeteerCore && !puppeteerFull) {
+  if (!puppeteerCore) {
     throw pdfUnavailableError('PDF generation runtime is not installed.');
   }
 
@@ -103,30 +101,19 @@ async function htmlToPdf(html) {
   };
 
   const candidates = resolveExecutableCandidates();
-  const launchers = [
-    { engine: puppeteerFull, candidates: [] },
-    { engine: puppeteerCore, candidates }
-  ].filter((entry) => !!entry.engine);
 
   let browser = null;
   let launchError = null;
 
-  for (const launcher of launchers) {
-    try {
-      try {
-        browser = await launchWithCandidates(launcher.engine, launchOptions, launcher.candidates);
-      } catch {
-        // Older runtime combinations may fail with "headless: new"; retry with classic headless mode.
-        browser = await launchWithCandidates(
-          launcher.engine,
-          { ...launchOptions, headless: true },
-          launcher.candidates
-        );
-      }
-      break;
-    } catch (err) {
-      launchError = err;
-    }
+  try {
+    browser = await launchWithCandidates(puppeteerCore, launchOptions, candidates);
+  } catch {
+    // Older runtime combinations may fail with "headless: new"; retry with classic headless mode.
+    browser = await launchWithCandidates(
+      puppeteerCore,
+      { ...launchOptions, headless: true },
+      candidates
+    );
   }
 
   if (!browser) {

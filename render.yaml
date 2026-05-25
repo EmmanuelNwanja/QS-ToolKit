@@ -5,7 +5,7 @@ services:
     region: oregon           # Closest available free region to West Africa
     plan: free
     rootDir: backend
-    buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm install
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -13,6 +13,8 @@ services:
         value: true
       - key: NODE_ENV
         value: production
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/google-chrome-stable
       - key: PORT
         value: 5000
       - key: FRONTEND_URL
