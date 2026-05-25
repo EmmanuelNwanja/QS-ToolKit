@@ -121,7 +121,7 @@ export default function BankTransferSettings() {
 
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
             <p className="font-medium mb-1">Preview</p>
-            <p>These bank details will be shown to users when they select "Direct Bank Transfer" on the subscription page.</p>
+            <p>These bank details will be shown to users when they select &ldquo;Direct Bank Transfer&rdquo; on the subscription page.</p>
           </div>
         </div>
       </AdminLayout>

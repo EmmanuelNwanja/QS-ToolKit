@@ -19,7 +19,7 @@ const PROMO_ELIGIBLE = ['basic', 'student', 'pro'];
 
 export default function SubscriptionPage() {
   const router                    = useRouter();
-  const { user, planName, refreshUser } = useAuthStore();
+  const { planName, refreshUser } = useAuthStore();
   const [plans, setPlans]         = useState([]);
   const [mySub, setMySub]         = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -460,7 +460,7 @@ export default function SubscriptionPage() {
               {!paymentMethod && (
                 <div className="p-6">
                   <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Choose Payment Method</h2>
-                  <p className="text-sm text-slate-500 mb-6">Select how you'd like to pay for the <span className="font-semibold capitalize">{pendingPlan}</span> plan.</p>
+                  <p className="text-sm text-slate-500 mb-6">Select how you&rsquo;d like to pay for the <span className="font-semibold capitalize">{pendingPlan}</span> plan.</p>
                   <div className="space-y-3">
                     <button
                       onClick={() => setPaymentMethod('bank_transfer')}
