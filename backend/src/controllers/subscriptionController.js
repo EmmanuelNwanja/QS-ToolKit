@@ -3,6 +3,8 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
 const logger = require('../utils/logger');
+const paymentSubmissionService = require('../services/paymentSubmissionService');
+const subscriptionManagementService = require('../services/subscriptionManagementService');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -1058,3 +1060,93 @@ function isSuccessfulInvoiceEvent(data) {
   const status = String(data?.status || '').toLowerCase();
   return status === 'success' || status === 'paid' || data?.paid === true;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DIRECT BANK TRANSFER PAYMENT SUBMISSION (NEW ENDPOINTS)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/subscription/submit-payment
+ * User submits bank transfer receipt for admin verification
+ */
+exports.submitBankTransferPayment = async (req, res, next) => {
+  try {
+    const { planName, billingInterval = 'monthly', amountNgn, referenceNote } = req.body;
+
+    if (!planName || !amountNgn) {
+      return res.status(400).json(error('Missing required fields: planName, amountNgn'));
+    }
+
+    if (!['basic', 'pro', 'enterprise'].includes(planName)) {
+      return res.status(400).json(error('Invalid plan'));
+    }
+
+    // Submit payment
+    const submission = await paymentSubmissionService.submitBankTransfer(
+      req.user.id,
+      { planName, billingInterval, amountNgn, referenceNote },
+      req.file || null
+    );
+
+    return res.status(201).json(success('Payment submitted for verification', {
+      id: submission.id,
+      status: submission.status,
+      planName: submission.plan_name,
+      amountNgn: submission.amount_ngn,
+      submittedAt: submission.submitted_at,
+    }));
+  } catch (err) {
+    logger.error('submitBankTransferPayment error', { userId: req.user?.id, error: err.message });
+    res.status(500).json(error(err.message || 'Failed to submit payment'));
+  }
+};
+
+/**
+ * GET /api/subscription/my-submissions
+ * Get user's payment submissions
+ */
+exports.getMyPaymentSubmissions = async (req, res, next) => {
+  try {
+    const submissions = await paymentSubmissionService.getUserSubmissions(req.user.id);
+
+    return res.json(success('Payment submissions retrieved', submissions));
+  } catch (err) {
+    logger.error('getMyPaymentSubmissions error', { userId: req.user?.id, error: err.message });
+    res.status(500).json(error(err.message || 'Failed to retrieve submissions'));
+  }
+};
+
+/**
+ * GET /api/subscription/my-status
+ * Get user's current subscription status
+ */
+exports.getMySubscriptionStatus = async (req, res, next) => {
+  try {
+    const subscription = await subscriptionManagementService.getActiveSubscription(req.user.id);
+
+    return res.json(success('Subscription status retrieved', subscription || {
+      planName: 'free',
+      subscriptionStatus: 'active',
+      message: 'You are currently on the free tier',
+    }));
+  } catch (err) {
+    logger.error('getMySubscriptionStatus error', { userId: req.user?.id, error: err.message });
+    res.status(500).json(error(err.message || 'Failed to retrieve subscription'));
+  }
+};
+
+/**
+ * GET /api/subscription/audit
+ * Get subscription audit trail for user
+ */
+exports.getMySubscriptionAudit = async (req, res, next) => {
+  try {
+    const auditLog = await subscriptionManagementService.getSubscriptionAudit(req.user.id, 50);
+
+    return res.json(success('Audit trail retrieved', auditLog));
+  } catch (err) {
+    logger.error('getMySubscriptionAudit error', { userId: req.user?.id, error: err.message });
+    res.status(500).json(error(err.message || 'Failed to retrieve audit trail'));
+  }
+};
+

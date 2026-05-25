@@ -8,6 +8,8 @@ const axios = require('axios');
 const supabase = require('../config/supabase');
 const emailService = require('./emailService');
 const logger = require('../utils/logger');
+const subscriptionManagementService = require('./subscriptionManagementService');
+const subscriptionNotifications = require('./subscriptionNotificationTemplates');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -199,11 +201,123 @@ async function autoRenewSubscriptions() {
   }
 }
 
+// ── Monitor and manage subscription lifecycle (NEW) ──────────────
+async function monitorSubscriptionExpiry() {
+  try {
+    logger.info('🔔 Starting subscription expiry monitoring...');
+
+    // 1. Send 7-day reminders
+    const expiring7d = await subscriptionManagementService.getExpiringSubscriptions(7, true);
+    for (const sub of expiring7d) {
+      try {
+        await subscriptionManagementService.sendExpiryReminder(sub.user_id, '7');
+        if (sub.users?.email) {
+          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+            email: sub.users.email,
+            userName: sub.users.first_name || 'User',
+            plan: sub.plan_name,
+            expiresAt: sub.subscription_expires_at,
+            daysUntil: 7,
+          }, emailService).catch(err => logger.warn('Failed to send 7d reminder email', { userId: sub.user_id, error: err.message }));
+        }
+      } catch (err) {
+        logger.warn(`Failed to send 7d reminder for user ${sub.user_id}`, { error: err.message });
+      }
+    }
+    logger.info(`✅ Sent 7-day reminders to ${expiring7d.length} users`);
+
+    // 2. Send 3-day reminders
+    const expiring3d = await subscriptionManagementService.getExpiringSubscriptions(3, true);
+    for (const sub of expiring3d) {
+      try {
+        await subscriptionManagementService.sendExpiryReminder(sub.user_id, '3');
+        if (sub.users?.email) {
+          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+            email: sub.users.email,
+            userName: sub.users.first_name || 'User',
+            plan: sub.plan_name,
+            expiresAt: sub.subscription_expires_at,
+            daysUntil: 3,
+          }, emailService).catch(err => logger.warn('Failed to send 3d reminder email', { userId: sub.user_id, error: err.message }));
+        }
+      } catch (err) {
+        logger.warn(`Failed to send 3d reminder for user ${sub.user_id}`, { error: err.message });
+      }
+    }
+    logger.info(`✅ Sent 3-day reminders to ${expiring3d.length} users`);
+
+    // 3. Send 1-day reminders
+    const expiring1d = await subscriptionManagementService.getExpiringSubscriptions(1, true);
+    for (const sub of expiring1d) {
+      try {
+        await subscriptionManagementService.sendExpiryReminder(sub.user_id, '1');
+        if (sub.users?.email) {
+          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+            email: sub.users.email,
+            userName: sub.users.first_name || 'User',
+            plan: sub.plan_name,
+            expiresAt: sub.subscription_expires_at,
+            daysUntil: 1,
+          }, emailService).catch(err => logger.warn('Failed to send 1d reminder email', { userId: sub.user_id, error: err.message }));
+        }
+      } catch (err) {
+        logger.warn(`Failed to send 1d reminder for user ${sub.user_id}`, { error: err.message });
+      }
+    }
+    logger.info(`✅ Sent 1-day reminders to ${expiring1d.length} users`);
+
+    // 4. Downgrade expired subscriptions (outside grace period)
+    const { data: expiredSubs, error: expiredError } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('subscription_status', 'active')
+      .lt('grace_period_until', new Date().toISOString());
+
+    if (expiredError) {
+      logger.error('Error fetching expired subscriptions', { error: expiredError.message });
+    } else if (expiredSubs && expiredSubs.length > 0) {
+      let downgradedCount = 0;
+      for (const sub of expiredSubs) {
+        try {
+          const result = await subscriptionManagementService.downgradeToFreeTier(
+            sub.user_id,
+            'subscription_expired'
+          );
+          if (result) downgradedCount++;
+
+          // Notify user of downgrade
+          const { data: user } = await supabase
+            .from('users')
+            .select('email, first_name')
+            .eq('id', sub.user_id)
+            .maybeSingle();
+
+          if (user?.email) {
+            await subscriptionNotifications.sendSubscriptionDowngradeNotice({
+              email: user.email,
+              userName: user.first_name || 'User',
+              previousPlan: sub.plan_name,
+            }, emailService).catch(err => logger.warn('Failed to send downgrade email', { userId: sub.user_id, error: err.message }));
+          }
+        } catch (err) {
+          logger.warn(`Failed to downgrade user ${sub.user_id}`, { error: err.message });
+        }
+      }
+      logger.info(`✅ Downgraded ${downgradedCount} expired subscriptions to free tier`);
+    }
+
+    logger.info('✅ Subscription expiry monitoring complete');
+  } catch (err) {
+    logger.error('Subscription expiry monitoring failed:', err.message);
+  }
+}
+
 // ── Run all jobs (called by GitHub Actions endpoint) ─────────
 exports.runAllJobs = async () => {
   logger.info('🕗 Running scheduled jobs...');
   await expireSubscriptions();
   await sendExpiryReminders();
+  await monitorSubscriptionExpiry(); // NEW: comprehensive subscription lifecycle monitoring
   await autoRenewSubscriptions();
   await refreshLeaderboard();
   logger.info('✅ Scheduled jobs complete');
