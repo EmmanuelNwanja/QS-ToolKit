@@ -28,7 +28,8 @@ exports.listPayments = async (req, res, next) => {
       'payments',
       'all',
       { status, page, limit },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Payment submissions retrieved', result));
@@ -57,7 +58,8 @@ exports.getPaymentDetail = async (req, res, next) => {
       'payment_submission',
       submissionId,
       {},
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Payment details retrieved', submission));
@@ -88,7 +90,8 @@ exports.verifyPayment = async (req, res, next) => {
       'payment_submission',
       submissionId,
       { adminNote, planName: result.subscription.plan_name },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Payment verified and subscription activated', {
@@ -128,7 +131,8 @@ exports.rejectPayment = async (req, res, next) => {
       'payment_submission',
       submissionId,
       { reason },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Payment submission rejected', {
@@ -156,7 +160,8 @@ exports.getPaymentStats = async (req, res, next) => {
       'payments',
       'all',
       {},
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Payment statistics retrieved', stats));

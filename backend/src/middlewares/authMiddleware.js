@@ -21,8 +21,12 @@ exports.protect = async (req, res, next) => {
     // Auto-downgrade expired subscriptions in-memory (enforced on every request)
     if (user?.subscription_expires_at && new Date(user.subscription_expires_at) <= new Date()) {
       if (user.subscription_status !== 'inactive') {
-        // Async fire-and-forget: update DB so cron doesn't have to catch it
-        supabase.from('users').update({ subscription_status: 'inactive' }).eq('id', user.id).then();
+        // Async fire-and-forget: sync DB immediately so admins see accurate data
+        supabase.from('users').update({
+          subscription_status: 'inactive',
+          plan_id: null,
+          subscription_expires_at: null,
+        }).eq('id', user.id).then();
       }
       user.subscription_status = 'inactive';
       user.plan_id = null;

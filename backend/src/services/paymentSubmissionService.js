@@ -124,7 +124,7 @@ exports.getSubmission = async (submissionId) => {
   try {
     const { data: submission, error } = await supabase
       .from('direct_payment_submissions')
-      .select('*, reviewed_by_user:users!reviewed_by(id, first_name, last_name, email)')
+      .select('*, reviewed_by_user:users!reviewed_by(id, name, email)')
       .eq('id', submissionId)
       .single();
 

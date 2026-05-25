@@ -1,6 +1,6 @@
 const billingAuditService = require('../services/billingAuditService');
 const logger = require('../utils/logger');
-const { logAdminActivity } = require('../middlewares/authMiddleware');
+const { logAdminActivity } = require('../middlewares/adminMiddleware');
 
 /**
  * Get transaction history for a user
@@ -24,7 +24,7 @@ exports.getUserTransactions = async (req, res, next) => {
       endDate,
       type,
       status
-    }, req);
+    }, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -49,7 +49,7 @@ exports.getSubscriptionAudit = async (req, res, next) => {
 
     const audit = await billingAuditService.getSubscriptionAudit(subscriptionId);
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_subscription_audit', 'subscription', subscriptionId, {}, req);
+    await logAdminActivity(req.adminUser?.id, 'viewed_subscription_audit', 'subscription', subscriptionId, {}, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -73,7 +73,7 @@ exports.getSubscriptionSummary = async (req, res, next) => {
 
     const summary = await billingAuditService.getSubscriptionSummary(subscriptionId);
 
-    await logAdminActivity(req.adminUser?.id, 'viewed_subscription_summary', 'subscription', subscriptionId, {}, req);
+    await logAdminActivity(req.adminUser?.id, 'viewed_subscription_summary', 'subscription', subscriptionId, {}, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -103,7 +103,7 @@ exports.getRevenueReport = async (req, res, next) => {
     await logAdminActivity(req.adminUser?.id, 'viewed_revenue_report', 'billing', 'all', {
       startDate,
       endDate
-    }, req);
+    }, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -133,7 +133,7 @@ exports.getChurnAnalysis = async (req, res, next) => {
     await logAdminActivity(req.adminUser?.id, 'viewed_churn_analysis', 'billing', 'all', {
       startDate,
       endDate
-    }, req);
+    }, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -174,7 +174,7 @@ exports.recordTransaction = async (req, res, next) => {
       amount,
       type,
       reason
-    }, req);
+    }, req.ip, req.get('user-agent'));
 
     res.json({
       success: true,
@@ -238,7 +238,7 @@ exports.exportTransactions = async (req, res, next) => {
       endDate,
       userId,
       count: data.length
-    }, req);
+    }, req.ip, req.get('user-agent'));
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="transactions_${Date.now()}.csv"`);

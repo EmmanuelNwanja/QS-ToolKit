@@ -53,3 +53,48 @@ coverage/
 
 # Temp snapshot files
 awesome-mcp-servers.yml
+
+# Database — never commit local data or sensitive exports
+database/backups/
+database/*.csv
+database/*.sql.gz
+database/*.dump
+*.psql
+
+# SSL / TLS certificates and private keys
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# Uploaded user files (receipts, avatars, docs)
+backend/uploads/
+backend/public/uploads/
+frontend/public/uploads/
+uploads/
+
+# Secrets / credentials (beyond .env)
+*.secret
+service-account.json
+credentials.json
+*.credentials
+
+# Runtime generated files
+*.pid
+*.seed
+.pnpm-debug.log*
+
+# IDE / editor extended (Visual Studio, Rider)
+.vs/
+*.sln
+*.suo
+*.user
+*.userosscache
+*.userprefs
+
+# Additional OS files
+Desktop.ini
+ehthumbs.db
+*.lnk

@@ -179,7 +179,7 @@ export default function Subscriptions() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                            {sub.subscription_plans?.name}
+                            {sub.subscription_plans?.name || 'free'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

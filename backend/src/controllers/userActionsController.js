@@ -493,7 +493,8 @@ exports.issueCredit = async (req, res, next) => {
       'user',
       userId,
       { amount, reason, notes, previousBalance: user.account_credit, newBalance: creditResult.new_balance },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Credit issued successfully', {
@@ -588,7 +589,8 @@ exports.processRefund = async (req, res, next) => {
       'subscription',
       subscriptionId,
       { amount, reason, method, transactionId: refundTx.id },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Refund processed successfully', {
@@ -664,7 +666,8 @@ exports.processRefundByUser = async (req, res, next) => {
       'subscription',
       subscription.id,
       { amount, reason, method, transactionId: refundTx.id },
-      req
+      req.ip,
+      req.get('user-agent')
     );
 
     return res.json(success('Refund processed successfully', {

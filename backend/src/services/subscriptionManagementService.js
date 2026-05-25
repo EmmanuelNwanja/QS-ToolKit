@@ -342,7 +342,7 @@ exports.getExpiringSubscriptions = async (daysUntil, excludeReminded = true) => 
 
     let query = supabase
       .from('user_subscriptions')
-      .select('*, users:users!user_subscriptions_user_id_fkey(id, email, first_name)')
+      .select('*, users:users!user_subscriptions_user_id_fkey(id, email, name)')
       .eq('subscription_status', 'active')
       .gt('subscription_expires_at', expiresAfter.toISOString())
       .lt('subscription_expires_at', expiresBefore.toISOString());

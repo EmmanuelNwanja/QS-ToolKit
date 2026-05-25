@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 
 exports.getBankTransferSettings = async (req, res, next) => {
   try {
-    const { data: settings, err } = await supabase
+    const { data: settings, error: err } = await supabase
       .from('platform_payment_settings')
       .select('*')
       .eq('is_active', true)
@@ -23,7 +23,7 @@ exports.getBankTransferSettings = async (req, res, next) => {
 
 exports.getBankTransferSettingsAdmin = async (req, res, next) => {
   try {
-    const { data: settings, err } = await supabase
+    const { data: settings, error: err } = await supabase
       .from('platform_payment_settings')
       .select('*')
       .order('created_at', { ascending: false })
@@ -47,16 +47,18 @@ exports.updateBankTransferSettings = async (req, res, next) => {
       return res.status(400).json(error('bank_name, account_name, and account_number are required'));
     }
 
-    const { data: existing } = await supabase
+    const { data: existing, error: findErr } = await supabase
       .from('platform_payment_settings')
       .select('id')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
+    if (findErr) throw findErr;
+
     let result;
     if (existing) {
-      const { data: updated, err } = await supabase
+      const { data: updated, error: err } = await supabase
         .from('platform_payment_settings')
         .update({
           bank_name,
@@ -74,7 +76,7 @@ exports.updateBankTransferSettings = async (req, res, next) => {
       if (err) throw err;
       result = updated;
     } else {
-      const { data: created, err } = await supabase
+      const { data: created, error: err } = await supabase
         .from('platform_payment_settings')
         .insert({
           bank_name,
@@ -100,7 +102,7 @@ exports.updateBankTransferSettings = async (req, res, next) => {
 
 exports.getMyPaymentSubmissions = async (req, res, next) => {
   try {
-    const { data: submissions, err } = await supabase
+    const { data: submissions, error: err } = await supabase
       .from('direct_payment_submissions')
       .select('*')
       .eq('user_id', req.user.id)

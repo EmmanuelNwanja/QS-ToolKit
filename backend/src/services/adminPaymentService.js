@@ -20,7 +20,7 @@ exports.listPaymentSubmissions = async (filters = {}) => {
     let query = supabase
       .from('direct_payment_submissions')
       .select(
-        '*, user:users!user_id(id, first_name, last_name, email), reviewed_by_user:users!reviewed_by(id, first_name, last_name, email)',
+        '*, user:users!user_id(id, name, email), reviewed_by_user:users!reviewed_by(id, name, email)',
         { count: 'exact' }
       )
       .order('submitted_at', { ascending: false })
@@ -56,7 +56,7 @@ exports.getPaymentSubmissionDetail = async (submissionId) => {
     const { data: submission, error } = await supabase
       .from('direct_payment_submissions')
       .select(
-        '*, user:users!user_id(id, first_name, last_name, email, created_at), reviewed_by_user:users!reviewed_by(id, first_name, last_name, email)'
+        '*, user:users!user_id(id, name, email, created_at), reviewed_by_user:users!reviewed_by(id, name, email)'
       )
       .eq('id', submissionId)
       .single();

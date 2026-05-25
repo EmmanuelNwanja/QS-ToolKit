@@ -178,7 +178,7 @@ router.get(
 router.put(
   '/payment-settings/bank-transfer',
   adminAuth,
-  requirePermission('manage_billing'),
+  superAdminAuth,
   trackAdminActivity('updated_bank_transfer_settings', 'payment_settings'),
   paymentSettingsCtrl.updateBankTransferSettings
 );

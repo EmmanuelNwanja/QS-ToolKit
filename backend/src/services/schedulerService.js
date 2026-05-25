@@ -224,7 +224,7 @@ async function monitorSubscriptionExpiry() {
         if (sub.users?.email) {
           await subscriptionNotifications.sendSubscriptionExpiryReminder({
             email: sub.users.email,
-            userName: sub.users.first_name || 'User',
+            userName: sub.users?.name || 'User',
             plan: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
             daysUntil: 7,
@@ -244,7 +244,7 @@ async function monitorSubscriptionExpiry() {
         if (sub.users?.email) {
           await subscriptionNotifications.sendSubscriptionExpiryReminder({
             email: sub.users.email,
-            userName: sub.users.first_name || 'User',
+            userName: sub.users?.name || 'User',
             plan: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
             daysUntil: 3,
@@ -264,7 +264,7 @@ async function monitorSubscriptionExpiry() {
         if (sub.users?.email) {
           await subscriptionNotifications.sendSubscriptionExpiryReminder({
             email: sub.users.email,
-            userName: sub.users.first_name || 'User',
+            userName: sub.users?.name || 'User',
             plan: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
             daysUntil: 1,
@@ -298,14 +298,14 @@ async function monitorSubscriptionExpiry() {
           // Notify user of downgrade
           const { data: user } = await supabase
             .from('users')
-            .select('email, first_name')
+            .select('email, name')
             .eq('id', sub.user_id)
             .maybeSingle();
 
           if (user?.email) {
             await subscriptionNotifications.sendSubscriptionDowngradeNotice({
               email: user.email,
-              userName: user.first_name || 'User',
+              userName: user.name || 'User',
               previousPlan: sub.plan_name,
             }, emailService).catch(err => logger.warn('Failed to send downgrade email', { userId: sub.user_id, error: err.message }));
           }
