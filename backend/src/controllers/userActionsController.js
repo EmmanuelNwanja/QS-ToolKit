@@ -215,6 +215,7 @@ exports.verifyUser = async (req, res, next) => {
 
 /**
  * Override user subscription (change plan)
+ * Syncs both users and user_subscriptions tables
  */
 exports.overrideSubscription = async (req, res, next) => {
   try {
@@ -225,13 +226,11 @@ exports.overrideSubscription = async (req, res, next) => {
       return res.status(400).json(error('Either planId or plan_name is required'));
     }
 
-    // Resolve plan by name aliases (basic/student) or UUID.
     const plan = await resolvePlan({ planId, planName: plan_name });
     if (!plan) {
       return res.status(404).json(error(`Plan not found for input: ${plan_name || planId}`));
     }
 
-    // Get current user subscription info
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, email, name, plan_id, subscription_status')
@@ -242,7 +241,6 @@ exports.overrideSubscription = async (req, res, next) => {
       return res.status(404).json(error('User not found'));
     }
 
-    // Calculate expiry date from billing cycle when not explicitly provided.
     let expiryDate;
     if (expiresAt) {
       expiryDate = expiresAt;
@@ -253,7 +251,11 @@ exports.overrideSubscription = async (req, res, next) => {
       expiryDate = dt.toISOString();
     }
 
-    // Update subscription
+    const now = new Date().toISOString();
+    const graceUntil = new Date(expiryDate);
+    graceUntil.setDate(graceUntil.getDate() + 7);
+
+    // Update users table (legacy)
     const { data: updated, error: dbError } = await supabase
       .from('users')
       .update({
@@ -261,7 +263,7 @@ exports.overrideSubscription = async (req, res, next) => {
         subscription_status: 'active',
         billing_cycle: billingCycle,
         subscription_expires_at: expiryDate,
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
       .eq('id', userId)
       .select('*, subscription_plans(*)')
@@ -269,7 +271,30 @@ exports.overrideSubscription = async (req, res, next) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Log activity
+    // Sync user_subscriptions table
+    await supabase
+      .from('user_subscriptions')
+      .update({ subscription_status: 'expired', updated_at: now })
+      .eq('user_id', userId)
+      .eq('subscription_status', 'active');
+
+    await supabase
+      .from('user_subscriptions')
+      .upsert({
+        user_id: userId,
+        plan_name: plan.name,
+        billing_interval: billingCycle,
+        subscription_status: 'active',
+        subscription_started_at: now,
+        subscription_expires_at: expiryDate,
+        grace_period_until: graceUntil.toISOString(),
+        reminder_sent_7d: false,
+        reminder_sent_3d: false,
+        reminder_sent_1d: false,
+        auto_renew: false,
+        updated_at: now,
+      }, { onConflict: 'user_id' });
+
     await logAdminActivity(
       req.adminUser.id,
       'override_subscription',
@@ -288,13 +313,13 @@ exports.overrideSubscription = async (req, res, next) => {
 
 /**
  * Extend user subscription
+ * Syncs both users and user_subscriptions tables
  */
 exports.extendSubscription = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { days = 30, reason } = req.body;
 
-    // Get user
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, email, name, subscription_expires_at')
@@ -305,16 +330,16 @@ exports.extendSubscription = async (req, res, next) => {
       return res.status(404).json(error('User not found'));
     }
 
-    // Calculate new expiry
     const currentExpiry = user.subscription_expires_at ? new Date(user.subscription_expires_at) : new Date();
     currentExpiry.setDate(currentExpiry.getDate() + parseInt(days));
+    const newExpiryISO = currentExpiry.toISOString();
+    const now = new Date().toISOString();
 
-    // Update subscription
     const { data: updated, error: dbError } = await supabase
       .from('users')
       .update({
-        subscription_expires_at: currentExpiry.toISOString(),
-        updated_at: new Date().toISOString()
+        subscription_expires_at: newExpiryISO,
+        updated_at: now
       })
       .eq('id', userId)
       .select('*, subscription_plans(*)')
@@ -322,13 +347,22 @@ exports.extendSubscription = async (req, res, next) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Log activity
+    // Sync user_subscriptions table
+    await supabase
+      .from('user_subscriptions')
+      .update({
+        subscription_expires_at: newExpiryISO,
+        updated_at: now,
+      })
+      .eq('user_id', userId)
+      .eq('subscription_status', 'active');
+
     await logAdminActivity(
       req.adminUser.id,
       'extend_subscription',
       'subscription',
       userId,
-      { days, newExpiryDate: currentExpiry.toISOString(), reason },
+      { days, newExpiryDate: newExpiryISO, reason },
       req.ip,
       req.get('user-agent')
     );
@@ -341,13 +375,13 @@ exports.extendSubscription = async (req, res, next) => {
 
 /**
  * Revoke subscription (downgrade to free)
+ * Syncs both users and user_subscriptions tables
  */
 exports.revokeSubscription = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
 
-    // Get free plan
     const { data: freePlan, error: planError } = await supabase
       .from('subscription_plans')
       .select('id')
@@ -358,7 +392,6 @@ exports.revokeSubscription = async (req, res, next) => {
       return res.status(500).json(error('Free plan not found'));
     }
 
-    // Get user
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, email, name')
@@ -369,14 +402,15 @@ exports.revokeSubscription = async (req, res, next) => {
       return res.status(404).json(error('User not found'));
     }
 
-    // Downgrade to free plan
+    const now = new Date().toISOString();
+
     const { data: updated, error: dbError } = await supabase
       .from('users')
       .update({
         plan_id: freePlan.id,
         subscription_status: 'inactive',
         subscription_expires_at: null,
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
       .eq('id', userId)
       .select('*, subscription_plans(*)')
@@ -384,7 +418,13 @@ exports.revokeSubscription = async (req, res, next) => {
 
     if (dbError) throw new Error(dbError.message);
 
-    // Log activity
+    // Sync user_subscriptions table
+    await supabase
+      .from('user_subscriptions')
+      .update({ subscription_status: 'expired', updated_at: now })
+      .eq('user_id', userId)
+      .eq('subscription_status', 'active');
+
     await logAdminActivity(
       req.adminUser.id,
       'revoke_subscription',

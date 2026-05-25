@@ -20,10 +20,20 @@ const paystackHeaders = () => ({
 // ── Expire subscriptions ──────────────────────────────────────
 async function expireSubscriptions() {
   try {
+    const now = new Date().toISOString();
+
+    // Mark expired in legacy users table
     const { data, error } = await supabase
       .from('users')
       .update({ subscription_status: 'inactive' })
-      .lt('subscription_expires_at', new Date().toISOString())
+      .lt('subscription_expires_at', now)
+      .eq('subscription_status', 'active');
+
+    // Sync user_subscriptions table
+    await supabase
+      .from('user_subscriptions')
+      .update({ subscription_status: 'expired', updated_at: now })
+      .lt('subscription_expires_at', now)
       .eq('subscription_status', 'active');
 
     logger.info(`Subscription expiry check complete. Expired: ${data?.length || 0}`);

@@ -175,7 +175,12 @@ export const subscriptionAPI = {
   initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle }),
   cancel:               ()                         => api.post('/subscriptions/cancel'),
   renew:                (billing_cycle)            => api.post('/subscriptions/renew', { billing_cycle }),
-  setAutoRenew:         (enabled)                  => api.patch('/subscriptions/auto-renew', { enabled })
+  setAutoRenew:         (enabled)                  => api.patch('/subscriptions/auto-renew', { enabled }),
+  getBankTransferSettings: ()                    => api.get('/subscriptions/bank-transfer/settings'),
+  submitBankTransfer:   (formData)                => api.post('/subscriptions/direct/submit-payment', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMySubmissions:     ()                        => api.get('/subscriptions/direct/my-submissions'),
+  getMyStatus:          ()                        => api.get('/subscriptions/status/current'),
+  getMyAudit:           ()                        => api.get('/subscriptions/audit/history')
 };
 
 // ─── User Actions (admin) ──────────────────────────────────────
@@ -208,6 +213,13 @@ export const adminAPI = {
   getSubscriptions:      (params) => api.get('/admin/subscriptions', { params }),
   getPaystackPlanMappings: () => api.get('/admin/paystack-plan-mappings'),
   updatePaystackPlanMapping: (planId, data) => api.patch(`/admin/paystack-plan-mappings/${planId}`, data),
+  getBankTransferSettings: () => api.get('/admin/payment-settings/bank-transfer'),
+  updateBankTransferSettings: (data) => api.put('/admin/payment-settings/bank-transfer', data),
+  getDirectPayments:     (params) => api.get('/admin/payments/direct/list', { params }),
+  getDirectPaymentDetail: (id) => api.get(`/admin/payments/direct/${id}`),
+  verifyDirectPayment:   (id, adminNote) => api.post(`/admin/payments/direct/${id}/verify`, { adminNote }),
+  rejectDirectPayment:   (id, reason) => api.post(`/admin/payments/direct/${id}/reject`, { reason }),
+  getDirectPaymentStats: () => api.get('/admin/payments/direct/stats/overview'),
   getPushNotifications:  () => api.get('/admin/notifications'),
   sendPushNotification:  (data) => api.post('/admin/notifications', data),
   getActivityLogs:       (params) => api.get('/admin/activity-logs', { params }),

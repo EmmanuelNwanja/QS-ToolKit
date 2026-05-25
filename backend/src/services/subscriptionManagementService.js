@@ -21,7 +21,22 @@ const PLAN_PRICES = {
 };
 
 /**
+ * Resolve subscription plan ID from plan name
+ */
+async function resolvePlanId(planName) {
+  const name = String(planName || '').toLowerCase();
+  const { data: plans } = await supabase
+    .from('subscription_plans')
+    .select('id, name')
+    .in('name', name === 'student' ? ['basic', 'student'] : [name])
+    .eq('is_active', true);
+  if (!plans || plans.length === 0) return null;
+  return plans.find(p => p.name === name) || plans.find(p => p.name === 'basic') || plans[0];
+}
+
+/**
  * Activate subscription after admin approval
+ * Syncs both user_subscriptions and users tables for consistency
  * @param {string} userId - User ID
  * @param {string} planName - Plan name ('basic', 'pro', 'enterprise')
  * @param {string} billingInterval - 'monthly' or 'annual'
@@ -33,7 +48,6 @@ exports.activateSubscription = async (userId, planName, billingInterval, payment
     const now = new Date();
     const expiresAt = new Date(now);
 
-    // Set expiration date based on billing interval
     if (billingInterval === 'annual') {
       expiresAt.setFullYear(expiresAt.getFullYear() + 1);
     } else {
@@ -41,9 +55,8 @@ exports.activateSubscription = async (userId, planName, billingInterval, payment
     }
 
     const graceUntil = new Date(expiresAt);
-    graceUntil.setDate(graceUntil.getDate() + 7); // 7 day grace period
+    graceUntil.setDate(graceUntil.getDate() + 7);
 
-    // Get current subscription (if any)
     const { data: currentSub } = await supabase
       .from('user_subscriptions')
       .select('*')
@@ -53,7 +66,7 @@ exports.activateSubscription = async (userId, planName, billingInterval, payment
 
     const oldPlanName = currentSub?.plan_name || 'free';
 
-    // Upsert subscription
+    // Upsert user_subscriptions
     const { data: subscription, error: subError } = await supabase
       .from('user_subscriptions')
       .upsert({
@@ -81,7 +94,18 @@ exports.activateSubscription = async (userId, planName, billingInterval, payment
       throw subError;
     }
 
-    // Record audit entry
+    // Sync legacy users table
+    const planRow = await resolvePlanId(planName);
+    if (planRow) {
+      await supabase.from('users').update({
+        plan_id: planRow.id,
+        subscription_status: 'active',
+        subscription_expires_at: expiresAt.toISOString(),
+        billing_cycle: billingInterval,
+        updated_at: now.toISOString(),
+      }).eq('id', userId);
+    }
+
     await exports.logSubscriptionChange(userId, {
       action: 'subscription_activated',
       planFrom: oldPlanName,
@@ -156,6 +180,7 @@ exports.isSubscriptionExpired = async (userId) => {
 
 /**
  * Downgrade user to free tier
+ * Syncs both user_subscriptions and users tables
  * @param {string} userId - User ID
  * @param {string} reason - Reason for downgrade
  * @returns {Promise<object>} - Updated subscription
@@ -164,7 +189,6 @@ exports.downgradeToFreeTier = async (userId, reason = 'subscription_expired') =>
   try {
     const now = new Date();
 
-    // Get current subscription
     const { data: currentSub } = await supabase
       .from('user_subscriptions')
       .select('*')
@@ -179,7 +203,14 @@ exports.downgradeToFreeTier = async (userId, reason = 'subscription_expired') =>
 
     const oldPlanName = currentSub.plan_name;
 
-    // Create free subscription
+    // Mark existing active subscription as expired
+    await supabase
+      .from('user_subscriptions')
+      .update({ subscription_status: 'expired', updated_at: now.toISOString() })
+      .eq('user_id', userId)
+      .eq('subscription_status', 'active');
+
+    // Insert or update free subscription
     const { data: freeSub, error: downgradeError } = await supabase
       .from('user_subscriptions')
       .insert({
@@ -188,7 +219,7 @@ exports.downgradeToFreeTier = async (userId, reason = 'subscription_expired') =>
         billing_interval: 'monthly',
         subscription_status: 'active',
         subscription_started_at: now.toISOString(),
-        subscription_expires_at: null, // Free tier never expires
+        subscription_expires_at: null,
         grace_period_until: null,
         reminder_sent_7d: false,
         reminder_sent_3d: false,
@@ -199,7 +230,6 @@ exports.downgradeToFreeTier = async (userId, reason = 'subscription_expired') =>
       .single();
 
     if (downgradeError) {
-      // Try update instead if user already has a free subscription
       if (downgradeError.code === '23505') {
         const { data: updated, error: updateError } = await supabase
           .from('user_subscriptions')
@@ -223,15 +253,28 @@ exports.downgradeToFreeTier = async (userId, reason = 'subscription_expired') =>
       throw downgradeError;
     }
 
-    // Record audit entry
+    // Sync legacy users table - set to free plan
+    const { data: freePlan } = await supabase
+      .from('subscription_plans')
+      .select('id')
+      .eq('name', 'free')
+      .single();
+
+    if (freePlan) {
+      await supabase.from('users').update({
+        plan_id: freePlan.id,
+        subscription_status: 'inactive',
+        subscription_expires_at: null,
+        billing_cycle: 'monthly',
+        updated_at: now.toISOString(),
+      }).eq('id', userId);
+    }
+
     await exports.logSubscriptionChange(userId, {
       action: 'downgrade_to_free',
       planFrom: oldPlanName,
       planTo: 'free',
-      details: {
-        reason,
-        downgradeReason: reason,
-      },
+      details: { reason },
     });
 
     logger.info(`User ${userId} downgraded to free tier`, { reason, fromPlan: oldPlanName });

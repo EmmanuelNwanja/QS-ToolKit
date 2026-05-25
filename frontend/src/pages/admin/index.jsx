@@ -495,6 +495,26 @@ export default function AdminDashboard() {
                 </div>
               </Link>
 
+              <Link href="/admin/direct-payments"
+                className="flex items-center gap-3 p-4 border-2 border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
+              >
+                <span className="text-2xl">🏦</span>
+                <div>
+                  <p className="font-medium text-gray-900">Direct Payments</p>
+                  <p className="text-sm text-gray-600">Review bank transfer submissions</p>
+                </div>
+              </Link>
+
+              <Link href="/admin/bank-transfer-settings"
+                className="flex items-center gap-3 p-4 border-2 border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
+              >
+                <span className="text-2xl">🏧</span>
+                <div>
+                  <p className="font-medium text-gray-900">Bank Transfer Settings</p>
+                  <p className="text-sm text-gray-600">Configure bank account details</p>
+                </div>
+              </Link>
+
               <Link href="/admin/notifications"
                 className="flex items-center gap-3 p-4 border-2 border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
               >

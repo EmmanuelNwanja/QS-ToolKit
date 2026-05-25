@@ -485,6 +485,16 @@ exports.initiatePhilanthropist = async (req, res, next) => {
 };
 
 // ── Helpers ───────────────────────────────────────────────────
+async function resolvePlanNameFromId(planId) {
+  if (!planId) return 'free';
+  const { data: plan } = await supabase
+    .from('subscription_plans')
+    .select('name')
+    .eq('id', planId)
+    .single();
+  return plan?.name || 'free';
+}
+
 async function activateSubscription(userId, planId, billingCycle, options = {}) {
   const { extendFromCurrentExpiry = false } = options;
   const { data: currentUser } = await supabase
@@ -506,14 +516,41 @@ async function activateSubscription(userId, planId, billingCycle, options = {}) 
     ? expiresAt.setFullYear(expiresAt.getFullYear() + 1)
     : expiresAt.setMonth(expiresAt.getMonth() + 1);
 
+  const expiresAtISO = expiresAt.toISOString();
+  const nowISO = now.toISOString();
+  const graceUntil = new Date(expiresAt);
+  graceUntil.setDate(graceUntil.getDate() + 7);
+
   const { error } = await supabase.from('users').update({
     plan_id: planId,
     subscription_status: 'active',
-    subscription_expires_at: expiresAt.toISOString(),
+    subscription_expires_at: expiresAtISO,
     billing_cycle: billingCycle
   }).eq('id', userId);
 
   if (error) throw new Error(`Subscription activation failed: ${error.message}`);
+
+  // Sync user_subscriptions table
+  const planName = await resolvePlanNameFromId(planId);
+  if (planName !== 'free') {
+    await supabase
+      .from('user_subscriptions')
+      .upsert({
+        user_id: userId,
+        plan_name: planName,
+        billing_interval: billingCycle,
+        subscription_status: 'active',
+        subscription_started_at: nowISO,
+        subscription_expires_at: expiresAtISO,
+        grace_period_until: graceUntil.toISOString(),
+        reminder_sent_7d: false,
+        reminder_sent_3d: false,
+        reminder_sent_1d: false,
+        auto_renew: false,
+        updated_at: nowISO,
+      }, { onConflict: 'user_id' });
+  }
+
   return expiresAt;
 }
 
@@ -1108,18 +1145,13 @@ exports.submitBankTransferPayment = async (req, res, next) => {
 exports.getMyPaymentSubmissions = async (req, res, next) => {
   try {
     const submissions = await paymentSubmissionService.getUserSubmissions(req.user.id);
-
-    return res.json(success('Payment submissions retrieved', submissions));
+    return res.json(success('Payment submissions retrieved', { data: submissions }));
   } catch (err) {
     logger.error('getMyPaymentSubmissions error', { userId: req.user?.id, error: err.message });
     res.status(500).json(error(err.message || 'Failed to retrieve submissions'));
   }
 };
 
-/**
- * GET /api/subscription/my-status
- * Get user's current subscription status
- */
 exports.getMySubscriptionStatus = async (req, res, next) => {
   try {
     const subscription = await subscriptionManagementService.getActiveSubscription(req.user.id);
@@ -1143,7 +1175,7 @@ exports.getMySubscriptionAudit = async (req, res, next) => {
   try {
     const auditLog = await subscriptionManagementService.getSubscriptionAudit(req.user.id, 50);
 
-    return res.json(success('Audit trail retrieved', auditLog));
+    return res.json(success('Audit trail retrieved', { data: auditLog }));
   } catch (err) {
     logger.error('getMySubscriptionAudit error', { userId: req.user?.id, error: err.message });
     res.status(500).json(error(err.message || 'Failed to retrieve audit trail'));

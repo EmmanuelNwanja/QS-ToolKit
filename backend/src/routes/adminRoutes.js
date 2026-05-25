@@ -8,6 +8,7 @@ const {
 } = require('../middlewares/adminMiddleware');
 const adminController = require('../controllers/adminController');
 const adminPaymentController = require('../controllers/adminPaymentController');
+const paymentSettingsCtrl = require('../controllers/paymentSettingsController');
 
 // ── Apply authentication to all admin routes ──────────────────
 router.use(authMiddleware.protect);
@@ -164,6 +165,22 @@ router.get(
   adminAuth,
   requirePermission('manage_billing'),
   adminPaymentController.getPaymentStats
+);
+
+// ── BANK TRANSFER SETTINGS ─────────────────────────────────────
+router.get(
+  '/payment-settings/bank-transfer',
+  adminAuth,
+  requirePermission('manage_billing'),
+  paymentSettingsCtrl.getBankTransferSettingsAdmin
+);
+
+router.put(
+  '/payment-settings/bank-transfer',
+  adminAuth,
+  requirePermission('manage_billing'),
+  trackAdminActivity('updated_bank_transfer_settings', 'payment_settings'),
+  paymentSettingsCtrl.updateBankTransferSettings
 );
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────

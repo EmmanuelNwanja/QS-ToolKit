@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { label: 'Promo Codes',        href: '/admin/promo-codes',    icon: '🎟️' },
   { label: 'Users',              href: '/admin/users',          icon: '👥' },
   { label: 'Subscriptions',      href: '/admin/subscriptions',  icon: '💳', superAdminOnly: true },
+  { label: 'Direct Payments',    href: '/admin/direct-payments',icon: '🏦' },
+  { label: 'Bank Transfer',      href: '/admin/bank-transfer-settings', icon: '🏧' },
   { label: 'Paystack Plans',     href: '/admin/paystack-plans', icon: '🧩', superAdminOnly: true },
   { label: 'Push Notifications', href: '/admin/notifications',  icon: '🔔' },
   { label: 'Analytics',          href: '/admin/analytics',      icon: '📈' },
