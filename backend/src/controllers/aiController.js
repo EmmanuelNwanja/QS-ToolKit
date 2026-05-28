@@ -212,6 +212,7 @@ exports.analyzeDrawing = async (req, res, next) => {
       job_id: job.id,
       confidence: result.confidence,
       warnings: result.warnings,
+      fallback: result.fallback || false,
       draft_boq: result.data?.suggested_boq_sections || [],
       rooms: result.data?.rooms || [],
       material_takeoff: result.data?.material_takeoff || []
@@ -295,6 +296,7 @@ exports.analyzeDrawingV2 = async (req, res, next) => {
       confidence: result.data.confidence,
       avg_primitive_confidence: result.data.avgPrimitiveConfidence,
       warnings: result.data.warnings,
+      fallback: result.fallback || false,
       primitives: result.data.primitives,
       rooms: result.data.rooms,
       measurements: result.data.measurements,

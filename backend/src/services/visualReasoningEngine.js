@@ -113,51 +113,88 @@ function createQSVisualEngine(options = {}) {
 
       const prompt = buildPrompt(query, context);
 
-      const url = `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      // Try primary model, then fall back to stable models
+      const modelsToTry = [model, 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+      let lastError = null;
 
-      const payload = {
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64Image } }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192,
+      for (const m of modelsToTry) {
+        const url = `${GEMINI_BASE_URL}/models/${m}:generateContent?key=${GEMINI_API_KEY}`;
+
+        const payload = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64Image } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 8192,
+          }
+        };
+
+        // Retry with backoff for transient errors
+        const maxRetries = 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            const response = await axios.post(url, payload, {
+              timeout: timeoutMs,
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+            // Parse visual primitives from reasoning text
+            const parsed = parseVisualPrimitives(rawText);
+
+            // Extract JSON block
+            const jsonResult = extractJsonBlock(rawText);
+
+            // Merge primitives with structured result
+            const result = mergeWithPrimitives(jsonResult, parsed, context);
+
+            logger.info('Visual reasoning completed', {
+              model: m,
+              query: query.slice(0, 100),
+              primitiveCount: parsed.primitives.length,
+              avgConfidence: parsed.avgConfidence,
+              roomCount: result.rooms?.length || 0
+            });
+
+            return result;
+
+          } catch (err) {
+            const status = err.response?.status;
+            lastError = { model: m, status, message: err.message };
+
+            // Auth error — abort immediately
+            if (status === 401 || status === 403) {
+              throw new Error(`Gemini API auth error (model=${m}, status=${status})`);
+            }
+
+            // Rate limit / server error — retry with backoff
+            if ((status === 429 || status === 503) && attempt < maxRetries - 1) {
+              const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+              logger.warn(`Visual reasoning rate limit (model=${m}, status=${status}) — retrying in ${Math.round(delayMs)}ms`);
+              await new Promise((resolve) => setTimeout(resolve, delayMs));
+              continue;
+            }
+
+            // Model not found — try next model
+            if (status === 404) {
+              logger.warn(`Visual reasoning model not found: ${m} — trying next fallback`);
+              break; // break retry loop, try next model
+            }
+
+            // Other error — try next model
+            logger.error(`Visual reasoning error (model=${m}, status=${status}): ${err.message}`);
+            break; // break retry loop, try next model
+          }
         }
-      };
-
-      try {
-        const response = await axios.post(url, payload, {
-          timeout: timeoutMs,
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        // Parse visual primitives from reasoning text
-        const parsed = parseVisualPrimitives(rawText);
-
-        // Extract JSON block
-        const jsonResult = extractJsonBlock(rawText);
-
-        // Merge primitives with structured result
-        const result = mergeWithPrimitives(jsonResult, parsed, context);
-
-        logger.info('Visual reasoning completed', {
-          query: query.slice(0, 100),
-          primitiveCount: parsed.primitives.length,
-          avgConfidence: parsed.avgConfidence,
-          roomCount: result.rooms?.length || 0
-        });
-
-        return result;
-
-      } catch (err) {
-        logger.error('Visual reasoning failed', { error: err.message, query: query.slice(0, 100) });
-        throw err;
       }
+
+      logger.error('All visual reasoning models exhausted', { lastError });
+      throw new Error(`Visual reasoning failed: ${lastError?.message || 'All models exhausted'}`);
     }
   };
 }

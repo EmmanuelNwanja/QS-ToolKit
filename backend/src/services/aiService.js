@@ -147,8 +147,10 @@ async function callGemini(prompt, options = {}) {
     return null;
   }
 
-  // Fallback model names if the primary fails
-  const modelsToTry = [model, 'gemini-2.0-flash-latest', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+  // Valid model names for the Generative Language API v1beta.
+  // NOTE: Do NOT use '-latest' aliases — they return 404 on this endpoint.
+  // Ordered by capability: prefer fast models, fall back to stable releases.
+  const modelsToTry = [model, 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
   const parts = [{ text: prompt }];
   if (imageBase64) {
@@ -169,25 +171,55 @@ async function callGemini(prompt, options = {}) {
     }
   };
 
+  let lastError = null;
+
   for (const m of modelsToTry) {
     const url = `${GEMINI_BASE_URL}/models/${m}:generateContent?key=${GEMINI_API_KEY}`;
-    try {
-      const { data } = await axios.post(url, payload, { timeout: 60000 });
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (text) return text;
-    } catch (err) {
-      const status = err.response?.status;
-      const resData = err.response?.data;
-      logger.error(`Gemini API error (model=${m}, status=${status}):`, JSON.stringify(resData), err.message);
-      // Continue to next model on 404 (model not found); abort on auth errors
-      if (status === 401 || status === 403) {
-        logger.error('Gemini API auth error — check that the Generative Language API is enabled in Google Cloud Console and the key is valid.');
-        break;
+
+    // Retry with exponential backoff for transient errors (429, 503)
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const { data } = await axios.post(url, payload, { timeout: 60000 });
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (text) {
+          logger.info(`Gemini success (model=${m}, attempt=${attempt + 1})`);
+          return text;
+        }
+      } catch (err) {
+        const status = err.response?.status;
+        const resData = err.response?.data;
+        lastError = { model: m, status, message: err.message, data: resData };
+
+        // Abort immediately on auth errors — no retry will help
+        if (status === 401 || status === 403) {
+          logger.error(`Gemini API auth error (model=${m}, status=${status}) — check Generative Language API is enabled and key is valid.`);
+          return null;
+        }
+
+        // Retry on rate limit (429) and server errors (503) with backoff
+        if ((status === 429 || status === 503) && attempt < maxRetries - 1) {
+          const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 500; // 1s, 2s, 4s + jitter
+          logger.warn(`Gemini rate limit/server error (model=${m}, status=${status}) — retrying in ${Math.round(delayMs)}ms (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+
+        // 404 = model not found — log once, skip to next model
+        if (status === 404) {
+          logger.warn(`Gemini model not found: ${m} — skipping to next fallback`);
+          break; // break retry loop, continue to next model
+        }
+
+        // Other errors (400, 500 without retry) — try next model
+        logger.error(`Gemini API error (model=${m}, status=${status}):`, JSON.stringify(resData), err.message);
+        break; // break retry loop, continue to next model
       }
-      // For other errors (429, 500, etc.), try next model
-      continue;
     }
   }
+
+  // All models exhausted
+  logger.error('All Gemini models exhausted', { lastError });
   return null;
 }
 
@@ -606,7 +638,18 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
   const prompt = SYSTEM_PROMPTS.drawingAnalysis;
   const result = await callGemini(prompt, { imageBase64, jsonMode: true, temperature: 0.2 });
 
-  if (!result) return { error: true, message: 'Drawing analysis failed. Please try again.' };
+  // If all APIs failed, return a structured mock/template so the user isn't blocked
+  if (!result) {
+    logger.warn('All AI providers failed for drawing analysis — returning structured template fallback');
+    await trackUsage(userId, 'drawing_analysis');
+    return {
+      error: false,
+      data: generateDrawingFallback(),
+      confidence: 'low',
+      warnings: ['AI analysis temporarily unavailable. A template BOQ has been generated. Please review and edit all quantities and rates.'],
+      fallback: true
+    };
+  }
 
   let parsed;
   try {
@@ -625,6 +668,111 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
     warnings: parsed.warnings || []
   };
 };
+
+/**
+ * Generate a structured fallback BOQ template when AI is unavailable.
+ * This keeps the user unblocked — they get a editable starting point.
+ */
+function generateDrawingFallback() {
+  return {
+    project_summary: 'Auto-generated BOQ template (AI temporarily unavailable). Please review all quantities.',
+    rooms: [
+      {
+        name: 'Living Room',
+        dimensions: { length_m: 5.0, width_m: 4.0, height_m: 3.0 },
+        elements: [
+          { type: 'wall', description: 'External walls', quantity: 36, unit: 'm2' },
+          { type: 'floor', description: 'Floor finish', quantity: 20, unit: 'm2' },
+          { type: 'ceiling', description: 'Ceiling finish', quantity: 20, unit: 'm2' },
+          { type: 'door', description: 'Timber door', quantity: 1, unit: 'nr' },
+          { type: 'window', description: 'Aluminium window', quantity: 2, unit: 'nr' }
+        ]
+      },
+      {
+        name: 'Kitchen',
+        dimensions: { length_m: 3.5, width_m: 3.0, height_m: 3.0 },
+        elements: [
+          { type: 'wall', description: 'Walls with ceramic tiles', quantity: 24, unit: 'm2' },
+          { type: 'floor', description: 'Floor tiles', quantity: 10.5, unit: 'm2' },
+          { type: 'ceiling', description: 'Ceiling', quantity: 10.5, unit: 'm2' },
+          { type: 'door', description: 'Timber door', quantity: 1, unit: 'nr' },
+          { type: 'window', description: 'Aluminium window', quantity: 1, unit: 'nr' }
+        ]
+      },
+      {
+        name: 'Master Bedroom',
+        dimensions: { length_m: 4.5, width_m: 4.0, height_m: 3.0 },
+        elements: [
+          { type: 'wall', description: 'Internal walls with emulsion paint', quantity: 30, unit: 'm2' },
+          { type: 'floor', description: 'Floor screed and tiles', quantity: 18, unit: 'm2' },
+          { type: 'ceiling', description: 'Ceiling with emulsion paint', quantity: 18, unit: 'm2' },
+          { type: 'door', description: 'Timber door', quantity: 1, unit: 'nr' },
+          { type: 'window', description: 'Aluminium window', quantity: 2, unit: 'nr' }
+        ]
+      }
+    ],
+    material_takeoff: [
+      { material: '9-inch sandcrete blocks', quantity: 2500, unit: 'nr', notes: 'Approx. 10 blocks/m² of wall' },
+      { material: 'Cement (50kg bags)', quantity: 120, unit: 'bags', notes: 'For blockwork, concrete, and plastering' },
+      { material: 'Sharp sand', quantity: 15, unit: 'm3', notes: 'For concrete and mortar' },
+      { material: 'Granite aggregate (20mm)', quantity: 12, unit: 'm3', notes: 'For concrete works' },
+      { material: 'Y12 reinforcement bars', quantity: 150, unit: 'm', notes: 'For ring beams and lintels' },
+      { material: 'Emulsion paint', quantity: 40, unit: 'litres', notes: '10m²/litre, 2 coats' },
+      { material: 'Floor tiles (600×600mm)', quantity: 110, unit: 'nr', notes: '2.78 tiles/m² + 10% waste' },
+      { material: 'Aluminium windows', quantity: 6, unit: 'nr', notes: 'Varies by design' },
+      { material: 'Timber doors', quantity: 4, unit: 'nr', notes: 'Internal flush doors' }
+    ],
+    suggested_boq_sections: [
+      {
+        title: 'Substructure',
+        items: [
+          { item_no: '1.1', description: 'Excavation in trenches', unit: 'm3', quantity: 45, rate: null },
+          { item_no: '1.2', description: 'Concrete blinding (75mm)', unit: 'm3', quantity: 3.5, rate: null },
+          { item_no: '1.3', description: 'Reinforced concrete foundation', unit: 'm3', quantity: 12, rate: null },
+          { item_no: '1.4', description: 'Blockwork to DPC (9-inch)', unit: 'm2', quantity: 48, rate: null }
+        ]
+      },
+      {
+        title: 'Superstructure',
+        items: [
+          { item_no: '2.1', description: 'Blockwork (9-inch sandcrete)', unit: 'm2', quantity: 280, rate: null },
+          { item_no: '2.2', description: 'Concrete columns and beams', unit: 'm3', quantity: 18, rate: null },
+          { item_no: '2.3', description: 'Concrete slab (150mm)', unit: 'm2', quantity: 120, rate: null }
+        ]
+      },
+      {
+        title: 'Roofing',
+        items: [
+          { item_no: '3.1', description: 'Longspan aluminium roofing', unit: 'm2', quantity: 145, rate: null },
+          { item_no: '3.2', description: 'Timber fascia boards', unit: 'm', quantity: 52, rate: null }
+        ]
+      },
+      {
+        title: 'Finishes',
+        items: [
+          { item_no: '4.1', description: 'Plastering (15mm, 1:4 mix)', unit: 'm2', quantity: 320, rate: null },
+          { item_no: '4.2', description: 'Emulsion paint (2 coats)', unit: 'm2', quantity: 320, rate: null },
+          { item_no: '4.3', description: 'Floor tiles (600×600mm)', unit: 'm2', quantity: 85, rate: null },
+          { item_no: '4.4', description: 'Ceramic wall tiles', unit: 'm2', quantity: 45, rate: null }
+        ]
+      },
+      {
+        title: 'Electrical & Plumbing',
+        items: [
+          { item_no: '5.1', description: 'Electrical wiring (concealed)', unit: 'm', quantity: 350, rate: null },
+          { item_no: '5.2', description: 'PVC waste pipes (110mm)', unit: 'm', quantity: 28, rate: null }
+        ]
+      }
+    ],
+    confidence: 'low',
+    warnings: [
+      '⚠️ AI analysis temporarily unavailable — this is a template BOQ.',
+      'Please verify all quantities against your actual drawings.',
+      'Rates are not included — use Smart Rates or enter your own.',
+      'Consult a registered Quantity Surveyor for final certification.'
+    ]
+  };
+}
 
 // ─── Analyze Drawing with Visual Primitives (V2) ──────────────
 exports.analyzeDrawingV2 = async (userId, imageBuffer, projectContext = {}) => {
@@ -651,7 +799,17 @@ exports.analyzeDrawingV2 = async (userId, imageBuffer, projectContext = {}) => {
     };
   } catch (err) {
     logger.error('Visual primitive analysis failed', { error: err.message });
-    return { error: true, message: err.message };
+
+    // Graceful fallback — don't block the user
+    await trackUsage(userId, 'drawing_analysis');
+    return {
+      error: false,
+      data: generateDrawingFallback(),
+      confidence: 'low',
+      avgPrimitiveConfidence: 0,
+      warnings: ['AI analysis temporarily unavailable. A template BOQ has been generated — please review and edit all quantities.'],
+      fallback: true
+    };
   }
 };
 

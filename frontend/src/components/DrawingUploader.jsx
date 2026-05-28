@@ -33,7 +33,22 @@ export default function DrawingUploader({ projectId, onSuccess }) {
         });
 
         setResult(data);
-        toast.success(`Analysis complete — Confidence: ${data.confidence}`);
+        if (data.fallback) {
+          toast(
+            (t) => (
+              <div className="flex items-start gap-2">
+                <span className="text-lg">📋</span>
+                <div>
+                  <p className="font-medium text-sm">AI analysis temporarily unavailable</p>
+                  <p className="text-xs text-gray-500">A template BOQ was generated. Please review all quantities and rates before use.</p>
+                </div>
+              </div>
+            ),
+            { duration: 6000, icon: '⚠️' }
+          );
+        } else {
+          toast.success(`Analysis complete — Confidence: ${data.confidence}`);
+        }
       } catch (err) {
         toast.error(err.response?.data?.message || 'Analysis failed');
       } finally {
@@ -144,6 +159,19 @@ export default function DrawingUploader({ projectId, onSuccess }) {
       {/* Results */}
       {result && (
         <div className="space-y-4">
+          {/* Fallback banner */}
+          {result.fallback && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+              <span className="text-lg">📋</span>
+              <div>
+                <p className="text-sm font-semibold text-blue-800">Template Mode Active</p>
+                <p className="text-xs text-blue-600">
+                  AI analysis is temporarily unavailable. A starter BOQ template has been generated with typical Nigerian construction quantities. Please review and edit all values before use.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
               result.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' :
