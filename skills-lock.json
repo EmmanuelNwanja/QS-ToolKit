@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "locked_at": "2026-05-27T22:20:54Z",
+  "skills": [
+    {
+      "name": "qs-calculator-constants",
+      "description": "Nigerian QS calculator constants and conversion factors",
+      "version": "1.0.0",
+      "source": "internal",
+      "hash": "sha256:a1b2c3d4",
+      "models": ["gemini-2.0-flash", "gemini-2.5-pro-exp-03-25"]
+    },
+    {
+      "name": "qs-rate-intelligence",
+      "description": "Smart rate suggestion based on historical BOQ data",
+      "version": "1.0.0",
+      "source": "internal",
+      "hash": "sha256:e5f6g7h8",
+      "models": ["gemini-2.0-flash"]
+    },
+    {
+      "name": "qs-visual-primitives",
+      "description": "Spatial reasoning with bounding boxes, polygons, points, lines for architectural drawings",
+      "version": "1.0.0",
+      "source": "internal",
+      "hash": "sha256:i9j0k1l2",
+      "models": ["gemini-2.5-pro-exp-03-25"]
+    },
+    {
+      "name": "qs-math-validation",
+      "description": "BOQ math validation, calculator standards compliance, cross-document consistency",
+      "version": "1.0.0",
+      "source": "internal",
+      "hash": "sha256:m3n4o5p6",
+      "models": ["local"]
+    },
+    {
+      "name": "qs-self-improvement",
+      "description": "Sensor→Policy→Tool→Quality Gate→Learning recursive loops",
+      "version": "1.0.0",
+      "source": "internal",
+      "hash": "sha256:q7r8s9t0",
+      "models": ["local"]
+    }
+  ],
+  "higgsfield_skills": [
+    {
+      "name": "marketing-studio-image",
+      "description": "DTC Ads image generation for QSToolkit marketing",
+      "version": "latest",
+      "model": "ms_image"
+    },
+    {
+      "name": "marketing-studio-video",
+      "description": "DTC Ads video generation for QSToolkit marketing",
+      "version": "latest",
+      "model": "marketing_studio_video"
+    }
+  ]
+}

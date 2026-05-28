@@ -8,6 +8,7 @@
 const axios = require('axios');
 const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
+const { createQSVisualEngine } = require('./visualReasoningEngine');
 
 // ─── Configuration ────────────────────────────────────────────
 const GEMINI_API_KEY_RAW = process.env.GEMINI_API_KEY || '';
@@ -18,6 +19,25 @@ const GROQ_API_KEY = GROQ_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const JINA_API_KEY = process.env.JINA_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MOCK_AI_MODE = process.env.MOCK_AI_MODE === 'true';
+
+// ─── Thinking States for Structured Responses ─────────────────
+const THINKING_STATES = {
+  analyzing: '🔍 Analyzing your request...',
+  searching: '🔍 Searching relevant standards and your project data...',
+  calculating: '🧮 Running calculations...',
+  reasoning: '🤔 Reasoning through the best approach...',
+  critiquing: '✅ Verifying accuracy and consistency...',
+  finalizing: '✨ Finalizing response...'
+};
+
+// ─── Self-Critique Dimensions (Open Design 5-dim) ─────────────
+const CRITIQUE_DIMENSIONS = [
+  { name: 'philosophy', label: 'Nigerian QS Standards', weight: 0.25 },
+  { name: 'hierarchy', label: 'Information Hierarchy', weight: 0.20 },
+  { name: 'execution', label: 'Math Consistency', weight: 0.25 },
+  { name: 'specificity', label: 'Rate Specificity', weight: 0.15 },
+  { name: 'restraint', label: 'No Hallucination', weight: 0.15 }
+];
 
 // ─── System Prompts (Domain-Calibrated for Nigerian QS) ───────
 const SYSTEM_PROMPTS = {
@@ -272,6 +292,99 @@ async function callAI(prompt, options = {}) {
   return result;
 }
 
+// ─── Load Agent Instincts (Continuous Learning) ───────────────
+async function loadInstincts(userId, query) {
+  try {
+    const { data: instincts } = await supabase
+      .from('agent_instincts')
+      .select('*')
+      .gte('confidence_score', 0.7)
+      .order('success_count', { ascending: false })
+      .limit(5);
+
+    if (!instincts || instincts.length === 0) return '';
+
+    // Filter instincts relevant to the query
+    const queryLower = query.toLowerCase();
+    const relevant = instincts.filter((i) => {
+      const pattern = i.pattern.toLowerCase();
+      const context = JSON.stringify(i.context || {}).toLowerCase();
+      return queryLower.includes(pattern) || pattern.includes(queryLower.slice(0, 20));
+    });
+
+    if (relevant.length === 0) return '';
+
+    return `
+## Learned Patterns (from successful past interactions)
+${relevant.map((i) => `• ${i.pattern}: ${JSON.stringify(i.context)} (confidence: ${Math.round(i.confidence_score * 100)}%)`).join('\n')}
+`;
+  } catch (err) {
+    logger.warn('Failed to load instincts:', err.message);
+    return '';
+  }
+}
+
+// ─── Self-Critique Gate (Open Design 5-dim) ───────────────────
+async function selfCritique(content, type = 'boq') {
+  const dimensions = CRITIQUE_DIMENSIONS.filter((d) => {
+    if (type === 'boq') return true;
+    if (type === 'chat') return ['philosophy', 'execution', 'restraint'].includes(d.name);
+    if (type === 'forecast') return ['execution', 'specificity', 'restraint'].includes(d.name);
+    return true;
+  });
+
+  const scores = {};
+  let totalScore = 0;
+  let totalWeight = 0;
+
+  for (const dim of dimensions) {
+    let score = 3; // Default middle score
+
+    switch (dim.name) {
+      case 'philosophy':
+        // Check for Nigerian standards references
+        if (/SMM7|NRM2|BS 4449|Nigerian|Dangote|Lagos|Abuja/.test(content)) score = 5;
+        else if (/blocks|concrete|cement|steel/.test(content)) score = 4;
+        else score = 2;
+        break;
+      case 'hierarchy':
+        // Check for structured sections
+        if (/###|##/.test(content) && content.includes('**')) score = 5;
+        else if (/\n\n/.test(content)) score = 4;
+        else score = 2;
+        break;
+      case 'execution': {
+        // Check for math consistency (basic regex)
+        const mathMatches = content.match(/\d+\s*[×x*]\s*\d+/g);
+        if (mathMatches && mathMatches.length > 0) score = 4;
+        if (/=\s*₦?[\d,]+/.test(content)) score = 5;
+        break;
+      }
+      case 'specificity':
+        // Check for concrete rates
+        if (/₦\d{1,3}(,\d{3})+/.test(content)) score = 5;
+        else if (/\d+\s*(bags|blocks|m²|m³)/.test(content)) score = 4;
+        else score = 2;
+        break;
+      case 'restraint':
+        // Check for uncertainty admission
+        if (/uncertain|not sure|estimate|approximate|may vary/.test(content)) score = 5;
+        else if (!/definitely|always|100%|guarantee/.test(content)) score = 4;
+        else score = 2;
+        break;
+    }
+
+    scores[dim.name] = score;
+    totalScore += score * dim.weight;
+    totalWeight += dim.weight;
+  }
+
+  const avgScore = totalWeight > 0 ? Math.round((totalScore / totalWeight) * 100) / 100 : 0;
+  const passed = avgScore >= 3;
+
+  return { passed, avgScore, scores, dimensions };
+}
+
 // ─── Enrich prompt with user-specific data ────────────────────
 async function buildUserContext(userId) {
   try {
@@ -354,6 +467,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
     .join('\n');
 
   const userContext = await buildUserContext(userId);
+  const instincts = await loadInstincts(userId, message);
 
   const contextText = context.boqTitle
     ? `\n[Context: BOQ "${context.boqTitle}"]`
@@ -361,7 +475,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
     ? `\n[Context: Project "${context.projectTitle}"]`
     : '';
 
-  const prompt = `${SYSTEM_PROMPTS.chat}\n\n${userContext}${contextText}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
+  const prompt = `${SYSTEM_PROMPTS.chat}\n\n${userContext}${instincts}${contextText}\n\nConversation history:\n${historyText}\n\nUser: ${message}\n\nAssistant:`;
 
   let responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
 
@@ -378,6 +492,9 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
     };
   }
 
+  // Self-critique gate
+  const critique = await selfCritique(responseText, 'chat');
+
   // Store conversation
   await supabase.from('ai_conversations').insert([
     { user_id: userId, session_id: sessionId, role: 'user', content: message, context_type: context.type || 'general', context_id: context.id },
@@ -387,7 +504,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
   // Track usage
   await trackUsage(userId, 'chat');
 
-  return { reply: responseText, error: false };
+  return { reply: responseText, error: false, critique };
 };
 
 // ─── Fetch real-time admin platform context ───────────────────
@@ -484,7 +601,7 @@ exports.adminChat = async (userId, sessionId, message) => {
   return { reply: responseText, error: false };
 };
 
-// ─── Analyze Drawing → BOQ Draft ──────────────────────────────
+// ─── Analyze Drawing → BOQ Draft (Legacy) ─────────────────────
 exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
   const prompt = SYSTEM_PROMPTS.drawingAnalysis;
   const result = await callGemini(prompt, { imageBase64, jsonMode: true, temperature: 0.2 });
@@ -507,6 +624,35 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
     confidence: parsed.confidence || 'medium',
     warnings: parsed.warnings || []
   };
+};
+
+// ─── Analyze Drawing with Visual Primitives (V2) ──────────────
+exports.analyzeDrawingV2 = async (userId, imageBuffer, projectContext = {}) => {
+  try {
+    const engine = createQSVisualEngine();
+    const result = await engine.analyze(
+      imageBuffer,
+      'Extract rooms, walls, doors, windows, and dimensions for BOQ generation',
+      projectContext
+    );
+
+    await trackUsage(userId, 'drawing_analysis');
+
+    // Self-critique on the structured output
+    const critique = await selfCritique(JSON.stringify(result.suggestedBoqSections), 'boq');
+
+    return {
+      error: false,
+      data: result,
+      confidence: result.confidence,
+      avgPrimitiveConfidence: result.avgPrimitiveConfidence,
+      warnings: result.warnings || [],
+      critique
+    };
+  } catch (err) {
+    logger.error('Visual primitive analysis failed', { error: err.message });
+    return { error: true, message: err.message };
+  }
 };
 
 // ─── Generate Cost Forecast ───────────────────────────────────

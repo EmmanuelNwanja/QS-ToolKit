@@ -4,6 +4,7 @@ const rateSuggestionService = require('../services/rateSuggestionService');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
+const { emitDrawingEvent } = require('../services/sensorHub');
 
 // ─── AI Health / Diagnostics ──────────────────────────────────
 exports.health = async (req, res) => {
@@ -217,6 +218,146 @@ exports.analyzeDrawing = async (req, res, next) => {
     }));
   } catch (err) {
     logger.error('Analyze drawing error:', err.message);
+    next(err);
+  }
+};
+
+// ─── Analyze Drawing with Visual Primitives (V2) ──────────────
+exports.analyzeDrawingV2 = async (req, res, next) => {
+  try {
+    const { image_base64, project_id, drawing_type = 'floor_plan', building_type, location } = req.body;
+    if (!image_base64) {
+      return res.status(400).json(error('image_base64 is required'));
+    }
+
+    const feature = await checkFeature(req.user.id, 'auto_boq_drawings');
+    if (!feature.allowed) {
+      return res.status(403).json(error(feature.reason, { code: 'FEATURE_NOT_AVAILABLE' }));
+    }
+
+    const limitCheck = await aiService.checkDailyLimit(req.user.id, 'drawing_analysis');
+    if (!limitCheck.allowed) {
+      return res.status(429).json(error(`Daily drawing analysis limit reached.`, { code: 'AI_LIMIT_REACHED' }));
+    }
+
+    // Decode base64 to buffer
+    const imageBuffer = Buffer.from(image_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+
+    // Create annotation record
+    const { data: annotation } = await supabase
+      .from('drawing_primitive_annotations')
+      .insert({
+        project_id: project_id || null,
+        image_url: `data:image/jpeg;base64,${image_base64.slice(0, 100)}...`,
+        drawing_type,
+        primitives: [],
+        query: 'Extract rooms, walls, doors, windows, and dimensions for BOQ generation'
+      })
+      .select()
+      .single();
+
+    // Run visual primitive analysis
+    const result = await aiService.analyzeDrawingV2(req.user.id, imageBuffer, {
+      location,
+      buildingType: building_type
+    });
+
+    if (result.error) {
+      await supabase.from('drawing_primitive_annotations').update({
+        reasoning: result.message
+      }).eq('id', annotation.id);
+      return res.status(422).json(error(result.message));
+    }
+
+    // Update annotation with results
+    await supabase.from('drawing_primitive_annotations').update({
+      primitives: result.data.primitives,
+      reasoning: result.data.reasoning,
+      suggested_boq: result.data.suggestedBoqSections,
+      measurements: result.data.measurements,
+      confidence: result.data.confidence,
+      avg_primitive_confidence: result.data.avgPrimitiveConfidence,
+      model_version: result.data.modelVersion
+    }).eq('id', annotation.id);
+
+    // Link to drawing analysis job if project_id exists
+    if (project_id) {
+      await supabase.from('drawing_analysis_jobs').update({
+        status: 'completed',
+        extracted_data: result.data,
+        draft_boq: result.data.suggestedBoqSections || [],
+        completed_at: new Date().toISOString()
+      }).eq('project_id', project_id);
+    }
+
+    return res.json(success('Drawing analyzed with visual primitives', {
+      annotation_id: annotation.id,
+      confidence: result.data.confidence,
+      avg_primitive_confidence: result.data.avgPrimitiveConfidence,
+      warnings: result.data.warnings,
+      primitives: result.data.primitives,
+      rooms: result.data.rooms,
+      measurements: result.data.measurements,
+      suggested_boq: result.data.suggestedBoqSections,
+      reasoning: result.data.reasoning,
+      critique: result.critique
+    }));
+  } catch (err) {
+    logger.error('Analyze drawing V2 error:', err.message);
+    next(err);
+  }
+};
+
+// ─── Submit Visual Primitive Feedback ─────────────────────────
+exports.submitPrimitiveFeedback = async (req, res, next) => {
+  try {
+    const { annotation_id, correction_type, primitive_id, corrected_primitive, notes } = req.body;
+
+    if (!annotation_id || !correction_type) {
+      return res.status(400).json(error('annotation_id and correction_type are required'));
+    }
+
+    // Insert feedback
+    const { data: feedback } = await supabase
+      .from('drawing_primitive_feedback')
+      .insert({
+        annotation_id,
+        correction_type,
+        primitive_id,
+        corrected_primitive,
+        user_notes: notes,
+        user_id: req.user.id
+      })
+      .select()
+      .single();
+
+    // Mark annotation as having user corrections
+    await supabase
+      .from('drawing_primitive_annotations')
+      .update({
+        validated_by_user: true,
+        user_corrections: supabase.rpc('jsonb_append', {
+          p_col: 'user_corrections',
+          p_val: {
+            correction_type,
+            primitive_id,
+            timestamp: new Date().toISOString()
+          }
+        })
+      })
+      .eq('id', annotation_id);
+
+    // Emit sensor event for self-improvement loop
+    await emitDrawingEvent(
+      null,
+      annotation_id,
+      correction_type,
+      0.5
+    );
+
+    return res.json(success('Feedback submitted', { feedback }));
+  } catch (err) {
+    logger.error('Submit primitive feedback error:', err.message);
     next(err);
   }
 };
