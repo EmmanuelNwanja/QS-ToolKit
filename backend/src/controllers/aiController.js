@@ -208,6 +208,10 @@ exports.analyzeDrawing = async (req, res, next) => {
       completed_at: new Date().toISOString()
     }).eq('id', job.id);
 
+    if (result.fallback) {
+      logger.warn(`Drawing analysis fallback triggered for user ${req.user.id}`, { jobId: job.id });
+    }
+
     return res.json(success('Drawing analyzed', {
       job_id: job.id,
       confidence: result.confidence,

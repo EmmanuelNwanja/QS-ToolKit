@@ -269,8 +269,10 @@ async function callOpenRouterVision(prompt, imageBase64, options = {}) {
 
   const modelsToTry = [
     'google/gemini-2.0-flash-exp:free',
-    'google/gemini-flash-1.5',
-    'qwen/qwen2.5-vl-72b-instruct'
+    'google/gemini-2.0-flash-001',
+    'google/gemini-1.5-flash',
+    'meta-llama/llama-4-scout:free',
+    'qwen/qwen2.5-vl-72b-instruct:free'
   ];
 
   const messages = [
@@ -743,28 +745,42 @@ exports.adminChat = async (userId, sessionId, message) => {
 exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
   // 1. Preprocess image (resize/compress)
   const processedImage = await preprocessImage(imageBase64);
+  const imageSizeKb = Math.round(Buffer.from(processedImage, 'base64').length / 1024);
+  logger.info(`Drawing analysis started — image size: ${imageSizeKb}KB, user: ${userId}`);
 
   const prompt = SYSTEM_PROMPTS.drawingAnalysis;
+  const providerLog = [];
 
   // 2. Try Gemini first (fastest, cheapest)
   let result = await callGemini(prompt, { imageBase64: processedImage, jsonMode: true, temperature: 0.2 });
+  if (result) {
+    providerLog.push({ provider: 'gemini', status: 'success' });
+  } else {
+    providerLog.push({ provider: 'gemini', status: 'failed' });
+    logger.info('Gemini failed — trying OpenRouter vision fallback');
+  }
 
   // 3. Fallback to OpenRouter vision (often more reliable for free-tier)
   if (!result && OPENROUTER_API_KEY) {
-    logger.info('Gemini failed — trying OpenRouter vision fallback');
     result = await callOpenRouterVision(prompt, processedImage, { jsonMode: true, temperature: 0.2 });
+    if (result) {
+      providerLog.push({ provider: 'openrouter', status: 'success' });
+    } else {
+      providerLog.push({ provider: 'openrouter', status: 'failed' });
+    }
   }
 
   // 4. If all APIs failed, return structured template so user isn't blocked
   if (!result) {
-    logger.warn('All AI providers failed for drawing analysis — returning structured template fallback');
+    logger.warn('All AI providers failed for drawing analysis — returning structured template fallback', { providerLog, imageSizeKb });
     await trackUsage(userId, 'drawing_analysis');
     return {
       error: false,
+      fallback: true,
       data: generateDrawingFallback(),
       confidence: 'low',
       warnings: ['AI analysis temporarily unavailable. A template BOQ has been generated. Please review and edit all quantities and rates.'],
-      fallback: true
+      _diagnostics: { providerLog, imageSizeKb, geminiKeyPresent: !!GEMINI_API_KEY, openrouterKeyPresent: !!OPENROUTER_API_KEY }
     };
   }
 
@@ -777,9 +793,11 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
   }
 
   await trackUsage(userId, 'drawing_analysis');
+  logger.info(`Drawing analysis completed successfully — confidence: ${parsed.confidence || 'medium'}`);
 
   return {
     error: false,
+    fallback: false,
     data: parsed,
     confidence: parsed.confidence || 'medium',
     warnings: parsed.warnings || []
@@ -1208,6 +1226,36 @@ exports.healthCheck = async () => {
     }
   } else {
     checks.groq_ping = 'skipped_no_key';
+  }
+
+  // Try a minimal OpenRouter ping
+  if (OPENROUTER_API_KEY) {
+    try {
+      const { data } = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: 'google/gemini-2.0-flash-exp:free',
+          messages: [{ role: 'user', content: 'Say OK' }],
+          max_tokens: 5
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
+            'X-Title': 'QSToolkit'
+          },
+          timeout: 20000
+        }
+      );
+      checks.openrouter_ping = 'success';
+      checks.openrouter_ping_response = data?.choices?.[0]?.message?.content?.substring(0, 50) || 'empty';
+    } catch (err) {
+      checks.openrouter_ping = 'failed';
+      checks.openrouter_ping_status = err.response?.status;
+      checks.openrouter_ping_error = typeof err.response?.data === 'string' ? err.response.data.slice(0, 300) : JSON.stringify(err.response?.data)?.slice(0, 300) || err.message;
+    }
+  } else {
+    checks.openrouter_ping = 'skipped_no_key';
   }
 
   return checks;

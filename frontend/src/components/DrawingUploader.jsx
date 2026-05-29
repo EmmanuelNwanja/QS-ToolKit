@@ -99,7 +99,7 @@ export default function DrawingUploader({ projectId, onSuccess }) {
         setAnalyzing(false);
       }
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(processedFile);
   }, [projectId]);
 
   const onDrop = useCallback((e) => {
