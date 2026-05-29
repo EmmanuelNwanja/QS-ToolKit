@@ -43,3 +43,11 @@ services:
         fromGroup: qstoolkit-secrets
       - key: CRON_SECRET
         fromGroup: qstoolkit-secrets
+      - key: GEMINI_API_KEY
+        fromGroup: qstoolkit-secrets
+      - key: GROQ_API_KEY
+        fromGroup: qstoolkit-secrets
+      - key: OPENROUTER_API_KEY
+        fromGroup: qstoolkit-secrets
+      - key: JINA_API_KEY
+        fromGroup: qstoolkit-secrets

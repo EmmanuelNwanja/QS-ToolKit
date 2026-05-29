@@ -10,6 +10,39 @@ export default function DrawingUploader({ projectId, onSuccess }) {
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
 
+  // Compress image before upload: max 1024px, JPEG quality 0.8
+  const compressImage = (file) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1024;
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error('Compression failed'));
+          resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+        },
+        'image/jpeg',
+        0.8
+      );
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+
   const handleFile = useCallback(async (file) => {
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file (JPEG, PNG)');
@@ -18,6 +51,17 @@ export default function DrawingUploader({ projectId, onSuccess }) {
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image must be under 5MB');
       return;
+    }
+
+    // Compress before sending
+    let processedFile = file;
+    try {
+      processedFile = await compressImage(file);
+      if (processedFile.size < file.size) {
+        toast.success(`Image compressed: ${(file.size / 1024).toFixed(0)}KB → ${(processedFile.size / 1024).toFixed(0)}KB`);
+      }
+    } catch {
+      // Compression failed — proceed with original
     }
 
     const reader = new FileReader();

@@ -10,6 +10,10 @@ const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
 const { createQSVisualEngine } = require('./visualReasoningEngine');
 
+// Image preprocessing (optional — sharp is installed but we gracefully degrade)
+let sharp;
+try { sharp = require('sharp'); } catch { sharp = null; }
+
 // ─── Configuration ────────────────────────────────────────────
 const GEMINI_API_KEY_RAW = process.env.GEMINI_API_KEY || '';
 const GEMINI_API_KEY = GEMINI_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
@@ -220,6 +224,108 @@ async function callGemini(prompt, options = {}) {
 
   // All models exhausted
   logger.error('All Gemini models exhausted', { lastError });
+  return null;
+}
+
+// ─── Image Preprocessing ──────────────────────────────────────
+/**
+ * Resize and compress architectural drawing images before sending to AI APIs.
+ * Keeps images under ~1MB base64 to avoid request size limits and rate issues.
+ * @param {string} base64Image - Pure base64 string (no data URL prefix)
+ * @returns {Promise<string>} - Resized base64 string
+ */
+async function preprocessImage(base64Image) {
+  if (!sharp) {
+    // sharp not available — return as-is but truncate if absurdly large
+    if (base64Image.length > 4 * 1024 * 1024) {
+      logger.warn('Image very large and sharp unavailable — may cause API failures');
+    }
+    return base64Image;
+  }
+
+  try {
+    const buffer = Buffer.from(base64Image, 'base64');
+    const originalKb = Math.round(buffer.length / 1024);
+
+    const processed = await sharp(buffer)
+      .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80, progressive: true })
+      .toBuffer();
+
+    const processedKb = Math.round(processed.length / 1024);
+    logger.info(`Image preprocessed: ${originalKb}KB → ${processedKb}KB`);
+
+    return processed.toString('base64');
+  } catch (err) {
+    logger.warn('Image preprocessing failed, using original', { error: err.message });
+    return base64Image;
+  }
+}
+
+// ─── Fallback: OpenRouter (with Vision support) ───────────────
+async function callOpenRouterVision(prompt, imageBase64, options = {}) {
+  if (!OPENROUTER_API_KEY) return null;
+  const { jsonMode = true, temperature = 0.3 } = options;
+
+  const modelsToTry = [
+    'google/gemini-2.0-flash-exp:free',
+    'google/gemini-flash-1.5',
+    'qwen/qwen2.5-vl-72b-instruct'
+  ];
+
+  const messages = [
+    { role: 'system', content: 'You are a helpful assistant that analyzes architectural drawings.' },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        {
+          type: 'image_url',
+          image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+        }
+      ]
+    }
+  ];
+
+  for (const model of modelsToTry) {
+    try {
+      const payload = {
+        model,
+        messages,
+        temperature,
+        max_tokens: 8192
+      };
+      if (jsonMode) {
+        payload.response_format = { type: 'json_object' };
+      }
+
+      const { data } = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
+            'X-Title': 'QSToolkit'
+          },
+          timeout: 90000
+        }
+      );
+
+      const content = data?.choices?.[0]?.message?.content || '';
+      if (content) {
+        logger.info(`OpenRouter vision success (model=${model})`);
+        return content;
+      }
+    } catch (err) {
+      const status = err.response?.status;
+      const resData = err.response?.data;
+      logger.error(`OpenRouter vision error (model=${model}, status=${status}):`, JSON.stringify(resData)?.slice(0, 500), err.message);
+      if (status === 401 || status === 403) break;
+      continue;
+    }
+  }
   return null;
 }
 
@@ -635,10 +741,21 @@ exports.adminChat = async (userId, sessionId, message) => {
 
 // ─── Analyze Drawing → BOQ Draft (Legacy) ─────────────────────
 exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
-  const prompt = SYSTEM_PROMPTS.drawingAnalysis;
-  const result = await callGemini(prompt, { imageBase64, jsonMode: true, temperature: 0.2 });
+  // 1. Preprocess image (resize/compress)
+  const processedImage = await preprocessImage(imageBase64);
 
-  // If all APIs failed, return a structured mock/template so the user isn't blocked
+  const prompt = SYSTEM_PROMPTS.drawingAnalysis;
+
+  // 2. Try Gemini first (fastest, cheapest)
+  let result = await callGemini(prompt, { imageBase64: processedImage, jsonMode: true, temperature: 0.2 });
+
+  // 3. Fallback to OpenRouter vision (often more reliable for free-tier)
+  if (!result && OPENROUTER_API_KEY) {
+    logger.info('Gemini failed — trying OpenRouter vision fallback');
+    result = await callOpenRouterVision(prompt, processedImage, { jsonMode: true, temperature: 0.2 });
+  }
+
+  // 4. If all APIs failed, return structured template so user isn't blocked
   if (!result) {
     logger.warn('All AI providers failed for drawing analysis — returning structured template fallback');
     await trackUsage(userId, 'drawing_analysis');
