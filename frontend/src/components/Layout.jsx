@@ -6,11 +6,14 @@ import NotificationBell from './NotificationBell';
 import AiChatWidget from './AiChatWidget';
 import { clsx } from 'clsx';
 
+const PARAMETRIC_FLAG = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PARAMETRIC_ENGINE_ENABLED === 'true';
+
 const NAV_ITEMS = [
   { href: '/dashboard',     icon: '📊', label: 'Dashboard' },
   { href: '/engine',        icon: '🤖', label: 'AI Engine' },
   { href: '/projects',      icon: '📁', label: 'Projects' },
   { href: '/calculators',   icon: '🧮', label: 'Calculators' },
+  ...(PARAMETRIC_FLAG ? [{ href: '/parametric', icon: '🧠', label: 'Smart Parametric' }] : []),
   { href: '/boq',           icon: '📋', label: 'Bill of Quantities' },
   { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes' },
   { href: '/feedback',      icon: '⭐', label: 'Client Feedback' },

@@ -249,6 +249,15 @@ export default function BoqDetailPage() {
                 </p>
               </div>
               <div className="flex gap-2 flex-wrap">
+                {typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PARAMETRIC_ENGINE_ENABLED === 'true' && (
+                  <button onClick={() => {
+                    const pid = boq?.project_id;
+                    if (pid) router.push(`/projects/${pid}/parametric`);
+                    else toast.error('No project linked to this BOQ');
+                  }} className="btn-secondary text-sm opacity-70 hover:opacity-100">
+                    🧠 Generate with Parametric Engine
+                  </button>
+                )}
                 <button onClick={exportPdf} className="btn-secondary text-sm">Export PDF</button>
                 <button onClick={exportExcel} className="btn-secondary text-sm">Export Excel</button>
                 <button

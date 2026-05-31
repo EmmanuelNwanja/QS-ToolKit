@@ -78,6 +78,16 @@ app.get('/health', (req, res) => {
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/v1', routes);
 
+// ── Parametric Module (feature-flagged) ──────────────────────
+if (process.env.PARAMETRIC_ENGINE_ENABLED === 'true') {
+  try {
+    const { router: parametricRouter } = require('../modules/parametric');
+    app.use('/api/v1/parametric', parametricRouter);
+  } catch (err) {
+    console.warn('[parametric] Module not found or failed to load — skipping mount:', err.message);
+  }
+}
+
 // ── 404 ───────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
