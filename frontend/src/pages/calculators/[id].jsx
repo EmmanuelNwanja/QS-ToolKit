@@ -260,6 +260,15 @@ function SavedOutputPreview({ outputs }) {
             );
           }
 
+          if (Array.isArray(value) || (value && typeof value === 'object')) {
+            return (
+              <div key={key} className="rounded-lg bg-white border border-gray-100 p-2.5 sm:col-span-2">
+                <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide mb-2">{formatKey(key)}</p>
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans">{JSON.stringify(value, null, 2)}</pre>
+              </div>
+            );
+          }
+
           return (
             <div key={key} className="rounded-lg bg-white border border-gray-100 p-2.5">
               <p className="text-[11px] text-gray-500">{formatKey(key)}</p>

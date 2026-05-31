@@ -82,13 +82,6 @@ export default function ResultsPanel({ result, calculatorId, calculatorLabel, on
 function ResultBlock({ data }) {
   if (!data) return null;
 
-  const renderValue = (val) => {
-    if (val === null || val === undefined) return '—';
-    if (typeof val === 'object' && !Array.isArray(val)) return <NestedBlock data={val} />;
-    if (Array.isArray(val)) return <ArrayBlock data={val} />;
-    return <span className="font-semibold text-primary-700">{String(val)}</span>;
-  };
-
   const summary = data.summary || data;
   const topLevel = typeof summary === 'object' && !Array.isArray(summary) ? summary : { result: summary };
 
@@ -110,7 +103,7 @@ function ResultBlock({ data }) {
                 {Object.entries(val).map(([k2, v2]) => (
                   <div key={k2} className="flex flex-col">
                     <span className="text-xs text-gray-500">{formatKey(k2)}</span>
-                    <span className="font-bold text-primary-700 text-base">{String(v2)}</span>
+                    <span className="font-bold text-primary-700 text-base">{renderCell(v2)}</span>
                   </div>
                 ))}
               </div>
@@ -120,7 +113,7 @@ function ResultBlock({ data }) {
         return (
           <div key={key} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
             <span className="text-sm text-gray-600">{formatKey(key)}</span>
-            <span className="font-bold text-primary-700">{String(val)}</span>
+            <span className="font-bold text-primary-700">{renderCell(val)}</span>
           </div>
         );
       })}
@@ -134,11 +127,18 @@ function NestedBlock({ data }) {
       {Object.entries(data).map(([k, v]) => (
         <div key={k} className="flex items-center gap-2 text-xs">
           <span className="text-gray-500">{formatKey(k)}:</span>
-          <span className="font-semibold text-gray-800">{String(v)}</span>
+          <span className="font-semibold text-gray-800">{renderCell(v)}</span>
         </div>
       ))}
     </div>
   );
+}
+
+function renderCell(val) {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'object' && !Array.isArray(val)) return <NestedBlock data={val} />;
+  if (Array.isArray(val)) return <ArrayBlock data={val} />;
+  return <span className="font-semibold text-primary-700">{String(val)}</span>;
 }
 
 function ArrayBlock({ data }) {
@@ -148,7 +148,7 @@ function ArrayBlock({ data }) {
     <div className="overflow-x-auto mt-1">
       <table className="text-xs w-full">
         <thead><tr>{Object.keys(data[0]).map(k => <th key={k} className="text-left px-2 py-1 text-gray-500 font-medium">{formatKey(k)}</th>)}</tr></thead>
-        <tbody>{data.map((row, i) => <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>{Object.values(row).map((v, j) => <td key={j} className="px-2 py-1">{String(v)}</td>)}</tr>)}</tbody>
+        <tbody>{data.map((row, i) => <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>{Object.values(row).map((v, j) => <td key={j} className="px-2 py-1">{renderCell(v)}</td>)}</tr>)}</tbody>
       </table>
     </div>
   );

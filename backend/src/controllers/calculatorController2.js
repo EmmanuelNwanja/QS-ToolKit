@@ -294,6 +294,15 @@ exports.formwork = async (req, res, next) => {
 
     return res.json(success('Formwork calculation complete', {
       results,
+      summary: {
+        slab_soffit_m2: +slabSoffitTotal.toFixed(3),
+        beams_m2: +beamTotal.toFixed(3),
+        columns_m2: +colTotal.toFixed(3),
+        lintels_m2: +lintelTotal.toFixed(3),
+        staircase_m2: +(staircaseResult ? staircaseResult.total_m2 : 0).toFixed(3),
+        grand_total_m2: +grandTotal.toFixed(3),
+        grand_total_with_wastage_m2: +(grandTotal * (1 + wastage_percent / 100)).toFixed(3)
+      },
       grand_total_m2: +grandTotal.toFixed(3),
       grand_total_with_wastage_m2: +(grandTotal * (1 + wastage_percent / 100)).toFixed(3),
       wastage_percent
