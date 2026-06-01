@@ -336,7 +336,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
 
   // ── Selection Handlers ─────────────────────────────────────────
   const selectElement = (type) => {
-    setConfig(defaultConfig(type));
+    setConfig({ ...defaultConfig(type), project_id: projectId || config.project_id });
     setResult(null); setPreview(null);
     setCompareData(null); setShowCompare(false);
     setStep(2);
@@ -446,7 +446,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
 
   // ── Reset ──────────────────────────────────────────────────────
   const resetAll = () => {
-    setConfig(defaultConfig('beam'));
+    setConfig({ ...defaultConfig('beam'), project_id: projectId || config.project_id });
     setResult(null); setPreview(null);
     setCompareData(null); setShowCompare(false);
     setCalcId(null); setStep(1);
