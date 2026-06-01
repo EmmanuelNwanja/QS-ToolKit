@@ -130,29 +130,32 @@ function DiagramWall({ length, height }) {
 }
 
 function DiagramCircularColumn({ diameter, height }) {
+  const safeDia = (diameter || 450) / 6000 * 30 + 10;
+  const safeH = (height || 3000) / 3000 * 80 + 20;
   return (
     <svg viewBox="0 0 60 120" className="w-16 h-32 mx-auto">
-      <ellipse cx="30" cy="15" rx={diameter/6000*30 + 10 || 15} ry="6" className="fill-primary-200 stroke-primary-500" strokeWidth="1.2" />
-      <rect x={30 - (diameter/6000*30 + 10 || 15)} y="15" width={2*(diameter/6000*30 + 10 || 15)} height={height/3000*80 + 20 || 80} rx="1" className="fill-primary-200 stroke-primary-500" strokeWidth="1.2" />
-      <ellipse cx="30" cy={15 + (height/3000*80 + 20 || 80)} rx={diameter/6000*30 + 10 || 15} ry="6" className="fill-none stroke-primary-500" strokeWidth="1.2" />
+      <ellipse cx="30" cy="15" rx={safeDia} ry="6" className="fill-primary-200 stroke-primary-500" strokeWidth="1.2" />
+      <rect x={30 - safeDia} y="15" width={2*safeDia} height={safeH} rx="1" className="fill-primary-200 stroke-primary-500" strokeWidth="1.2" />
+      <ellipse cx="30" cy={15 + safeH} rx={safeDia} ry="6" className="fill-none stroke-primary-500" strokeWidth="1.2" />
       <text x="30" y="60" textAnchor="middle" fontSize="7" className="fill-primary-800" transform={`rotate(-90,30,60)`}>H</text>
-      <line x1="30" y1="15" x2={30 + (diameter/6000*30 + 10 || 15)} y2="15" className="stroke-primary-800" strokeWidth="0.8" />
+      <line x1="30" y1="15" x2={30 + safeDia} y2="15" className="stroke-primary-800" strokeWidth="0.8" />
       <text x="35" y="13" fontSize="6" className="fill-primary-800">D</text>
     </svg>
   );
 }
 
 function DiagramCylindricalWall({ internalDia, thickness, height }) {
-  const r = internalDia / 6000 * 25 + 8;
-  const t = thickness / 150 * 4 + 2;
+  const r = (internalDia || 3000) / 6000 * 25 + 8;
+  const t = (thickness || 150) / 150 * 4 + 2;
+  const h = (height || 3) / 1000 * 40 + 15;
   return (
     <svg viewBox="0 0 80 90" className="w-20 h-24 mx-auto">
       <ellipse cx="40" cy="15" rx={r + t} ry="6" className="fill-none stroke-gray-500" strokeWidth="1" strokeDasharray="2" />
       <ellipse cx="40" cy="15" rx={r} ry="6" className="fill-gray-200 stroke-gray-500" strokeWidth="1" />
-      <rect x={40 - r - t} y="15" width={2*(r+t)} height={height/1000*40 + 15 || 55} rx="1" className="fill-none stroke-gray-500" strokeWidth="1.2" />
-      <rect x={40 - r} y="15" width={2*r} height={height/1000*40 + 15 || 55} rx="1" className="fill-primary-200 stroke-primary-500" strokeWidth="1" />
-      <ellipse cx="40" cy={15 + (height/1000*40 + 15 || 55)} rx={r} ry="5" className="fill-none stroke-primary-500" strokeWidth="1" />
-      <line x1={40 - r - t} y1="15" x2={40 - r - t} y2={15 + (height/1000*40 + 15 || 55)} className="stroke-primary-800" strokeWidth="0.8" />
+      <rect x={40 - r - t} y="15" width={2*(r+t)} height={h} rx="1" className="fill-none stroke-gray-500" strokeWidth="1.2" />
+      <rect x={40 - r} y="15" width={2*r} height={h} rx="1" className="fill-primary-200 stroke-primary-500" strokeWidth="1" />
+      <ellipse cx="40" cy={15 + h} rx={r} ry="5" className="fill-none stroke-primary-500" strokeWidth="1" />
+      <line x1={40 - r - t} y1="15" x2={40 - r - t} y2={15 + h} className="stroke-primary-800" strokeWidth="0.8" />
       <line x1={40 + r} y1="15" x2={40 + r + t} y2="15" className="stroke-primary-800" strokeWidth="0.8" />
       <text x="36" y="70" fontSize="6" className="fill-primary-800">Dᵢ</text>
       <text x={35 + r} y="13" fontSize="5" className="fill-primary-800">t</text>
@@ -162,7 +165,9 @@ function DiagramCylindricalWall({ internalDia, thickness, height }) {
 
 function DiagramCurvedBeam({ chord, rise, radius }) {
   const w = 120, h = 70;
-  const rr = radius || chord * chord / (8 * (rise || chord/10)) + (rise || chord/10) / 2;
+  const safeChord = chord || 6000;
+  const safeRise = rise || safeChord / 10;
+  const rr = radius || safeChord * safeChord / (8 * safeRise) + safeRise / 2;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-16">
       <path d={`M 10,${h-10} Q ${w/2},${h-10 - (rise || 15)} ${w-10},${h-10}`} className="fill-none stroke-primary-500" strokeWidth="2" />
@@ -345,9 +350,13 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
 
   // ── Calculate ──────────────────────────────────────────────────
   const doCalculate = useCallback(async (callback) => {
+    const pid = config.project_id || localStorage.getItem('active_project_id');
+    if (!pid) { toast.error('No project selected. Select a project first.'); return; }
+    const dim = Number(config.primary_dim_mm);
+    if (!dim || dim <= 0) { toast.error('Enter a valid primary dimension before calculating.'); return; }
     try {
       const fn = getCalcAPI(config.element_type);
-      const payload = buildPayload({ ...config, project_id: config.project_id || localStorage.getItem('active_project_id') });
+      const payload = buildPayload({ ...config, project_id: pid });
       const { data: res } = await fn(payload);
       const calcRes = res?.result || res;
       setResult(calcRes);
@@ -370,12 +379,17 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
 
   // ── Compare ────────────────────────────────────────────────────
   const handleCompare = useCallback(async () => {
+    const pid = config.project_id || localStorage.getItem('active_project_id');
+    if (!pid) { toast.error('No project selected. Select a project first.'); setCompareLoading(false); return; }
+    const dim = Number(config.primary_dim_mm);
+    if (!dim || dim <= 0) { toast.error('Enter a valid primary dimension before comparing.'); setCompareLoading(false); return; }
     setCompareLoading(true);
     setCompareData(null);
     try {
       const { data: res } = await parametricAPI.compare({
+        project_id: pid,
         element_type: config.element_type,
-        primary_dim_mm: Number(config.primary_dim_mm),
+        primary_dimension: dim,
         extra: config.extra,
         standards: ['eurocode', 'aci318', 'is456', 'bs8110']
       });
