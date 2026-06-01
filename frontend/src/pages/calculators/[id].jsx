@@ -8,6 +8,7 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import { calcAPI } from '../../services/api';
 import { CALCULATORS } from '../../utils/helpers';
 import { getCalculatorMethod } from '../../features/calculators/methodology';
+import CalculatorErrorBoundary from '../../components/calculators/CalculatorErrorBoundary';
 
 // ── Original 8 ──────────────────────────────────────────────────
 import ConcreteForm    from '../../features/calculators/ConcreteForm';
@@ -131,17 +132,21 @@ export default function CalculatorPage() {
             <div className="lg:col-span-2">
               <div className="card sticky top-20">
                 <h2 className="section-title mb-4">{calc.icon} Inputs</h2>
-                {FormComponent ? (
-                  <FormComponent onCalculate={handleCalculate} loading={loading} />
-                ) : (
-                  <p className="text-gray-400 text-sm">Calculator form not found.</p>
-                )}
+                <CalculatorErrorBoundary>
+                  {FormComponent ? (
+                    <FormComponent onCalculate={handleCalculate} loading={loading} />
+                  ) : (
+                    <p className="text-gray-400 text-sm">Calculator form not found.</p>
+                  )}
+                </CalculatorErrorBoundary>
               </div>
             </div>
 
             {/* Results */}
             <div className="lg:col-span-3">
-              <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} onSaved={loadSaved} methodology={method} />
+              <CalculatorErrorBoundary>
+                <ResultsPanel result={result} calculatorId={id} calculatorLabel={calc.label} onSaved={loadSaved} methodology={method} />
+              </CalculatorErrorBoundary>
 
               <div className="card mt-4">
                 <h3 className="section-title mb-3">📋 Saved Calculations</h3>

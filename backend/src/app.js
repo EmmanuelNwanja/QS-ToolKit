@@ -78,6 +78,13 @@ app.get('/health', (req, res) => {
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/v1', routes);
 
+// ── Calculators Module (feature-flagged, default on) ──────────
+try {
+  require('../modules/calculators');
+} catch (err) {
+  console.warn('[calculators] Module not found or failed to load:', err.message);
+}
+
 // ── Parametric Module (feature-flagged) ──────────────────────
 if (process.env.PARAMETRIC_ENGINE_ENABLED === 'true') {
   try {

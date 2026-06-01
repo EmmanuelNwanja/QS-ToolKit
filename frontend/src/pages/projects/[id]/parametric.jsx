@@ -65,7 +65,7 @@ export default function ProjectParametricPage() {
           ) : (
             <ParametricErrorBoundary>
               <div className="card">
-                <SmartCalculator />
+                <SmartCalculator projectId={id} />
               </div>
             </ParametricErrorBoundary>
           )}

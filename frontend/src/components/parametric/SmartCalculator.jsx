@@ -289,7 +289,7 @@ function buildPayload(config) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────
-export default function SmartCalculator({ onCalculate: _onCalculate, loading }) {
+export default function SmartCalculator({ onCalculate: _onCalculate, loading, projectId }) {
   const [step, setStep] = useState(1);
   const [config, setConfig] = useState(() => defaultConfig('beam'));
   const [result, setResult] = useState(null);
@@ -304,6 +304,11 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading }) 
   const [calcId, setCalcId] = useState(null);
   const previewTimer = useRef(null);
 
+  // Keep config.project_id in sync with the projectId prop
+  useEffect(() => {
+    if (projectId) setConfig(p => ({ ...p, project_id: projectId }));
+  }, [projectId]);
+
   const el = ELEMENTS.find(e => e.type === config.element_type);
   const Diagram = DIAGRAM_MAP[config.element_type];
 
@@ -315,7 +320,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading }) 
     previewTimer.current = setTimeout(async () => {
       try {
         const fn = getCalcAPI(config.element_type);
-        const payload = buildPayload({ ...config, project_id: '00000000-0000-0000-0000-000000000001' });
+        const payload = buildPayload({ ...config, project_id: config.project_id || localStorage.getItem('active_project_id') });
         const { data: res } = await fn(payload);
         setPreview(res?.result || res?.derived_dimensions || res);
       } catch { setPreview(null); }
@@ -413,7 +418,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading }) 
       const fn = getCalcAPI(config.element_type);
       const payload = buildPayload({
         ...config,
-        project_id: config.project_id || localStorage.getItem('active_project_id') || '00000000-0000-0000-0000-000000000001'
+        project_id: config.project_id || localStorage.getItem('active_project_id')
       });
       const { data: res } = await fn(payload);
       if (res?.calculation?.id) setCalcId(res.calculation.id);
