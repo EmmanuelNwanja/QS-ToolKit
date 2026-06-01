@@ -1,11 +1,13 @@
 // PaintForm.jsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestPaint } from './dimensionSuggestions';
 export default function PaintForm({ onCalculate, loading }) {
   const [coats, setCoats] = useState(2);
   const [coverage, setCoverage] = useState(10);
   const [primer, setPrimer] = useState(true);
   const [openingsConfirmed, setOpeningsConfirmed] = useState(false);
   const [surfaces, setSurfaces] = useState([{ length: '', height: '', openings: [] }]);
+  const paintSuggest = useMemo(() => suggestPaint({ coats, coverage_m2_per_litre: coverage, surfaces }), [coats, coverage, surfaces]);
   const add = () => setSurfaces(s => [...s, { length: '', height: '', openings: [] }]);
   const update = (i, k, v) => setSurfaces(s => s.map((el, idx) => idx === i ? { ...el, [k]: v } : el));
   const addOpening = (surfaceIdx) => setSurfaces((state) => state.map((surface, idx) => (
@@ -50,6 +52,7 @@ export default function PaintForm({ onCalculate, loading }) {
             <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.length} onChange={e => update(i,'length',e.target.value)} required /></div>
             <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.height} onChange={e => update(i,'height',e.target.value)} required /></div>
             </div>
+            {paintSuggest[i]?.netArea ? <p className="text-gold-600 text-xs">Suggestion: {paintSuggest[i].netArea}m² → ~{paintSuggest[i].estimatedLitres}L paint</p> : null}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="label text-xs mb-0">Openings Deductions</label>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestRoofAccessories } from './dimensionSuggestions';
 
 export default function RoofAccessoriesForm({ onCalculate, loading }) {
   const [form, setForm] = useState({
@@ -14,6 +15,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
     eaves_projection_mm:    900,
     wastage_percent:        10
   });
+  const roofAccSuggest = useMemo(() => suggestRoofAccessories(form), [form]);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = (e) => {
@@ -118,6 +120,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
         </div>
       )}
 
+      {roofAccSuggest.map((s, si) => <p key={si} className="text-gold-600 text-xs">Suggestion: Ridge ~{s.ridgeLengthMm}mm, fascia ~{s.fasciaLengthMm}mm, ~{s.estimatedStraps} straps</p>)}
       <button type="submit" className="btn-primary w-full" disabled={loading}>
         {loading ? '⏳ Calculating…' : '🔩 Calculate Roof Accessories'}
       </button>

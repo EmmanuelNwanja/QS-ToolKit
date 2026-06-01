@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestCarpentry } from './dimensionSuggestions';
 
 const TIMBER_SIZES = {
   wall_plate:  ['75x100', '75x150', '100x100'],
@@ -26,6 +27,7 @@ export default function CarpentryForm({ onCalculate, loading }) {
   });
   const [sections, setSections] = useState([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const carpSuggest = useMemo(() => suggestCarpentry(form), [form]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -76,6 +78,7 @@ export default function CarpentryForm({ onCalculate, loading }) {
         </div>
       </div>
 
+      {carpSuggest.map((s, si) => <p key={si} className="text-gold-600 text-xs">Suggestion: ~{s.rafterCount} rafters @ {s.rafterLength}mm, wall plate ~{s.wallPlateLengthMm}mm</p>)}
       {/* Roof type + Wastage */}
       <div className="grid grid-cols-2 gap-2">
         <div>

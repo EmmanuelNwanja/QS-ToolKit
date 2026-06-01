@@ -1,10 +1,12 @@
 // MasonryForm.jsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestMasonry } from './dimensionSuggestions';
 export default function MasonryForm({ onCalculate, loading }) {
   const [blockSize, setBlockSize] = useState('9inch');
   const [mortarRatio, setMortarRatio] = useState('1:6');
   const [wastage, setWastage] = useState(5);
   const [walls, setWalls] = useState([{ length: '', height: '', openings: [] }]);
+  const masonrySuggest = useMemo(() => suggestMasonry({ block_size: blockSize, walls }), [blockSize, walls]);
 
   const addWall = () => setWalls(w => [...w, { length: '', height: '', openings: [] }]);
   const updateWall = (i, k, v) => setWalls(w => w.map((el, idx) => idx === i ? { ...el, [k]: v } : el));
@@ -49,6 +51,7 @@ export default function MasonryForm({ onCalculate, loading }) {
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={wall.length} onChange={e => updateWall(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={wall.height} onChange={e => updateWall(i,'height',e.target.value)} required /></div>
             </div>
+            {masonrySuggest[i]?.netArea ? <p className="text-gold-600 text-xs">Suggestion: {masonrySuggest[i].netArea}m² net → ~{masonrySuggest[i].estimatedBlocks} blocks, {masonrySuggest[i].mortarM3}m³ mortar</p> : null}
             <button type="button" onClick={() => addOpening(i)} className="text-xs text-gray-500 hover:text-primary-600">+ Deduct opening (door/window)</button>
             {wall.openings.map((o, j) => (
               <div key={j} className="grid grid-cols-2 gap-2 ml-3">

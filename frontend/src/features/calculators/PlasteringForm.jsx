@@ -1,11 +1,13 @@
 // PlasteringForm.jsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestPlastering } from './dimensionSuggestions';
 export default function PlasteringForm({ onCalculate, loading }) {
   const [thickness, setThickness] = useState(15);
   const [mortarRatio, setMortarRatio] = useState('1:4');
   const [wastage, setWastage] = useState(10);
   const [openingsConfirmed, setOpeningsConfirmed] = useState(false);
   const [surfaces, setSurfaces] = useState([{ length: '', height: '', openings: [] }]);
+  const plasSuggest = useMemo(() => suggestPlastering({ surfaces }), [surfaces]);
 
   const addSurface = () => setSurfaces(s => [...s, { length: '', height: '', openings: [] }]);
   const update = (i, k, v) => setSurfaces(s => s.map((el, idx) => idx === i ? { ...el, [k]: v } : el));
@@ -50,6 +52,7 @@ export default function PlasteringForm({ onCalculate, loading }) {
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.length} onChange={e => update(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.height} onChange={e => update(i,'height',e.target.value)} required /></div>
             </div>
+            {plasSuggest[i]?.netArea ? <p className="text-gold-600 text-xs">Suggestion: {plasSuggest[i].netArea}m² net → ~{plasSuggest[i].mortarVol}m³ mortar</p> : null}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="label text-xs mb-0">Openings Deductions</label>

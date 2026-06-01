@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestTiling } from './dimensionSuggestions';
 export default function TilingForm({ onCalculate, loading }) {
   const [tileL, setTileL] = useState(0.6);
   const [tileW, setTileW] = useState(0.6);
   const [wastage, setWastage] = useState(10);
   const [rooms, setRooms] = useState([{ length: '', width: '' }]);
+  const tileSuggest = useMemo(() => suggestTiling({ tile_length_m: tileL, tile_width_m: tileW, wastage, rooms }), [tileL, tileW, wastage, rooms]);
   const add = () => setRooms(r => [...r, { length: '', width: '' }]);
   const update = (i, k, v) => setRooms(r => r.map((el, idx) => idx === i ? { ...el, [k]: v } : el));
   const handleSubmit = (e) => {
@@ -20,9 +22,12 @@ export default function TilingForm({ onCalculate, loading }) {
       <div className="border-t pt-3">
         <div className="flex items-center justify-between mb-2"><label className="label mb-0">Rooms / Areas</label><button type="button" onClick={add} className="text-xs text-primary-600">+ Add</button></div>
         {rooms.map((r, i) => (
-          <div key={i} className="grid grid-cols-2 gap-2 mb-2">
-            <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.length} onChange={e => update(i,'length',e.target.value)} required /></div>
-            <div><label className="label text-xs">Width (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.width} onChange={e => update(i,'width',e.target.value)} required /></div>
+          <div key={i}>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.length} onChange={e => update(i,'length',e.target.value)} required /></div>
+              <div><label className="label text-xs">Width (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.width} onChange={e => update(i,'width',e.target.value)} required /></div>
+            </div>
+            {tileSuggest[i]?.area ? <p className="text-gold-600 text-xs">Suggestion: {tileSuggest[i].area}m² → ~{tileSuggest[i].tilesNeeded} tiles ({tileSuggest[i].boxesNeeded} boxes)</p> : null}
           </div>
         ))}
       </div>

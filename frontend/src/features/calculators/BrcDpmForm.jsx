@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestBrcDpm } from './dimensionSuggestions';
 
 const BRC_TYPES = [
   { value: 'A142', label: 'A142 — 2.22 kg/m² (6mm @ 200c/c)', note: 'Oversite slabs, light duty' },
@@ -34,7 +35,7 @@ export default function BrcDpmForm({ onCalculate, loading }) {
   const removeArr = (setter, i) => setter(arr => arr.filter((_, idx) => idx !== i));
 
   const selectedBrc = BRC_TYPES.find(b => b.value === form.brc_mesh_type);
-
+  const brcSuggest = useMemo(() => suggestBrcDpm({ ...form, floor_areas: areas }), [areas, form]);
   const handleSubmit = (e) => {
     e.preventDefault();
     onCalculate({
@@ -64,20 +65,23 @@ export default function BrcDpmForm({ onCalculate, loading }) {
           <button type="button" onClick={addArea} className="text-xs text-primary-600 hover:underline">+ Add Area</button>
         </div>
         {areas.map((a, i) => (
-          <div key={i} className="flex items-end gap-2 mb-2">
-            <div className="w-20">
-              <label className={lbl}>Name</label>
-              <input className={inputCls} value={a.name} onChange={e => updateArr(setAreas, i, 'name', e.target.value)} />
+          <div key={i}>
+            <div className="flex items-end gap-2 mb-2">
+              <div className="w-20">
+                <label className={lbl}>Name</label>
+                <input className={inputCls} value={a.name} onChange={e => updateArr(setAreas, i, 'name', e.target.value)} />
+              </div>
+              <div className="flex-1">
+                <label className={lbl}>Length (mm)</label>
+                <input type="number" className={inputCls} value={a.length_mm} onChange={e => updateArr(setAreas, i, 'length_mm', e.target.value)} required />
+              </div>
+              <div className="flex-1">
+                <label className={lbl}>Width (mm)</label>
+                <input type="number" className={inputCls} value={a.width_mm} onChange={e => updateArr(setAreas, i, 'width_mm', e.target.value)} required />
+              </div>
+              {areas.length > 1 && <button type="button" onClick={() => removeArr(setAreas, i)} className="text-red-400 text-xs pb-2">✕</button>}
             </div>
-            <div className="flex-1">
-              <label className={lbl}>Length (mm)</label>
-              <input type="number" className={inputCls} value={a.length_mm} onChange={e => updateArr(setAreas, i, 'length_mm', e.target.value)} required />
-            </div>
-            <div className="flex-1">
-              <label className={lbl}>Width (mm)</label>
-              <input type="number" className={inputCls} value={a.width_mm} onChange={e => updateArr(setAreas, i, 'width_mm', e.target.value)} required />
-            </div>
-            {areas.length > 1 && <button type="button" onClick={() => removeArr(setAreas, i)} className="text-red-400 text-xs pb-2">✕</button>}
+            {brcSuggest.areas[i]?.areaM2 ? <p className="text-gold-600 text-xs">Suggestion: {brcSuggest.areas[i].areaM2}m² → ~{brcSuggest.areas[i].estimatedMeshSheets} BRC sheets</p> : null}
           </div>
         ))}
       </div>

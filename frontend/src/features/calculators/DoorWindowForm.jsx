@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestDoorWindow } from './dimensionSuggestions';
 
 const DOOR_TYPES = [
   { value: 'double_leaf_steel',  label: 'Double Leaf Steel' },
@@ -34,6 +35,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
   const updateWindow = (i, k, v) => setWindows(w => w.map((item, idx) => idx === i ? { ...item, [k]: v } : item));
   const updateBp     = (i, k, v) => setBp(b => b.map((item, idx) => idx === i ? { ...item, [k]: v } : item));
 
+  const dwSuggest = useMemo(() => suggestDoorWindow({ doors, windows }), [doors, windows]);
   const removeDoor   = (i) => setDoors(d => d.filter((_, idx) => idx !== i));
   const removeWindow = (i) => setWindows(w => w.filter((_, idx) => idx !== i));
   const removeBp     = (i) => setBp(b => b.filter((_, idx) => idx !== i));
@@ -109,6 +111,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={d.height_mm} onChange={e => updateDoor(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={d.quantity} onChange={e => updateDoor(i, 'quantity', e.target.value)} /></div>
               </div>
+              {dwSuggest.doors[i]?.totalAreaM2 ? <p className="text-gold-600 text-xs">Area: {dwSuggest.doors[i].totalAreaM2}m² total, ~{dwSuggest.doors[i].frameLengthM}m frame</p> : null}
               <div><label className={lbl}>Notes (optional)</label><input className={inputCls} value={d.note} onChange={e => updateDoor(i, 'note', e.target.value)} placeholder="e.g. Main entrance" /></div>
             </div>
           ))}
@@ -151,6 +154,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={w.height_mm} onChange={e => updateWindow(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={w.quantity} onChange={e => updateWindow(i, 'quantity', e.target.value)} /></div>
               </div>
+              {dwSuggest.windows[i]?.totalAreaM2 ? <p className="text-gold-600 text-xs">Area: {dwSuggest.windows[i].totalAreaM2}m² total, ~{dwSuggest.windows[i].frameLengthM}m frame</p> : null}
             </div>
           ))}
         </div>
@@ -174,6 +178,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={b.height_mm} onChange={e => updateBp(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={b.quantity} onChange={e => updateBp(i, 'quantity', e.target.value)} /></div>
               </div>
+              {dwSuggest.burglaryProof[i]?.totalAreaM2 ? <p className="text-gold-600 text-xs">Area: {dwSuggest.burglaryProof[i].totalAreaM2}m² total</p> : null}
               <div><label className={lbl}>Mesh/Pipe Type</label><input className={inputCls} value={b.mesh_type} onChange={e => updateBp(i, 'mesh_type', e.target.value)} /></div>
             </div>
           ))}

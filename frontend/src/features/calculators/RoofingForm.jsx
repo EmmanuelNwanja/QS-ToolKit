@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { suggestRoofing } from './dimensionSuggestions';
 export default function RoofingForm({ onCalculate, loading }) {
   const [form, setForm] = useState({ roof_type: 'gable', length: '', width: '', pitch_degrees: 25, sheet_length_m: 3.6, sheet_width_m: 0.9, wastage_percent: 10, include_accessories: true });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const roofSuggest = useMemo(() => suggestRoofing(form), [form]);
   const handleSubmit = (e) => {
     e.preventDefault();
     onCalculate({ ...form, length: +form.length, width: +form.width, pitch_degrees: +form.pitch_degrees, sheet_length_m: +form.sheet_length_m, sheet_width_m: +form.sheet_width_m, wastage_percent: +form.wastage_percent });
@@ -18,6 +20,7 @@ export default function RoofingForm({ onCalculate, loading }) {
         <div><label className="label">Sheet Width (m)</label><input type="number" step="0.1" className="input" value={form.sheet_width_m} onChange={e => set('sheet_width_m', e.target.value)} /></div>
       </div>
       <div className="flex items-center gap-2"><input type="checkbox" checked={form.include_accessories} onChange={e => set('include_accessories', e.target.checked)} /><label className="text-sm text-gray-700">Include accessories (purlins, ridging)</label></div>
+      {roofSuggest.map((s, si) => <p key={si} className="text-gold-600 text-xs">Suggestion: {s.roofArea}m² roof area, ~{s.estimatedSheets} sheets, ~{s.purlinLengthM}m purlin</p>)}
       <button type="submit" className="btn-primary w-full" disabled={loading}>{loading ? '⏳ Calculating…' : '🧮 Calculate'}</button>
     </form>
   );
