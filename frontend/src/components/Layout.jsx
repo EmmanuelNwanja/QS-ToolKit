@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/engine',        icon: '🤖', label: 'AI Engine' },
   { href: '/projects',      icon: '📁', label: 'Projects' },
   { href: '/calculators',   icon: '🧮', label: 'Calculators' },
+  { href: '/qs-flow',       icon: '🚀', label: 'QS Flow' },
   ...(PARAMETRIC_FLAG ? [{ href: '/parametric', icon: '🧠', label: 'Smart Parametric' }] : []),
   { href: '/boq',           icon: '📋', label: 'Bill of Quantities' },
   { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes' },
