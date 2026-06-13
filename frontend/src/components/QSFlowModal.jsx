@@ -116,11 +116,41 @@ const DIM_LABELS = {
    MAIN MODAL COMPONENT
    ═══════════════════════════════════════════════════════════════ */
 
+const STORAGE_KEY = 'qst_qs_flow_progress';
+
+function loadSavedProgress() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.project?.id || !data?.savedAt) return null;
+    if (Date.now() - data.savedAt > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
+
+function saveProgress(data) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, savedAt: Date.now() }));
+  } catch {}
+}
+
+function clearSavedProgress() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export default function QSFlowModal({ isOpen, onClose }) {
   const [step, setStep] = useState(0);
   const [project, setProject] = useState(null);
   const [subResults, setSubResults] = useState({});
   const [superResults, setSuperResults] = useState({});
+  const [resumed, setResumed] = useState(false);
 
   const STEPS = [
     { label: 'Project',        icon: '📁' },
@@ -129,11 +159,40 @@ export default function QSFlowModal({ isOpen, onClose }) {
     { label: 'Create BOQ',     icon: '📋' },
   ];
 
+  // Restore saved progress when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const saved = loadSavedProgress();
+    if (saved && !resumed) {
+      setProject(saved.project);
+      setStep(saved.step || 0);
+      setSubResults(saved.subResults || {});
+      setSuperResults(saved.superResults || {});
+      setResumed(true);
+    }
+  }, [isOpen, resumed]);
+
+  // Persist progress after each step change
+  useEffect(() => {
+    if (!isOpen || !project) return;
+    if (step === 0) return; // Don't save at project selection
+    saveProgress({ project, step, subResults, superResults });
+  }, [step, project, subResults, superResults, isOpen]);
+
+  const persistAndSetStep = (newStep) => {
+    setStep(newStep);
+    if (project && newStep > 0) {
+      saveProgress({ project, step: newStep, subResults, superResults });
+    }
+  };
+
   const resetFlow = () => {
     setStep(0);
     setProject(null);
     setSubResults({});
     setSuperResults({});
+    setResumed(false);
+    clearSavedProgress();
   };
 
   const handleClose = () => {
@@ -157,7 +216,9 @@ export default function QSFlowModal({ isOpen, onClose }) {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white font-display">QS Flow</h2>
-              <p className="text-xs text-white/60">End-to-end quantity surveying process</p>
+              <p className="text-xs text-white/60">
+                {resumed ? 'Resuming from saved progress' : 'End-to-end quantity surveying process'}
+              </p>
             </div>
           </div>
           <button
@@ -200,7 +261,7 @@ export default function QSFlowModal({ isOpen, onClose }) {
           {step === 0 && (
             <ProjectSelection
               project={project}
-              onNext={() => setStep(1)}
+              onNext={(p) => { setProject(p); persistAndSetStep(1); }}
             />
           )}
           {step === 1 && (
@@ -209,8 +270,8 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.substructure}
               results={subResults}
               onResultsChange={setSubResults}
-              onBack={() => setStep(0)}
-              onNext={() => setStep(2)}
+              onBack={() => persistAndSetStep(0)}
+              onNext={() => persistAndSetStep(2)}
             />
           )}
           {step === 2 && (
@@ -219,8 +280,8 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.superstructure}
               results={superResults}
               onResultsChange={setSuperResults}
-              onBack={() => setStep(1)}
-              onNext={() => setStep(3)}
+              onBack={() => persistAndSetStep(1)}
+              onNext={() => persistAndSetStep(3)}
             />
           )}
           {step === 3 && (
@@ -228,7 +289,7 @@ export default function QSFlowModal({ isOpen, onClose }) {
               project={project}
               subResults={subResults}
               superResults={superResults}
-              onBack={() => setStep(2)}
+              onBack={() => persistAndSetStep(2)}
               onFinish={handleClose}
             />
           )}
@@ -255,7 +316,7 @@ function ProjectSelection({ project, onNext }) {
 
   useEffect(() => {
     projectAPI.list({ limit: 100 }).then(r => {
-      setProjects(Array.isArray(r.data) ? r.data : (r.data?.data || []));
+      setProjects(r.data?.projects || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -269,7 +330,7 @@ function ProjectSelection({ project, onNext }) {
     setCreating(true);
     try {
       const res = await projectAPI.create(newProject);
-      const created = res?.data;
+      const created = res?.data?.project;
       if (created) {
         setProjects(prev => [created, ...prev]);
         setSelected(created);
@@ -426,7 +487,7 @@ function ProjectSelection({ project, onNext }) {
               <p className="text-xs text-emerald-600">{selected.client_name || 'No client specified'}</p>
             </div>
           </div>
-          <button onClick={onNext} className="btn-primary text-sm">
+          <button onClick={() => onNext(selected)} className="btn-primary text-sm">
             Continue →
           </button>
         </div>
@@ -805,11 +866,13 @@ function BOQCreationStep({ project, subResults, superResults, onBack, onFinish }
         // Delete existing sections and recreate
         await boqAPI.update(selectedBoqId, { ...boqData, sections });
         toast.success('BOQ updated successfully!');
+        clearSavedProgress();
         setCreatedBoq({ id: selectedBoqId, title: boqData.title });
       } else {
         const res = await boqAPI.create(boqData);
         toast.success('BOQ created successfully!');
-        setCreatedBoq(res?.data);
+        clearSavedProgress();
+        setCreatedBoq(res?.data?.boq);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create BOQ');
