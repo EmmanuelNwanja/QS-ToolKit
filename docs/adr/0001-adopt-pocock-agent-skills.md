@@ -1,7 +1,7 @@
 # ADR-0001: Adopt Pocock Agent Skills + Multi-Framework Execution Discipline
 
 ## Status
-Accepted
+Accepted.
 
 ## Context
 QSToolkit V1.10 has a solid backend (Node.js/Express + Supabase) and frontend (Next.js 14) but lacks:
