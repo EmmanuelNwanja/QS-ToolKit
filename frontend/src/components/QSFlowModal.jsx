@@ -175,15 +175,12 @@ export default function QSFlowModal({ isOpen, onClose }) {
   // Persist progress after each step change
   useEffect(() => {
     if (!isOpen || !project) return;
-    if (step === 0) return; // Don't save at project selection
+    if (step === 0) return;
     saveProgress({ project, step, subResults, superResults });
   }, [step, project, subResults, superResults, isOpen]);
 
-  const persistAndSetStep = (newStep) => {
+  const goToStep = (newStep) => {
     setStep(newStep);
-    if (project && newStep > 0) {
-      saveProgress({ project, step: newStep, subResults, superResults });
-    }
   };
 
   const resetFlow = () => {
@@ -261,7 +258,7 @@ export default function QSFlowModal({ isOpen, onClose }) {
           {step === 0 && (
             <ProjectSelection
               project={project}
-              onNext={(p) => { setProject(p); persistAndSetStep(1); }}
+              onNext={(p) => { setProject(p); goToStep(1); }}
             />
           )}
           {step === 1 && (
@@ -270,8 +267,8 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.substructure}
               results={subResults}
               onResultsChange={setSubResults}
-              onBack={() => persistAndSetStep(0)}
-              onNext={() => persistAndSetStep(2)}
+              onBack={() => goToStep(0)}
+              onNext={() => goToStep(2)}
             />
           )}
           {step === 2 && (
@@ -280,8 +277,8 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.superstructure}
               results={superResults}
               onResultsChange={setSuperResults}
-              onBack={() => persistAndSetStep(1)}
-              onNext={() => persistAndSetStep(3)}
+              onBack={() => goToStep(1)}
+              onNext={() => goToStep(3)}
             />
           )}
           {step === 3 && (
@@ -289,7 +286,7 @@ export default function QSFlowModal({ isOpen, onClose }) {
               project={project}
               subResults={subResults}
               superResults={superResults}
-              onBack={() => persistAndSetStep(2)}
+              onBack={() => goToStep(2)}
               onFinish={handleClose}
             />
           )}
@@ -510,6 +507,7 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
   const [currentItemId, setCurrentItemId] = useState(allItems[0]?.id || null);
   const [dims, setDims] = useState({});
   const [activeSection, setActiveSection] = useState(groups[0]?.name || '');
+  const proceedRef = useRef(null);
 
   const currentItem = allItems.find(i => i.id === currentItemId);
 
@@ -525,6 +523,15 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItemId]);
+
+  // Auto-scroll when all items complete and Proceed button appears
+  useEffect(() => {
+    if (completedCount === totalCount && proceedRef.current) {
+      setTimeout(() => {
+        proceedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+    }
+  }, [completedCount, totalCount]);
 
   // Compute live result
   const liveResult = useMemo(() => {
@@ -555,6 +562,7 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
     if (currentIdx < allItems.length - 1) {
       setCurrentItemId(allItems[currentIdx + 1].id);
     }
+    // If last item, scroll to Proceed button (handled by useEffect on completedCount)
   };
 
   const handleAcceptSuggestion = () => {
@@ -765,7 +773,7 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
 
             {/* Final step: Proceed to next phase */}
             {completedCount === totalCount && (
-              <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-center">
+              <div ref={proceedRef} className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-center">
                 <p className="text-sm font-semibold text-gold-700 mb-2">
                   All {title.toLowerCase()} calculations complete!
                 </p>
@@ -801,8 +809,7 @@ function BOQCreationStep({ project, subResults, superResults, onBack, onFinish }
   useEffect(() => {
     if (!project) return;
     boqAPI.list({ project_id: project.id }).then(r => {
-      const data = Array.isArray(r.data) ? r.data : (r.data?.data || []);
-      setExistingBoqs(data);
+      setExistingBoqs(r.data?.boqs || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [project]);
 
@@ -863,11 +870,12 @@ function BOQCreationStep({ project, subResults, superResults, onBack, onFinish }
       };
 
       if (boqChoice === 'override' && selectedBoqId) {
-        // Delete existing sections and recreate
-        await boqAPI.update(selectedBoqId, { ...boqData, sections });
-        toast.success('BOQ updated successfully!');
+        // Delete existing BOQ (cascades to sections/items) and create new one
+        await boqAPI.remove(selectedBoqId);
+        const res = await boqAPI.create(boqData);
+        toast.success('BOQ replaced successfully!');
         clearSavedProgress();
-        setCreatedBoq({ id: selectedBoqId, title: boqData.title });
+        setCreatedBoq(res?.data?.boq);
       } else {
         const res = await boqAPI.create(boqData);
         toast.success('BOQ created successfully!');
