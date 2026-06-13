@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { projectAPI } from '../services/api';
 
 export default function QSFlowModal({ isOpen, onClose }) {
   const [step, setStep] = useState(0);
