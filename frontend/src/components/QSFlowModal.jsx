@@ -232,13 +232,20 @@ export default function QSFlowModal({ isOpen, onClose }) {
             {STEPS.map((s, idx) => (
               <div key={idx} className="flex items-center">
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                    idx < step ? 'bg-emerald-500 text-white' :
-                    idx === step ? 'bg-primary-700 text-white ring-4 ring-primary-200' :
-                    'bg-gray-200 text-gray-500'
-                  }`}>
+                  <button
+                    onClick={() => {
+                      if (idx < step) goToStep(idx);
+                    }}
+                    disabled={idx > step}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                      idx < step ? 'bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer' :
+                      idx === step ? 'bg-primary-700 text-white ring-4 ring-primary-200' :
+                      'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={idx < step ? `Go back to ${s.label}` : idx === step ? s.label : ''}
+                  >
                     {idx < step ? '✓' : s.icon}
-                  </div>
+                  </button>
                   <span className={`text-xs mt-1.5 font-medium ${
                     idx <= step ? 'text-primary-700' : 'text-gray-400'
                   }`}>{s.label}</span>
@@ -267,7 +274,6 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.substructure}
               results={subResults}
               onResultsChange={setSubResults}
-              onBack={() => goToStep(0)}
               onNext={() => goToStep(2)}
             />
           )}
@@ -277,7 +283,6 @@ export default function QSFlowModal({ isOpen, onClose }) {
               groups={SECTION_GROUPS.superstructure}
               results={superResults}
               onResultsChange={setSuperResults}
-              onBack={() => goToStep(1)}
               onNext={() => goToStep(3)}
             />
           )}
@@ -498,7 +503,7 @@ function ProjectSelection({ project, onNext }) {
    CALCULATION STEP (used for both Substructure & Superstructure)
    ═══════════════════════════════════════════════════════════════ */
 
-function CalculationStep({ title, groups, results, onResultsChange, onBack, onNext }) {
+function CalculationStep({ title, groups, results, onResultsChange, onNext }) {
   const allItems = groups.flatMap(g => g.items);
   const completedCount = Object.keys(results).length;
   const totalCount = allItems.length;
@@ -572,6 +577,13 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
 
   const handleJumpToItem = (itemId) => {
     setCurrentItemId(itemId);
+  };
+
+  const handleGoToPreviousItem = () => {
+    const currentIdx = allItems.findIndex(i => i.id === currentItemId);
+    if (currentIdx > 0) {
+      setCurrentItemId(allItems[currentIdx - 1].id);
+    }
   };
 
   const sectionItems = groups.find(g => g.name === activeSection)?.items || [];
@@ -740,8 +752,12 @@ function CalculationStep({ title, groups, results, onResultsChange, onBack, onNe
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
-              <button onClick={onBack} className="btn-secondary text-sm">
-                ← Back
+              <button
+                onClick={handleGoToPreviousItem}
+                disabled={allItems.findIndex(i => i.id === currentItemId) === 0}
+                className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ← Previous
               </button>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-400">
