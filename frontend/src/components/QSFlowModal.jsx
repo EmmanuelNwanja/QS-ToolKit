@@ -51,7 +51,6 @@ export default function QSFlowModal({ isOpen, onClose }) {
   );
 }
 
-import { useEffect, useState } from 'react';
 import { projectAPI } from '../services/api';
 
 function ProjectSelection({ onNext }) {
