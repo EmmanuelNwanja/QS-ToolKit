@@ -51,7 +51,6 @@ export default function QSFlowModal({ isOpen, onClose }) {
   );
 }
 
-import { projectAPI } from '../services/api';
 
 function ProjectSelection({ onNext }) {
   const [projects, setProjects] = useState([]);
@@ -96,7 +95,6 @@ function ProjectSelection({ onNext }) {
   );
 }
 
-import { projectAPI } from '../services/api';
 
 function SubstructureWizard({ onNext, project }) {
   const items = [
