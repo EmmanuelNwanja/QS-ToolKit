@@ -73,13 +73,24 @@ export default function CourseExamPage() {
       setAttemptId(data.attempt_id || data.id);
 
       const qRes = await examAPI.getExamQuestions(exam.id, { question_count: exam.total_questions || 50 });
-      setQuestions(qRes.data?.questions || []);
+      const questionsData = qRes.data?.questions || [];
+      
+      if (questionsData.length === 0) {
+        toast.error('No questions available for this exam yet. Please try another exam.');
+        setStep('select');
+        return;
+      }
+      
+      setQuestions(questionsData);
       setTimeLeft((exam.time_limit_minutes || 60) * 60);
       setStep('quiz');
     } catch (err) {
       if (err.response?.status === 403) {
         toast.error('Subscription required. Free trial already used.');
         router.push('/subscription');
+      } else if (err.response?.status === 404) {
+        toast.error(err.response?.data?.error || 'No questions available for this exam yet.');
+        setStep('select');
       } else {
         toast.error(err.response?.data?.error || 'Failed to start exam');
       }

@@ -70,8 +70,14 @@ router.get('/contests/:id', [
   validate
 ], ctrl.getContestById);
 router.post('/contests', [
-  body('title').trim().notEmpty().withMessage('title is required'),
+  // Accept either title or topic (at least one required)
+  body('title').optional().trim().isString(),
+  body('topic').optional().trim().isString(),
   body('description').optional().isString(),
+  body('question_count').optional().isInt({ min: 1, max: 50 }).withMessage('question_count must be 1-50'),
+  body('time_limit').optional().isInt({ min: 1, max: 60 }).withMessage('time_limit must be 1-60 minutes'),
+  body('difficulty').optional().isIn(['easy', 'medium', 'hard']).withMessage('difficulty must be easy, medium, or hard'),
+  body('contest_type').optional().isIn(['duel', 'group', 'scheduled']).withMessage('contest_type must be duel, group, or scheduled'),
   body('scheduled_at').optional().isISO8601().withMessage('scheduled_at must be a valid ISO date'),
   body('duration_minutes').optional().isInt({ min: 5, max: 180 }).withMessage('duration_minutes must be 5-180'),
   validate

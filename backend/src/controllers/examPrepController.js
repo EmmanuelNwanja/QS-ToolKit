@@ -272,7 +272,11 @@ exports.getExamQuestions = async (req, res, next) => {
     if (err) throw err;
 
     if (!questions || questions.length === 0) {
-      return res.status(404).json(error('No questions found for this exam'));
+      return res.status(404).json(error('No questions available for this exam yet. Questions may be being added.', { 
+        code: 'NO_QUESTIONS',
+        exam_id: id,
+        exam_name: exam.exam_name
+      }));
     }
 
     // Randomize order
@@ -621,11 +625,43 @@ exports.getUniversityCourses = async (req, res, next) => {
     if (err) throw err;
 
     // Count questions per course by matching course_code
-    // Use fuzzy university name matching (strip commas, case-insensitive)
+    // Use multiple matching strategies for better accuracy
     const courseCodes = (courses || []).map(c => c.code).filter(Boolean);
     let questionCounts = {};
+    
     if (courseCodes.length > 0) {
-      const { data: questions } = await supabase
+      // Strategy 1: Count questions linked via exam_definitions
+      const { data: examDefs } = await supabase
+        .from('exam_definitions')
+        .select('id, course_id')
+        .eq('university_id', id)
+        .eq('is_published', true);
+      
+      const examIds = (examDefs || []).map(e => e.id).filter(Boolean);
+      
+      if (examIds.length > 0) {
+        const { data: questionsViaExam } = await supabase
+          .from('exam_questions')
+          .select('exam_id')
+          .eq('is_active', true)
+          .in('exam_id', examIds);
+        
+        // Map exam_id back to course_id
+        const examToCourse = {};
+        (examDefs || []).forEach(e => {
+          if (e.course_id) examToCourse[e.id] = e.course_id;
+        });
+        
+        (questionsViaExam || []).forEach(q => {
+          const courseId = examToCourse[q.exam_id];
+          if (courseId) {
+            questionCounts[courseId] = (questionCounts[courseId] || 0) + 1;
+          }
+        });
+      }
+      
+      // Strategy 2: Also count by direct course_code matching in exam_questions
+      const { data: questionsByCode } = await supabase
         .from('exam_questions')
         .select('course_code, university')
         .eq('is_active', true)
@@ -633,19 +669,25 @@ exports.getUniversityCourses = async (req, res, next) => {
 
       const normalizedName = university.name.toLowerCase().replace(/,/g, '').trim();
 
-      (questions || []).forEach(q => {
+      (questionsByCode || []).forEach(q => {
         const qUni = (q.university || '').toLowerCase().replace(/,/g, '').trim();
         // Match if normalized names are equal, or one contains the other
         if (qUni === normalizedName || normalizedName.includes(qUni) || qUni.includes(normalizedName)) {
           const code = q.course_code;
-          if (code) questionCounts[code] = (questionCounts[code] || 0) + 1;
+          if (code) {
+            // Find the course ID for this code
+            const course = courses.find(c => c.code === code);
+            if (course) {
+              questionCounts[course.id] = (questionCounts[course.id] || 0) + 1;
+            }
+          }
         }
       });
     }
 
     const enriched = (courses || []).map(c => ({
       ...c,
-      question_count: questionCounts[c.code] || 0
+      question_count: questionCounts[c.id] || questionCounts[c.code] || 0
     }));
 
     return res.json(success('University courses', { university, courses: enriched }));

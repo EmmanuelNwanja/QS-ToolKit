@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 import { academyAPI } from '../../services/api';
 
 const RESOURCE_TYPES = [
@@ -72,27 +73,46 @@ export default function ResourcesPage() {
       <Layout title="📖 Resource Library">
         <div className="max-w-6xl space-y-6">
           {/* Filters */}
-          <div className="flex flex-wrap gap-3">
-            <select value={filters.pathway} onChange={(e) => set('pathway', e.target.value)} className="input text-sm py-2">
-              <option value="">All Pathways</option>
-              <option value="technical-qs-practice">Technical QS Practice</option>
-              <option value="construction-commercial-management">Commercial Management</option>
-              <option value="construction-project-management">Project Management</option>
-              <option value="real-estate-property-advisory">Real Estate Advisory</option>
-              <option value="construction-dispute-resolution">Dispute Resolution</option>
-              <option value="qs-technology-digital-construction">QS Technology</option>
-              <option value="academic-research-career">Academic & Research</option>
-            </select>
-            <select value={filters.level} onChange={(e) => set('level', e.target.value)} className="input text-sm py-2">
-              {LEVELS.map((l) => (
-                <option key={l.value} value={l.value}>{l.label}</option>
-              ))}
-            </select>
-            <select value={filters.type} onChange={(e) => set('type', e.target.value)} className="input text-sm py-2">
-              {RESOURCE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs text-gray-500 mb-1 block">Pathway</label>
+                <select value={filters.pathway} onChange={(e) => set('pathway', e.target.value)} className="w-full input text-sm py-2">
+                  <option value="">All Pathways</option>
+                  <option value="technical-qs-practice">Technical QS Practice</option>
+                  <option value="construction-commercial-management">Commercial Management</option>
+                  <option value="construction-project-management">Project Management</option>
+                  <option value="real-estate-property-advisory">Real Estate Advisory</option>
+                  <option value="construction-dispute-resolution">Dispute Resolution</option>
+                  <option value="qs-technology-digital-construction">QS Technology</option>
+                  <option value="academic-research-career">Academic & Research</option>
+                </select>
+              </div>
+              <div className="w-32">
+                <label className="text-xs text-gray-500 mb-1 block">Level</label>
+                <select value={filters.level} onChange={(e) => set('level', e.target.value)} className="w-full input text-sm py-2">
+                  {LEVELS.map((l) => (
+                    <option key={l.value} value={l.value}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-40">
+                <label className="text-xs text-gray-500 mb-1 block">Resource Type</label>
+                <select value={filters.type} onChange={(e) => set('type', e.target.value)} className="w-full input text-sm py-2">
+                  {RESOURCE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              {(filters.pathway || filters.level || filters.type) && (
+                <button
+                  onClick={() => setFilters({ pathway: '', level: '', type: '' })}
+                  className="mt-5 text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Grid */}
@@ -114,28 +134,49 @@ export default function ResourcesPage() {
               <p className="text-sm mt-1">Try adjusting your filters.</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {resources.map((r) => (
-                <motion.div
-                  key={r.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="card hover:shadow-md transition-all cursor-pointer group"
-                  onClick={() => handleViewResource(r.id)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGES[r.type] || 'bg-gray-100 text-gray-600'}`}>
-                      {r.type?.replace('_', ' ')}
-                    </span>
-                    <span className="text-xs text-gray-400">Level {r.level}</span>
+            <div className="space-y-6">
+              {/* Group resources by level */}
+              {(() => {
+                const grouped = {};
+                resources.forEach(r => {
+                  const level = r.level || 1;
+                  if (!grouped[level]) grouped[level] = [];
+                  grouped[level].push(r);
+                });
+                const sortedLevels = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+                
+                return sortedLevels.map(level => (
+                  <div key={level}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700">Level {level}</h3>
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-xs text-gray-400">{grouped[level].length} resource{grouped[level].length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {grouped[level].map((r) => (
+                        <motion.div
+                          key={r.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="card hover:shadow-md transition-all cursor-pointer group"
+                          onClick={() => handleViewResource(r.id)}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGES[r.type] || 'bg-gray-100 text-gray-600'}`}>
+                              {r.type?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700 mb-1">{r.title}</h3>
+                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{r.excerpt}</p>
+                          {r.pathway_name && (
+                            <p className="text-xs text-primary-500 mt-2">{r.pathway_name}</p>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
-                  <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700 mb-1">{r.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{r.excerpt}</p>
-                  {r.pathway_name && (
-                    <p className="text-xs text-primary-500 mt-2">{r.pathway_name}</p>
-                  )}
-                </motion.div>
-              ))}
+                ));
+              })()}
             </div>
           )}
         </div>
@@ -149,17 +190,38 @@ export default function ResourcesPage() {
                   <h2 className="font-display text-lg font-bold text-primary-800">{selectedResource.title}</h2>
                   <button onClick={() => setSelectedResource(null)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
                 </div>
-                <div className="px-6 py-5 prose prose-sm max-w-none">
+                <div className="px-6 py-5">
                   <div className="flex items-center gap-2 mb-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGES[selectedResource.type] || 'bg-gray-100 text-gray-600'}`}>
                       {selectedResource.type?.replace('_', ' ')}
                     </span>
                     <span className="text-xs text-gray-400">Level {selectedResource.level}</span>
+                    {selectedResource.pathway_name && (
+                      <span className="text-xs text-primary-500">• {selectedResource.pathway_name}</span>
+                    )}
                   </div>
                   {selectedResource.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: selectedResource.content }} />
+                    <div className="prose prose-sm prose-primary max-w-none">
+                      <MarkdownRenderer content={selectedResource.content} />
+                    </div>
+                  ) : selectedResource.excerpt ? (
+                    <div className="prose prose-sm prose-primary max-w-none">
+                      <MarkdownRenderer content={selectedResource.excerpt} />
+                    </div>
                   ) : (
                     <p className="text-gray-500 italic">Full content will be displayed here.</p>
+                  )}
+                  {selectedResource.resource_url && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <a
+                        href={selectedResource.resource_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium inline-flex items-center gap-1"
+                      >
+                        Open Resource ↗
+                      </a>
+                    </div>
                   )}
                 </div>
               </motion.div>

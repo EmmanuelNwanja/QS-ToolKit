@@ -911,7 +911,12 @@ exports.createContest = async (req, res, next) => {
       opponent, scheduled_at, duration_minutes = 30, max_participants
     } = req.body;
 
-    const contestTitle = title || topic || 'Untitled Contest';
+    // At least title or topic must be provided
+    const contestTitle = (title || topic || '').trim();
+    if (!contestTitle) {
+      return res.status(400).json(error('Either title or topic is required'));
+    }
+    
     const time_limit_seconds = (time_limit || 10) * 60;
 
     // Scheduled contests require Pro+ plan
