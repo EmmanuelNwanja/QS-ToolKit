@@ -11,6 +11,20 @@ const paystackHeaders = () => ({
 });
 
 const ACADEMY_WEEKLY_AMOUNT = 200000; // ₦2,000 in kobo
+const ACADEMY_MONTHLY_AMOUNT = 760000; // ₦7,600 in kobo (5% discount on 4 weeks)
+const ACADEMY_ANNUAL_AMOUNT = 9360000; // ₦93,600 in kobo (10% discount on 52 weeks)
+
+const ACADEMY_BILLING_AMOUNTS = {
+  weekly: ACADEMY_WEEKLY_AMOUNT,
+  monthly: ACADEMY_MONTHLY_AMOUNT,
+  annual: ACADEMY_ANNUAL_AMOUNT,
+};
+
+const ACADEMY_BILLING_NGN = {
+  weekly: 2000,
+  monthly: 7600,
+  annual: 93600,
+};
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -50,7 +64,9 @@ exports.getStatus = async (req, res, next) => {
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email, payment_method } = req.body;
+    const { email, payment_method, billing_cycle = 'weekly' } = req.body;
+    const cycleAmount = ACADEMY_BILLING_AMOUNTS[billing_cycle] || ACADEMY_WEEKLY_AMOUNT;
+    const cycleAmountNgn = ACADEMY_BILLING_NGN[billing_cycle] || 2000;
 
     // Check if already has active subscription
     const hasAccess = await checkAcademyAccess(req.user.id);
@@ -67,8 +83,8 @@ exports.subscribe = async (req, res, next) => {
         .insert({
           user_id: req.user.id,
           plan_name: 'academy_weekly',
-          billing_interval: 'weekly',
-          amount_ngn: 2000,
+          billing_interval: billing_cycle,
+          amount_ngn: cycleAmountNgn,
           reference_note: referenceNote || null,
           status: 'pending',
           submitted_at: new Date().toISOString(),
@@ -83,6 +99,7 @@ exports.subscribe = async (req, res, next) => {
         status: submission.status,
         planName: submission.plan_name,
         amountNgn: submission.amount_ngn,
+        billing_cycle,
         submittedAt: submission.submitted_at,
         message: 'Your payment will be verified within 24 hours.',
       }));
@@ -95,14 +112,14 @@ exports.subscribe = async (req, res, next) => {
     try {
       paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
         email,
-        amount: ACADEMY_WEEKLY_AMOUNT,
+        amount: cycleAmount,
         currency: 'NGN',
         metadata: {
           user_id: req.user.id,
           product_type: 'academy_subscription',
-          billing_cycle: 'weekly',
+          billing_cycle,
           custom_fields: [
-            { display_name: 'Product', variable_name: 'product', value: 'QS Academy Weekly' }
+            { display_name: 'Product', variable_name: 'product', value: `QS Academy ${billing_cycle}` }
           ]
         },
         callback_url: `${process.env.FRONTEND_URL}/academy`
@@ -115,8 +132,8 @@ exports.subscribe = async (req, res, next) => {
     return res.json(success('Payment initiated', {
       authorization_url: paystackRes.data.data.authorization_url,
       reference: paystackRes.data.data.reference,
-      amount: 2000,
-      billing_cycle: 'weekly'
+      amount: cycleAmountNgn,
+      billing_cycle
     }));
   } catch (err) { next(err); }
 };

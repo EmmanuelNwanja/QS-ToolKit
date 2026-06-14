@@ -22,10 +22,16 @@ export default function AdmissionTestModal({ open, onComplete }) {
   const fetchQuestions = useCallback(async () => {
     try {
       const res = await academyAPI.startAdmission();
-      setQuestions(res.data.questions || []);
-    } catch {
-      toast.error('Failed to load questions. Please try again.');
-      onComplete?.();
+      const data = res.data;
+      // If already passed, pass result back immediately
+      if (data.passed) {
+        onComplete?.({ passed: true, score: data.score });
+        return;
+      }
+      setQuestions(data.questions || []);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to load questions. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -112,7 +118,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
           <h2 className="font-display text-2xl font-bold text-primary-800 mb-2">Assessment Complete!</h2>
           <p className="text-4xl font-bold text-primary-700 my-4">{result.score}%</p>
           <p className="text-sm text-gray-500 mb-2">
-            You answered {result.correct_count} out of {result.total} correctly.
+            You answered {result.correct_count} out of {result.total_questions || result.total} correctly.
           </p>
           {result.recommended_pathway && (
             <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 my-4">
@@ -175,6 +181,11 @@ export default function AdmissionTestModal({ open, onComplete }) {
             <div className="space-y-4">
               <div className="h-6 bg-gray-100 rounded animate-pulse w-3/4" />
               <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm mb-4">No questions available. Please try again later.</p>
+              <button onClick={() => onComplete?.()} className="btn-secondary px-4 py-2 text-sm">Close</button>
             </div>
           ) : q ? (
             <AnimatePresence mode="wait">

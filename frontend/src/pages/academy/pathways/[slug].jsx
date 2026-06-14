@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
@@ -15,7 +15,6 @@ export default function PathwayDetailPage() {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
-  const [showSwitchModal, setShowSwitchModal] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -27,8 +26,8 @@ export default function PathwayDetailPage() {
         ]);
         if (pathRes.status === 'fulfilled') setPathway(pathRes.value.data.pathway);
         if (progRes.status === 'fulfilled') {
-          const enrollments = progRes.value.data.enrollments || [];
-          setProgress(enrollments.find((e) => e.pathway_slug === slug) || null);
+          const progressList = progRes.value.data.progress || [];
+          setProgress(progressList.find((e) => e.pathway?.slug === slug) || null);
         }
       } catch {}
       finally { setLoading(false); }
@@ -42,18 +41,13 @@ export default function PathwayDetailPage() {
       await academyAPI.enrollPathway(slug);
       toast.success('Enrolled successfully!');
       const progRes = await academyAPI.getProgress();
-      const enrollments = progRes.data.enrollments || [];
-      setProgress(enrollments.find((e) => e.pathway_slug === slug) || null);
+      const progressList = progRes.data.progress || [];
+      setProgress(progressList.find((e) => e.pathway?.slug === slug) || null);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Enrollment failed');
     } finally {
       setEnrolling(false);
     }
-  };
-
-  const handleSwitch = () => {
-    setShowSwitchModal(false);
-    handleEnroll();
   };
 
   if (loading) {
@@ -87,6 +81,11 @@ export default function PathwayDetailPage() {
       <Head><title>{pathway.title} — QS Academy</title></Head>
       <Layout title={pathway.title}>
         <div className="max-w-4xl space-y-6">
+          {/* Back button */}
+          <Link href="/academy/pathways" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
+            <span>←</span> All Pathways
+          </Link>
+
           {/* Header */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-primary-800 to-primary-700 rounded-2xl p-8 text-white">
             <div className="flex items-start justify-between flex-wrap gap-4">
@@ -97,10 +96,7 @@ export default function PathwayDetailPage() {
               </div>
               {!progress ? (
                 <button
-                  onClick={() => {
-                    if (enrollments?.length > 0) setShowSwitchModal(true);
-                    else handleEnroll();
-                  }}
+                  onClick={handleEnroll}
                   disabled={enrolling}
                   className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
                 >
@@ -177,29 +173,6 @@ export default function PathwayDetailPage() {
             })}
           </div>
         </div>
-
-        {/* Switch pathway modal */}
-        <AnimatePresence>
-          {showSwitchModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
-                <div className="text-3xl mb-3">⚠️</div>
-                <h3 className="font-display text-lg font-bold text-primary-800 mb-2">Switch Pathway?</h3>
-                <p className="text-sm text-gray-500 mb-6">
-                  You are already enrolled in another pathway. Switching will start fresh on this new track. Your previous progress will be saved.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <button onClick={() => setShowSwitchModal(false)} className="btn-secondary px-5 py-2 text-sm">
-                    Cancel
-                  </button>
-                  <button onClick={handleSwitch} className="btn-primary px-5 py-2 text-sm">
-                    Yes, Switch
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </Layout>
     </ProtectedRoute>
   );

@@ -499,20 +499,23 @@ export default function SubscriptionPage() {
                     <p className="text-xs text-gray-500">AI-powered learning, knowledge arena</p>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
+                <div className="space-y-2 mb-3">
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
+                    <input type="radio" name="academy_billing" value="weekly" defaultChecked className="accent-purple-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Weekly</span><span className="text-sm font-bold text-primary-700 ml-2">₦2,000/wk</span></div>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
+                    <input type="radio" name="academy_billing" value="monthly" className="accent-purple-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Monthly</span><span className="text-sm font-bold text-primary-700 ml-2">₦7,600/mo</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 5%</span></div>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
+                    <input type="radio" name="academy_billing" value="annual" className="accent-purple-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Annual</span><span className="text-sm font-bold text-primary-700 ml-2">₦93,600/yr</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 10%</span></div>
+                  </label>
+                </div>
                 <p className="text-sm text-gray-500 mb-3">AI-powered learning pathways, knowledge arena & resource library.</p>
-                <button
-                  onClick={() => setAddOnModal('academy')}
-                  className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Subscribe
-                </button>
-                <button
-                  onClick={() => setAddOnModal('academy')}
-                  className="w-full text-xs text-purple-600 hover:text-purple-700 font-medium py-1.5 mt-1.5 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
-                >
-                  Pay via Bank Transfer
-                </button>
+                <button onClick={() => setAddOnModal('academy')} className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">Subscribe</button>
+                <button onClick={() => setAddOnModal('academy')} className="w-full text-xs text-purple-600 hover:text-purple-700 font-medium py-1.5 mt-1.5 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">Pay via Bank Transfer</button>
               </div>
 
               <div className="bg-white rounded-xl border border-emerald-200 p-5 hover:shadow-md transition-shadow">
@@ -525,20 +528,23 @@ export default function SubscriptionPage() {
                     <p className="text-xs text-gray-500">Professional exam prep, past questions</p>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
+                <div className="space-y-2 mb-3">
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
+                    <input type="radio" name="exam_billing" value="weekly" defaultChecked className="accent-emerald-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Weekly</span><span className="text-sm font-bold text-primary-700 ml-2">₦2,000/wk</span></div>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
+                    <input type="radio" name="exam_billing" value="monthly" className="accent-emerald-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Monthly</span><span className="text-sm font-bold text-primary-700 ml-2">₦7,600/mo</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 5%</span></div>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
+                    <input type="radio" name="exam_billing" value="annual" className="accent-emerald-600" />
+                    <div className="flex-1"><span className="text-sm font-medium text-gray-900">Annual</span><span className="text-sm font-bold text-primary-700 ml-2">₦93,600/yr</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 10%</span></div>
+                  </label>
+                </div>
                 <p className="text-sm text-gray-500 mb-3">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
-                <button
-                  onClick={() => setAddOnModal('exam_prep')}
-                  className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                  Subscribe
-                </button>
-                <button
-                  onClick={() => setAddOnModal('exam_prep')}
-                  className="w-full text-xs text-emerald-600 hover:text-emerald-700 font-medium py-1.5 mt-1.5 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors"
-                >
-                  Pay via Bank Transfer
-                </button>
+                <button onClick={() => setAddOnModal('exam_prep')} className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors">Subscribe</button>
+                <button onClick={() => setAddOnModal('exam_prep')} className="w-full text-xs text-emerald-600 hover:text-emerald-700 font-medium py-1.5 mt-1.5 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors">Pay via Bank Transfer</button>
               </div>
             </div>
           </div>

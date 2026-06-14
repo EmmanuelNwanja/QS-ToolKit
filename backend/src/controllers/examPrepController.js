@@ -10,6 +10,20 @@ const paystackHeaders = () => ({
 });
 
 const EXAM_PREP_WEEKLY_AMOUNT = 200000; // ₦2,000 in kobo
+const EXAM_PREP_MONTHLY_AMOUNT = 760000; // ₦7,600 in kobo (5% discount)
+const EXAM_PREP_ANNUAL_AMOUNT = 9360000; // ₦93,600 in kobo (10% discount)
+
+const EXAM_PREP_BILLING_AMOUNTS = {
+  weekly: EXAM_PREP_WEEKLY_AMOUNT,
+  monthly: EXAM_PREP_MONTHLY_AMOUNT,
+  annual: EXAM_PREP_ANNUAL_AMOUNT,
+};
+
+const EXAM_PREP_BILLING_NGN = {
+  weekly: 2000,
+  monthly: 7600,
+  annual: 93600,
+};
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -76,7 +90,9 @@ exports.getStatus = async (req, res, next) => {
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email, payment_method } = req.body;
+    const { email, payment_method, billing_cycle = 'weekly' } = req.body;
+    const cycleAmount = EXAM_PREP_BILLING_AMOUNTS[billing_cycle] || EXAM_PREP_WEEKLY_AMOUNT;
+    const cycleAmountNgn = EXAM_PREP_BILLING_NGN[billing_cycle] || 2000;
 
     const hasAccess = await checkExamPrepAccess(req.user.id);
     if (hasAccess) {
@@ -92,8 +108,8 @@ exports.subscribe = async (req, res, next) => {
         .insert({
           user_id: req.user.id,
           plan_name: 'exam_prep_weekly',
-          billing_interval: 'weekly',
-          amount_ngn: 2000,
+          billing_interval: billing_cycle,
+          amount_ngn: cycleAmountNgn,
           reference_note: referenceNote || null,
           status: 'pending',
           submitted_at: new Date().toISOString(),
@@ -108,6 +124,7 @@ exports.subscribe = async (req, res, next) => {
         status: submission.status,
         planName: submission.plan_name,
         amountNgn: submission.amount_ngn,
+        billing_cycle,
         submittedAt: submission.submitted_at,
         message: 'Your payment will be verified within 24 hours.',
       }));
@@ -120,14 +137,14 @@ exports.subscribe = async (req, res, next) => {
     try {
       paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
         email,
-        amount: EXAM_PREP_WEEKLY_AMOUNT,
+        amount: cycleAmount,
         currency: 'NGN',
         metadata: {
           user_id: req.user.id,
           product_type: 'exam_prep_subscription',
-          billing_cycle: 'weekly',
+          billing_cycle,
           custom_fields: [
-            { display_name: 'Product', variable_name: 'product', value: 'QS Exam Prep Weekly' }
+            { display_name: 'Product', variable_name: 'product', value: `QS Exam Prep ${billing_cycle}` }
           ]
         },
         callback_url: `${process.env.FRONTEND_URL}/exam-prep`
@@ -140,8 +157,8 @@ exports.subscribe = async (req, res, next) => {
     return res.json(success('Payment initiated', {
       authorization_url: paystackRes.data.data.authorization_url,
       reference: paystackRes.data.data.reference,
-      amount: 2000,
-      billing_cycle: 'weekly'
+      amount: cycleAmountNgn,
+      billing_cycle
     }));
   } catch (err) { next(err); }
 };

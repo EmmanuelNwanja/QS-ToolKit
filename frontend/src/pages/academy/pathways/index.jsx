@@ -8,22 +8,22 @@ import { academyAPI } from '../../../services/api';
 
 const PATHWAYS = [
   { slug: 'technical-qs-practice', title: 'Technical QS Practice', focus: 'Consultancy', icon: '📐', levels: 5, color: 'border-l-blue-500' },
-  { slug: 'construction-commercial-management', title: 'Construction Commercial Management', focus: 'Commercial', icon: '💰', levels: 5, color: 'border-l-emerald-500' },
-  { slug: 'construction-project-management', title: 'Construction Project Management', focus: 'Project Delivery', icon: '🏗️', levels: 5, color: 'border-l-purple-500' },
-  { slug: 'real-estate-property-advisory', title: 'Real Estate & Property Advisory', focus: 'Property', icon: '🏠', levels: 5, color: 'border-l-gold-500' },
-  { slug: 'construction-dispute-resolution', title: 'Construction Dispute Resolution', focus: 'Disputes', icon: '⚖️', levels: 5, color: 'border-l-red-400' },
-  { slug: 'qs-technology-digital-construction', title: 'QS Technology & Digital Construction', focus: 'Technology', icon: '💻', levels: 5, color: 'border-l-cyan-500' },
-  { slug: 'academic-research-career', title: 'Academic & Research Career', focus: 'Academia', icon: '🎓', levels: 5, color: 'border-l-indigo-400' },
+  { slug: 'commercial-management', title: 'Construction Commercial Management', focus: 'Commercial', icon: '💰', levels: 5, color: 'border-l-emerald-500' },
+  { slug: 'project-management', title: 'Construction Project Management', focus: 'Project Delivery', icon: '🏗️', levels: 5, color: 'border-l-purple-500' },
+  { slug: 'real-estate-advisory', title: 'Real Estate & Property Advisory', focus: 'Property', icon: '🏠', levels: 5, color: 'border-l-gold-500' },
+  { slug: 'dispute-resolution', title: 'Construction Dispute Resolution', focus: 'Disputes', icon: '⚖️', levels: 5, color: 'border-l-red-400' },
+  { slug: 'digital-construction', title: 'QS Technology & Digital Construction', focus: 'Technology', icon: '💻', levels: 5, color: 'border-l-cyan-500' },
+  { slug: 'academic-research', title: 'Academic & Research Career', focus: 'Academia', icon: '🎓', levels: 5, color: 'border-l-indigo-400' },
 ];
 
 const DESCRIPTIONS = {
   'technical-qs-practice': 'Master the core skills of quantity surveying consultancy — from measurement to cost planning and contract administration.',
-  'construction-commercial-management': 'Learn to manage commercial aspects of construction projects including procurement, contracts, and financial control.',
-  'construction-project-management': 'Develop expertise in planning, executing, and delivering construction projects on time and within budget.',
-  'real-estate-property-advisory': 'Build skills in property valuation, real estate advisory, and investment analysis for the Nigerian market.',
-  'construction-dispute-resolution': 'Specialise in construction claims, arbitration, mediation, and dispute avoidance strategies.',
-  'qs-technology-digital-construction': 'Leverage BIM, AI, and digital tools to transform traditional quantity surveying practices.',
-  'academic-research-career': 'Pursue academic excellence in QS research, teaching, and contribution to construction knowledge.',
+  'commercial-management': 'Learn to manage commercial aspects of construction projects including procurement, contracts, and financial control.',
+  'project-management': 'Develop expertise in planning, executing, and delivering construction projects on time and within budget.',
+  'real-estate-advisory': 'Build skills in property valuation, real estate advisory, and investment analysis for the Nigerian market.',
+  'dispute-resolution': 'Specialise in construction claims, arbitration, mediation, and dispute avoidance strategies.',
+  'digital-construction': 'Leverage BIM, AI, and digital tools to transform traditional quantity surveying practices.',
+  'academic-research': 'Pursue academic excellence in QS research, teaching, and contribution to construction knowledge.',
 };
 
 const fadeUp = {
@@ -39,14 +39,14 @@ export default function PathwaysPage() {
     async function load() {
       try {
         const res = await academyAPI.getProgress();
-        setEnrollments(res.data.enrollments || []);
+        setEnrollments(res.data.progress || []);
       } catch {}
       finally { setLoading(false); }
     }
     load();
   }, []);
 
-  const getEnrollment = (slug) => enrollments.find((e) => e.pathway_slug === slug);
+  const getEnrollment = (slug) => enrollments.find((e) => e.pathway?.slug === slug);
 
   return (
     <ProtectedRoute>
