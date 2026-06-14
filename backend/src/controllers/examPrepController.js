@@ -339,6 +339,15 @@ exports.submitExam = async (req, res, next) => {
       return res.status(404).json(error('No in-progress attempt found for this exam'));
     }
 
+    // Get exam definition for passing_score
+    const { data: examDef } = await supabase
+      .from('exam_definitions')
+      .select('passing_score')
+      .eq('id', id)
+      .single();
+
+    const passingScore = examDef?.passing_score || 50;
+
     // Get questions
     const { data: questions } = await supabase
       .from('exam_questions')
@@ -389,19 +398,21 @@ exports.submitExam = async (req, res, next) => {
     }
 
     const percentage = totalMarks > 0 ? Math.round((earnedMarks / totalMarks) * 100) : 0;
+    const passed = percentage >= passingScore;
 
     // Calculate time spent
     const startTime = new Date(attempt.started_at);
     const endTime = new Date();
     const timeSpentSeconds = Math.round((endTime - startTime) / 1000);
 
-    // Update attempt
+    // Update attempt — write to both score and percentage for backward compatibility
     const { error: updateErr } = await supabase
       .from('exam_attempts')
       .update({
         answers,
         earned_marks: earnedMarks,
         total_marks: totalMarks,
+        score: percentage,
         percentage,
         correct_count: correctCount,
         total_questions: answers.length,
@@ -416,12 +427,15 @@ exports.submitExam = async (req, res, next) => {
 
     return res.json(success('Exam submitted', {
       attempt_id: attempt.id,
+      score: percentage,
       percentage,
       earned_marks: earnedMarks,
       total_marks: totalMarks,
       correct_count: correctCount,
       total_questions: answers.length,
       time_spent_seconds: timeSpentSeconds,
+      passed,
+      passing_score: passingScore,
       is_trial: attempt.is_trial,
       detailed_results: detailedResults
     }));
@@ -436,7 +450,7 @@ exports.getAttempts = async (req, res, next) => {
 
     let query = supabase
       .from('exam_attempts')
-      .select('id, exam_id, percentage, earned_marks, total_marks, correct_count, total_questions, is_trial, status, started_at, submitted_at, exam:exam_definitions(exam_name, category)', { count: 'exact' })
+      .select('id, exam_id, score, percentage, earned_marks, total_marks, correct_count, total_questions, is_trial, status, started_at, submitted_at, exam:exam_definitions(exam_name, category)', { count: 'exact' })
       .eq('user_id', req.user.id)
       .neq('status', 'in_progress');
 
@@ -483,7 +497,28 @@ exports.getUniversities = async (req, res, next) => {
       .order('name');
 
     if (err) throw err;
-    return res.json(success('Universities', { universities: universities || [] }));
+
+    // Count courses per university
+    const uniIds = (universities || []).map(u => u.id);
+    let courseCounts = {};
+    if (uniIds.length > 0) {
+      const { data: courses } = await supabase
+        .from('exam_courses')
+        .select('university_id')
+        .eq('is_active', true)
+        .in('university_id', uniIds);
+
+      (courses || []).forEach(c => {
+        courseCounts[c.university_id] = (courseCounts[c.university_id] || 0) + 1;
+      });
+    }
+
+    const enriched = (universities || []).map(u => ({
+      ...u,
+      course_count: courseCounts[u.id] || 0
+    }));
+
+    return res.json(success('Universities', { universities: enriched }));
   } catch (err) { next(err); }
 };
 

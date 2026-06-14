@@ -24,16 +24,16 @@ router.get('/exams', [
   validate
 ], ctrl.getExams);
 router.get('/exams/:id/questions', [
-  param('id').isUUID().withMessage('Valid exam ID required'),
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid exam ID required'),
   query('question_count').optional().isInt({ min: 1, max: 200 }).withMessage('question_count must be 1-200'),
   validate
 ], ctrl.getExamQuestions);
 router.post('/exams/:id/start', [
-  param('id').isUUID().withMessage('Valid exam ID required'),
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid exam ID required'),
   validate
 ], ctrl.startExam);
 router.post('/exams/:id/submit', [
-  param('id').isUUID().withMessage('Valid exam ID required'),
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid exam ID required'),
   body('answers').isArray().withMessage('answers must be an array'),
   validate
 ], ctrl.submitExam);
@@ -41,14 +41,14 @@ router.post('/exams/:id/submit', [
 // ── Attempts ───────────────────────────────────────────────────
 router.get('/attempts', ctrl.getAttempts);
 router.get('/attempts/:id', [
-  param('id').isUUID().withMessage('Valid attempt ID required'),
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid attempt ID required'),
   validate
 ], ctrl.getAttempt);
 
 // ── Universities & Past Questions ──────────────────────────────
 router.get('/universities', ctrl.getUniversities);
 router.get('/universities/:id/courses', [
-  param('id').isUUID().withMessage('Valid university ID required'),
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid university ID required'),
   validate
 ], ctrl.getUniversityCourses);
 router.get('/past-questions', [

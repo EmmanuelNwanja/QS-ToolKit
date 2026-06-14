@@ -228,4 +228,19 @@ router.get(
   adminController.getAnalytics
 );
 
+// ── ACADEMY & EXAM PREP STATS ──────────────────────────────────
+router.get(
+  '/academy/stats',
+  adminAuth,
+  requirePermission('view_analytics'),
+  adminController.getAcademyStats
+);
+
+router.get(
+  '/exam-prep/stats',
+  adminAuth,
+  requirePermission('view_analytics'),
+  adminController.getExamPrepStats
+);
+
 module.exports = router;

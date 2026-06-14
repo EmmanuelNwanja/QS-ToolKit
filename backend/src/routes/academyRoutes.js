@@ -46,6 +46,11 @@ router.post('/pathways/:slug/enroll', [
 ], ctrl.enrollPathway);
 
 // ── Resources ──────────────────────────────────────────────────
+router.post('/modules/complete', [
+  body('pathway_slug').trim().notEmpty().withMessage('pathway_slug is required'),
+  body('module_id').trim().notEmpty().withMessage('module_id is required'),
+  validate
+], ctrl.completeModule);
 router.get('/resources', [
   query('pathway').optional().isString(),
   query('category').optional().isString(),

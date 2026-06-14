@@ -1263,6 +1263,236 @@ exports.getAnalytics = async (req, res, next) => {
   }
 };
 
+// ── ACADEMY & EXAM PREP ADMIN STATS ─────────────────────────
+
+exports.getAcademyStats = async (req, res, next) => {
+  try {
+    const nowIso = new Date().toISOString();
+
+    // Subscriber counts
+    const { count: totalSubscribers } = await supabase
+      .from('academy_subscriptions')
+      .select('id', { count: 'exact', head: true });
+
+    const { count: activeSubscribers } = await supabase
+      .from('academy_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .gt('expires_at', nowIso);
+
+    const { count: expiredSubscribers } = await supabase
+      .from('academy_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'expired');
+
+    // Revenue
+    const { data: subs } = await supabase
+      .from('academy_subscriptions')
+      .select('amount_paid, billing_cycle, created_at');
+
+    const totalRevenue = (subs || []).reduce((sum, s) => sum + (Number(s.amount_paid) || 0), 0);
+    const weeklyRevenue = (subs || []).filter(s => s.billing_cycle === 'weekly').reduce((sum, s) => sum + (Number(s.amount_paid) || 0), 0);
+    const monthlyRevenue = (subs || []).filter(s => s.billing_cycle === 'monthly').reduce((sum, s) => sum + (Number(s.amount_paid) || 0), 0);
+
+    // Admission test stats
+    const { data: admissionTests } = await supabase
+      .from('academy_admission_tests')
+      .select('score, passed, status')
+      .eq('status', 'completed');
+
+    const admissionTotal = (admissionTests || []).length;
+    const admissionAvgScore = admissionTotal > 0
+      ? Math.round((admissionTests || []).reduce((sum, t) => sum + (t.score || 0), 0) / admissionTotal)
+      : null;
+    const admissionPassCount = (admissionTests || []).filter(t => t.passed).length;
+    const admissionCompletionRate = admissionTotal > 0
+      ? `${Math.round((admissionPassCount / admissionTotal) * 100)}%`
+      : null;
+
+    // Popular pathways
+    const { data: enrollments } = await supabase
+      .from('academy_enrollments')
+      .select('pathway_id, pathway:academy_pathways(title)');
+
+    const pathwayCounts = {};
+    (enrollments || []).forEach(e => {
+      const name = e.pathway?.title || 'Unknown';
+      pathwayCounts[name] = (pathwayCounts[name] || 0) + 1;
+    });
+    const popularPathways = Object.entries(pathwayCounts)
+      .map(([name, count]) => ({ name, enrollments: count }))
+      .sort((a, b) => b.enrollments - a.enrollments)
+      .slice(0, 5);
+
+    // Arena stats
+    const { count: arenaContests } = await supabase
+      .from('academy_contests')
+      .select('id', { count: 'exact', head: true });
+
+    const { count: arenaParticipants } = await supabase
+      .from('academy_contest_participants')
+      .select('id', { count: 'exact', head: true });
+
+    const { data: tokens } = await supabase
+      .from('academy_tokens')
+      .select('amount');
+    const arenaTokens = (tokens || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    // Resource stats
+    const { count: resourceTotal } = await supabase
+      .from('academy_resources')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_published', true);
+
+    const { data: resources } = await supabase
+      .from('academy_resources')
+      .select('category')
+      .eq('is_published', true);
+
+    const categoryCounts = {};
+    (resources || []).forEach(r => {
+      const cat = r.category || 'uncategorized';
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+    const resourceByCategory = Object.entries(categoryCounts)
+      .map(([category, count]) => ({ category, count }));
+
+    return res.json(success('Academy stats', {
+      total_subscribers: totalSubscribers || 0,
+      active_subscribers: activeSubscribers || 0,
+      expired_subscribers: expiredSubscribers || 0,
+      total_revenue: totalRevenue,
+      weekly_revenue: weeklyRevenue,
+      monthly_revenue: monthlyRevenue,
+      admission_total: admissionTotal,
+      admission_avg_score: admissionAvgScore,
+      admission_completion_rate: admissionCompletionRate,
+      popular_pathways: popularPathways,
+      arena_contests: arenaContests || 0,
+      arena_participants: arenaParticipants || 0,
+      arena_tokens: arenaTokens,
+      resource_total: resourceTotal || 0,
+      resource_by_category: resourceByCategory
+    }));
+  } catch (err) { next(err); }
+};
+
+exports.getExamPrepStats = async (req, res, next) => {
+  try {
+    const nowIso = new Date().toISOString();
+
+    // Subscriber counts
+    const { count: totalSubscribers } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('id', { count: 'exact', head: true });
+
+    const { count: activeSubscribers } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .gt('expires_at', nowIso);
+
+    const { count: expiredSubscribers } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'expired');
+
+    // Revenue
+    const { data: subs } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('amount_paid');
+    const totalRevenue = (subs || []).reduce((sum, s) => sum + (Number(s.amount_paid) || 0), 0);
+
+    // Attempt stats
+    const { data: attempts } = await supabase
+      .from('exam_attempts')
+      .select('percentage, exam_id, exam:exam_definitions(exam_name, category)')
+      .eq('status', 'completed');
+
+    const totalAttempts = (attempts || []).length;
+    const avgScore = totalAttempts > 0
+      ? Math.round((attempts || []).reduce((sum, a) => sum + (a.percentage || 0), 0) / totalAttempts)
+      : null;
+
+    // Popular exams
+    const examCounts = {};
+    (attempts || []).forEach(a => {
+      const name = a.exam?.exam_name || 'Unknown';
+      if (!examCounts[name]) examCounts[name] = { name, category: a.exam?.category, attempts: 0, passed: 0 };
+      examCounts[name].attempts++;
+      if ((a.percentage || 0) >= 50) examCounts[name].passed++;
+    });
+    const popularExams = Object.values(examCounts)
+      .map(e => ({ ...e, pass_rate: e.attempts > 0 ? `${Math.round((e.passed / e.attempts) * 100)}%` : '—' }))
+      .sort((a, b) => b.attempts - a.attempts)
+      .slice(0, 10);
+
+    // Pass rates by type
+    const categoryStats = {};
+    (attempts || []).forEach(a => {
+      const cat = a.exam?.category || 'unknown';
+      if (!categoryStats[cat]) categoryStats[cat] = { type: cat, total: 0, passed: 0 };
+      categoryStats[cat].total++;
+      if ((a.percentage || 0) >= 50) categoryStats[cat].passed++;
+    });
+    const passRatesByType = Object.values(categoryStats).map(c => ({
+      type: c.type,
+      pass_rate: c.total > 0 ? `${Math.round((c.passed / c.total) * 100)}%` : '—'
+    }));
+
+    // Question bank
+    const { count: questionBankTotal } = await supabase
+      .from('exam_questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true);
+
+    const { data: questions } = await supabase
+      .from('exam_questions')
+      .select('exam_category')
+      .eq('is_active', true);
+
+    const qCatCounts = {};
+    (questions || []).forEach(q => {
+      const cat = q.exam_category || 'uncategorized';
+      qCatCounts[cat] = (qCatCounts[cat] || 0) + 1;
+    });
+    const questionBankByCategory = Object.entries(qCatCounts)
+      .map(([category, count]) => ({ category, count }));
+
+    // University stats
+    const { data: uniAttempts } = await supabase
+      .from('exam_attempts')
+      .select('percentage, exam:exam_definitions(university_id, university)')
+      .eq('status', 'completed');
+
+    const uniStats = {};
+    (uniAttempts || []).forEach(a => {
+      const name = a.exam?.university || 'Unknown';
+      if (!uniStats[name]) uniStats[name] = { name, students: new Set(), attempts: 0, totalScore: 0 };
+      uniStats[name].attempts++;
+      uniStats[name].totalScore += (a.percentage || 0);
+    });
+    const universityStats = Object.values(uniStats)
+      .map(u => ({ name: u.name, students: u.students.size, attempts: u.attempts, avg_score: u.attempts > 0 ? Math.round(u.totalScore / u.attempts) : null }))
+      .sort((a, b) => b.attempts - a.attempts)
+      .slice(0, 20);
+
+    return res.json(success('Exam prep stats', {
+      total_subscribers: totalSubscribers || 0,
+      active_subscribers: activeSubscribers || 0,
+      expired_subscribers: expiredSubscribers || 0,
+      total_revenue: totalRevenue,
+      total_attempts: totalAttempts,
+      avg_score: avgScore,
+      popular_exams: popularExams,
+      pass_rates_by_type: passRatesByType,
+      question_bank_total: questionBankTotal || 0,
+      question_bank_by_category: questionBankByCategory,
+      university_stats: universityStats
+    }));
+  } catch (err) { next(err); }
+};
+
 /**
  * Verify admin access
  */

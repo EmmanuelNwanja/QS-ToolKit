@@ -287,6 +287,7 @@ export const academyAPI = {
   getPathway:       (slug)                    => api.get(`/academy/pathways/${slug}`),
   enrollPathway:    (slug)                    => api.post(`/academy/pathways/${slug}/enroll`),
   getProgress:      ()                        => api.get('/academy/pathways/progress'),
+  completeModule:   (data)                    => api.post('/academy/modules/complete', data),
   getResources:     (params)                  => api.get('/academy/resources', { params }),
   getResource:      (id)                      => api.get(`/academy/resources/${id}`),
   createContest:    (data)                    => api.post('/academy/contests', data),

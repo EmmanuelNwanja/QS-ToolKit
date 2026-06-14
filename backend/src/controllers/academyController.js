@@ -531,6 +531,90 @@ exports.getPathwayProgress = async (req, res, next) => {
 
 // ─── Resources ─────────────────────────────────────────────────
 
+exports.completeModule = async (req, res, next) => {
+  try {
+    const { pathway_slug, module_id } = req.body;
+
+    if (!pathway_slug || !module_id) {
+      return res.status(400).json(error('pathway_slug and module_id are required'));
+    }
+
+    // Look up pathway by slug
+    const { data: pathway } = await supabase
+      .from('academy_pathways')
+      .select('id, module_count')
+      .eq('slug', pathway_slug)
+      .eq('is_published', true)
+      .single();
+
+    if (!pathway) return res.status(404).json(error('Pathway not found'));
+
+    // Verify enrollment
+    const { data: enrollment } = await supabase
+      .from('academy_enrollments')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('pathway_id', pathway.id)
+      .maybeSingle();
+
+    if (!enrollment) {
+      return res.status(403).json(error('You are not enrolled in this pathway'));
+    }
+
+    // Check if already completed
+    const { data: existing } = await supabase
+      .from('academy_module_progress')
+      .select('id, completed')
+      .eq('user_id', req.user.id)
+      .eq('pathway_id', pathway.id)
+      .eq('module_id', module_id)
+      .maybeSingle();
+
+    if (existing?.completed) {
+      return res.json(success('Module already completed', { already_completed: true }));
+    }
+
+    // Upsert module progress
+    if (existing) {
+      const { error: updateErr } = await supabase
+        .from('academy_module_progress')
+        .update({ completed: true, completed_at: new Date().toISOString() })
+        .eq('id', existing.id);
+      if (updateErr) throw updateErr;
+    } else {
+      const { error: insertErr } = await supabase
+        .from('academy_module_progress')
+        .insert({
+          user_id: req.user.id,
+          pathway_id: pathway.id,
+          module_id,
+          completed: true,
+          completed_at: new Date().toISOString()
+        });
+      if (insertErr) throw insertErr;
+    }
+
+    // Get updated progress count
+    const { data: allProgress } = await supabase
+      .from('academy_module_progress')
+      .select('module_id, completed')
+      .eq('user_id', req.user.id)
+      .eq('pathway_id', pathway.id)
+      .eq('completed', true);
+
+    const completedCount = (allProgress || []).length;
+    const totalModules = pathway.module_count || 0;
+    const progressPercent = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
+
+    return res.json(success('Module completed', {
+      module_id,
+      completed_modules: completedCount,
+      total_modules: totalModules,
+      progress_percent: progressPercent
+    }));
+  } catch (err) { next(err); }
+};
+
 exports.getResources = async (req, res, next) => {
   try {
     const { pathway, category, level, type, page = 1, limit = 20 } = req.query;
