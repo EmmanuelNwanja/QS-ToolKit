@@ -110,7 +110,13 @@ export default function ExamDetailPage() {
     try {
       const res = await examAPI.startExam(slug);
       const examId = res.data.exam_id || res.data.id;
-      router.push(`/exam-prep/professional/${slug}?examId=${examId}&active=1`);
+      // If we got an exam_id from the API, use it for questions
+      if (examId) {
+        router.push(`/exam-prep/professional/${slug}?examId=${examId}&active=1`);
+      } else {
+        // Fallback: use slug as ID for questions
+        router.push(`/exam-prep/professional/${slug}?active=1`);
+      }
       setShowConfirm(false);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to start exam');

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
+const logger = require('../utils/logger');
 const paymentSettingsController = require('./paymentSettingsController');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
@@ -26,6 +27,28 @@ const EXAM_PREP_BILLING_NGN = {
 };
 
 // ─── Helpers ───────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function findExamByIdOrSlug(id) {
+  const isUuid = UUID_RE.test(id);
+  if (isUuid) {
+    const { data } = await supabase
+      .from('exam_definitions')
+      .select('*')
+      .eq('id', id)
+      .eq('is_published', true)
+      .single();
+    return data;
+  }
+  const { data } = await supabase
+    .from('exam_definitions')
+    .select('*')
+    .eq('slug', id)
+    .eq('is_published', true)
+    .single();
+  return data;
+}
 
 async function checkExamPrepAccess(userId) {
   const { data } = await supabase
@@ -201,18 +224,12 @@ exports.getExamQuestions = async (req, res, next) => {
     const { id } = req.params;
     const { question_count } = req.query;
 
-    const { data: exam } = await supabase
-      .from('exam_definitions')
-      .select('*')
-      .eq('id', id)
-      .eq('is_published', true)
-      .single();
-
+    const exam = await findExamByIdOrSlug(id);
     if (!exam) return res.status(404).json(error('Exam not found'));
 
     // Check access or trial
     const hasAccess = await checkExamPrepAccess(req.user.id);
-    const hasTrial = await checkFreeTrialUsed(req.user.id, id);
+    const hasTrial = await checkFreeTrialUsed(req.user.id, exam.id);
 
     if (!hasAccess && hasTrial) {
       return res.status(403).json(error('Subscription required. Free trial already used for this exam.', { code: 'SUBSCRIPTION_REQUIRED' }));
@@ -306,18 +323,12 @@ exports.startExam = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { data: exam } = await supabase
-      .from('exam_definitions')
-      .select('*')
-      .eq('id', id)
-      .eq('is_published', true)
-      .single();
-
+    const exam = await findExamByIdOrSlug(id);
     if (!exam) return res.status(404).json(error('Exam not found'));
 
     // Check access or trial eligibility
     const hasAccess = await checkExamPrepAccess(req.user.id);
-    const hasTrial = await checkFreeTrialUsed(req.user.id, id);
+    const hasTrial = await checkFreeTrialUsed(req.user.id, exam.id);
 
     let isTrial = false;
     if (!hasAccess && !hasTrial) {
@@ -325,7 +336,7 @@ exports.startExam = async (req, res, next) => {
       // Record trial usage
       await supabase.from('exam_trials').insert({
         user_id: req.user.id,
-        exam_id: id,
+        exam_id: exam.id,
         used_at: new Date().toISOString()
       });
     } else if (!hasAccess && hasTrial) {
@@ -668,11 +679,16 @@ exports.getUniversityCourses = async (req, res, next) => {
         .in('course_code', courseCodes);
 
       const normalizedName = university.name.toLowerCase().replace(/,/g, '').trim();
+      const shortName = (university.short_name || '').toLowerCase().trim();
 
       (questionsByCode || []).forEach(q => {
         const qUni = (q.university || '').toLowerCase().replace(/,/g, '').trim();
-        // Match if normalized names are equal, or one contains the other
-        if (qUni === normalizedName || normalizedName.includes(qUni) || qUni.includes(normalizedName)) {
+        // Match if normalized names are equal, or one contains the other, or short name matches
+        const nameMatch = qUni === normalizedName || 
+                         normalizedName.includes(qUni) || 
+                         qUni.includes(normalizedName) ||
+                         (shortName && shortName.length >= 3 && (qUni.includes(shortName) || shortName.includes(qUni)));
+        if (nameMatch) {
           const code = q.course_code;
           if (code) {
             // Find the course ID for this code

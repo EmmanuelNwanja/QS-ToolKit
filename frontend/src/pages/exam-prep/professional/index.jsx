@@ -97,22 +97,32 @@ function ExamCard({ exam, index, hasSub, hasFreeTrial }) {
 export default function ProfessionalExamsPage() {
   const [activeTab, setActiveTab] = useState('nigerian');
   const [status, setStatus] = useState(null);
+  const [dbExams, setDbExams] = useState([]);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await examAPI.getStatus();
-        setStatus(res.data);
+        const [statusRes, examsRes] = await Promise.allSettled([
+          examAPI.getStatus(),
+          examAPI.getExams({ category: activeTab === 'nigerian' ? 'nigerian_professional' : 'international' })
+        ]);
+        if (statusRes.status === 'fulfilled') setStatus(statusRes.value.data);
+        if (examsRes.status === 'fulfilled') setDbExams(examsRes.value.data?.exams || []);
       } catch {
         toast.error('Failed to load exam status');
       }
     }
     load();
-  }, []);
+  }, [activeTab]);
 
   const hasSub = status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
-  const exams = activeTab === 'nigerian' ? NIGERIAN_EXAMS : INTERNATIONAL_EXAMS;
+  // Merge DB exams with hardcoded data, preferring DB data with slugs
+  const hardcodedExams = activeTab === 'nigerian' ? NIGERIAN_EXAMS : INTERNATIONAL_EXAMS;
+  const exams = hardcodedExams.map(e => {
+    const dbExam = dbExams.find(d => d.slug === e.slug);
+    return dbExam ? { ...e, id: dbExam.id, total_questions: dbExam.total_questions } : e;
+  });
 
   return (
     <ProtectedRoute>

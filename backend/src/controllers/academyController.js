@@ -938,50 +938,91 @@ exports.createContest = async (req, res, next) => {
       return res.status(400).json(error('Duel contests require an opponent (username or email)'));
     }
 
-    const { data: contest, error: insertErr } = await supabase
-      .from('academy_contests')
-      .insert({
-        creator_id: req.user.id,
-        title: contestTitle,
-        description: description || '',
-        topic: topic || contestTitle,
-        contest_type,
-        question_count: question_count || 10,
-        time_limit_seconds: time_limit_seconds || 600,
-        difficulty: difficulty || 'medium',
-        scheduled_at: scheduled_at || null,
-        duration_minutes,
-        max_participants: max_participants || null,
-        status: scheduled_at ? 'scheduled' : 'pending',
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    const {
+      title, description, topic, contest_type = 'group',
+      question_count = 10, time_limit = 10, difficulty = 'medium',
+      opponent, scheduled_at, duration_minutes = 30, max_participants
+    } = req.body;
 
-    if (insertErr) throw insertErr;
+    // At least title or topic must be provided
+    const contestTitle = (title || topic || '').trim();
+    if (!contestTitle) {
+      return res.status(400).json(error('Either title or topic is required'));
+    }
+    
+    const time_limit_seconds = (time_limit || 10) * 60;
 
-    // Handle duel opponent invitation
-    if (contest_type === 'duel' && opponent) {
-      const { data: opponentUser } = await supabase
+    // Scheduled contests require Pro+ plan
+    if (scheduled_at) {
+      const { data: user } = await supabase
         .from('users')
-        .select('id, name, email')
-        .or(`name.ilike.%${opponent}%,email.ilike.%${opponent}%`)
-        .neq('id', req.user.id)
-        .limit(1)
-        .maybeSingle();
+        .select('plan_id, subscription_plans(name)')
+        .eq('id', req.user.id)
+        .single();
 
-      if (opponentUser) {
-        // Create invitation record (using contest participants with pending status)
-        await supabase.from('academy_contest_participants').insert({
-          contest_id: contest.id,
-          user_id: opponentUser.id,
-          status: 'invited',
-          joined_at: new Date().toISOString()
-        });
+      const planName = user?.subscription_plans?.name || 'free';
+      if (!['pro', 'enterprise'].includes(planName)) {
+        return res.status(403).json(error('Scheduled contests require a Pro or Enterprise plan', { code: 'PLAN_UPGRADE_REQUIRED' }));
       }
     }
 
-    return res.status(201).json(success('Contest created', { contest }));
+    // Duel contests require an opponent
+    if (contest_type === 'duel' && !opponent) {
+      return res.status(400).json(error('Duel contests require an opponent (username or email)'));
+    }
+
+    try {
+      const { data: contest, error: insertErr } = await supabase
+        .from('academy_contests')
+        .insert({
+          creator_id: req.user.id,
+          title: contestTitle,
+          description: description || '',
+          topic: topic || contestTitle,
+          contest_type,
+          question_count: parseInt(question_count) || 10,
+          time_limit_seconds: parseInt(time_limit_seconds) || 600,
+          difficulty: difficulty || 'medium',
+          scheduled_at: scheduled_at || null,
+          duration_minutes: parseInt(duration_minutes) || 30,
+          max_participants: max_participants ? parseInt(max_participants) : null,
+          status: scheduled_at ? 'scheduled' : 'pending',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (insertErr) {
+        logger.error('Database error during contest creation:', insertErr);
+        throw insertErr;
+      }
+
+      // Handle duel opponent invitation
+      if (contest_type === 'duel' && opponent) {
+        const { data: opponentUser } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .or(`name.ilike.%${opponent}%,email.ilike.%${opponent}%`)
+          .neq('id', req.user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (opponentUser) {
+          // Create invitation record (using contest participants with pending status)
+          await supabase.from('academy_contest_participants').insert({
+            contest_id: contest.id,
+            user_id: opponentUser.id,
+            status: 'invited',
+            joined_at: new Date().toISOString()
+          });
+        }
+      }
+
+      return res.status(201).json(success('Contest created', { contest }));
+    } catch (err) {
+      logger.error('Contest creation failed:', err);
+      next(err);
+    }
   } catch (err) { next(err); }
 };
 
