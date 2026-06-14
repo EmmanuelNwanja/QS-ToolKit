@@ -218,13 +218,57 @@ exports.getExamQuestions = async (req, res, next) => {
       return res.status(403).json(error('Subscription required. Free trial already used for this exam.', { code: 'SUBSCRIPTION_REQUIRED' }));
     }
 
-    // Fetch questions
-    let questionQuery = supabase
+    // Fetch questions — match by exam_id first, fallback to metadata
+    let { data: questions, error: err } = await supabase
       .from('exam_questions')
       .select('id, question_text, options, difficulty, topic, marks')
       .eq('exam_id', id);
 
-    const { data: questions, error: err } = await questionQuery;
+    // If no questions linked by exam_id, match by metadata (university, course, year)
+    if (!questions || questions.length === 0) {
+      // Get university name and course code from the exam definition
+      let uniName = null;
+      let courseCode = null;
+
+      if (exam.university_id) {
+        const { data: uni } = await supabase
+          .from('exam_universities')
+          .select('name')
+          .eq('id', exam.university_id)
+          .maybeSingle();
+        uniName = uni?.name;
+      }
+
+      if (exam.course_id) {
+        const { data: course } = await supabase
+          .from('exam_courses')
+          .select('code')
+          .eq('id', exam.course_id)
+          .maybeSingle();
+        courseCode = course?.code;
+      }
+
+      let metaQuery = supabase
+        .from('exam_questions')
+        .select('id, question_text, options, difficulty, topic, marks')
+        .eq('is_active', true);
+
+      if (uniName) {
+        // Fuzzy match: strip commas, case-insensitive
+        metaQuery = metaQuery.or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
+      }
+      if (courseCode) {
+        metaQuery = metaQuery.eq('course_code', courseCode);
+      }
+      if (exam.year) {
+        metaQuery = metaQuery.eq('year', exam.year);
+      }
+
+      const metaResult = await metaQuery;
+      questions = metaResult.data;
+      err = metaResult.error;
+    }
+
     if (err) throw err;
 
     if (!questions || questions.length === 0) {
