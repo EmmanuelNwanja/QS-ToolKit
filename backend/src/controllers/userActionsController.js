@@ -503,7 +503,7 @@ exports.grantAcademySubscription = async (req, res, next) => {
         expiresAt: expiresAt.toISOString(),
         reason,
       },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(
@@ -585,7 +585,7 @@ exports.extendAcademySubscription = async (req, res, next) => {
       action: 'admin_extended_academy',
       planTo: 'academy',
       details: { days, expiresAt: newExpiry.toISOString(), reason },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(
@@ -640,7 +640,7 @@ exports.revokeAcademySubscription = async (req, res, next) => {
       action: 'admin_revoked_academy',
       planFrom: 'academy',
       details: { reason },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(
@@ -710,7 +710,7 @@ exports.grantExamPrepSubscription = async (req, res, next) => {
       action: 'admin_granted_exam_prep',
       planTo: 'exam_prep',
       details: { days, expiresAt: expiresAt.toISOString(), reason },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(
@@ -790,7 +790,7 @@ exports.extendExamPrepSubscription = async (req, res, next) => {
       action: 'admin_extended_exam_prep',
       planTo: 'exam_prep',
       details: { days, expiresAt: newExpiry.toISOString(), reason },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(
@@ -845,7 +845,7 @@ exports.revokeExamPrepSubscription = async (req, res, next) => {
       action: 'admin_revoked_exam_prep',
       planFrom: 'exam_prep',
       details: { reason },
-      triggeredBy: req.adminUser.id,
+      triggeredBy: req.adminUser.user_id,
     });
 
     await logAdminActivity(

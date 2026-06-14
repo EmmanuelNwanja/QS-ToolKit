@@ -14,6 +14,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [curating, setCurating] = useState(false);
   const [result, setResult] = useState(null);
   const [drQ, setDrQ] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
@@ -21,6 +22,8 @@ export default function AdmissionTestModal({ open, onComplete }) {
 
   const fetchQuestions = useCallback(async () => {
     try {
+      setCurating(true);
+      setLoading(true);
       const res = await academyAPI.startAdmission();
       const data = res.data;
       // If already passed, pass result back immediately
@@ -29,7 +32,6 @@ export default function AdmissionTestModal({ open, onComplete }) {
         return;
       }
       setQuestions(data.questions || []);
-      // If resumed, show toast
       if (data.resumed) {
         toast('Resuming your admission test...', { icon: '📝' });
       }
@@ -37,6 +39,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
       const msg = err.response?.data?.message || 'Failed to load questions. Please try again.';
       toast.error(msg);
     } finally {
+      setCurating(false);
       setLoading(false);
     }
   }, [onComplete]);
@@ -53,8 +56,9 @@ export default function AdmissionTestModal({ open, onComplete }) {
     }
   }, [open, fetchQuestions]);
 
+  // Timer only starts after questions are loaded (not during curating)
   useEffect(() => {
-    if (!open || submitted || drQ) return;
+    if (!open || submitted || drQ || loading || curating || questions.length === 0) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -66,7 +70,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [open, submitted, drQ]);
+  }, [open, submitted, drQ, loading, curating, questions.length]);
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60);
@@ -146,6 +150,49 @@ export default function AdmissionTestModal({ open, onComplete }) {
     );
   }
 
+  // Curating state — show while AI generates questions
+  if (curating || (loading && questions.length === 0)) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center"
+        >
+          <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <motion.span
+              className="text-4xl"
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+            >
+              🧠
+            </motion.span>
+          </div>
+          <h2 className="font-display text-xl font-bold text-primary-800 mb-2">Curating Your Entry Test</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Dr. Q is personalizing your admission assessment based on your profile. This may take a moment...
+          </p>
+          <div className="flex justify-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-3 h-3 bg-primary-400 rounded-full"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.15 }}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => onComplete?.({ passed: false })}
+            className="mt-6 text-sm text-gray-400 hover:text-gray-600"
+          >
+            Cancel
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   const q = questions[current];
   const total = questions.length;
   const isRed = timeLeft <= RED_ZONE;
@@ -186,17 +233,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
 
         {/* Question */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {loading ? (
-            <div className="space-y-4">
-              <div className="h-6 bg-gray-100 rounded animate-pulse w-3/4" />
-              <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
-            </div>
-          ) : questions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 text-sm mb-4">No questions available. Please try again later.</p>
-              <button onClick={() => onComplete?.({ passed: false })} className="btn-secondary px-4 py-2 text-sm">Close</button>
-            </div>
-          ) : q ? (
+          {q ? (
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
@@ -226,7 +263,12 @@ export default function AdmissionTestModal({ open, onComplete }) {
                 </div>
               </motion.div>
             </AnimatePresence>
-          ) : null}
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm mb-4">No questions available. Please try again later.</p>
+              <button onClick={() => onComplete?.({ passed: false })} className="btn-secondary px-4 py-2 text-sm">Close</button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

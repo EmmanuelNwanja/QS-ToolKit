@@ -80,7 +80,7 @@ exports.verifyPayment = async (req, res, next) => {
 
     const result = await adminPaymentService.verifyPaymentSubmission(
       submissionId,
-      req.adminUser.id,
+      req.adminUser.user_id,
       adminNote
     );
 
@@ -121,7 +121,7 @@ exports.rejectPayment = async (req, res, next) => {
 
     const updated = await adminPaymentService.rejectPaymentSubmission(
       submissionId,
-      req.adminUser.id,
+      req.adminUser.user_id,
       reason
     );
 
