@@ -933,44 +933,6 @@ exports.createContest = async (req, res, next) => {
       }
     }
 
-    // Duel contests require an opponent
-    if (contest_type === 'duel' && !opponent) {
-      return res.status(400).json(error('Duel contests require an opponent (username or email)'));
-    }
-
-    const {
-      title, description, topic, contest_type = 'group',
-      question_count = 10, time_limit = 10, difficulty = 'medium',
-      opponent, scheduled_at, duration_minutes = 30, max_participants
-    } = req.body;
-
-    // At least title or topic must be provided
-    const contestTitle = (title || topic || '').trim();
-    if (!contestTitle) {
-      return res.status(400).json(error('Either title or topic is required'));
-    }
-    
-    const time_limit_seconds = (time_limit || 10) * 60;
-
-    // Scheduled contests require Pro+ plan
-    if (scheduled_at) {
-      const { data: user } = await supabase
-        .from('users')
-        .select('plan_id, subscription_plans(name)')
-        .eq('id', req.user.id)
-        .single();
-
-      const planName = user?.subscription_plans?.name || 'free';
-      if (!['pro', 'enterprise'].includes(planName)) {
-        return res.status(403).json(error('Scheduled contests require a Pro or Enterprise plan', { code: 'PLAN_UPGRADE_REQUIRED' }));
-      }
-    }
-
-    // Duel contests require an opponent
-    if (contest_type === 'duel' && !opponent) {
-      return res.status(400).json(error('Duel contests require an opponent (username or email)'));
-    }
-
     try {
       const { data: contest, error: insertErr } = await supabase
         .from('academy_contests')
