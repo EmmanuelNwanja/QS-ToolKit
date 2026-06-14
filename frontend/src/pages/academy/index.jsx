@@ -214,7 +214,11 @@ export default function AcademyDashboard() {
         </div>
 
         {/* Modals */}
-        <StrengthsWeaknessesModal open={showSWModal} onComplete={handleSWComplete} />
+        <StrengthsWeaknessesModal
+          open={showSWModal}
+          onComplete={handleSWComplete}
+          existingProfile={status?.profile}
+        />
         <AdmissionTestModal open={showAdmission} onComplete={handleAdmissionComplete} />
       </Layout>
     </ProtectedRoute>

@@ -63,10 +63,10 @@ exports.getStatus = async (req, res, next) => {
       .limit(1)
       .maybeSingle();
 
-    // Check strengths/weaknesses profile
+    // Check strengths/weaknesses profile — return full data for frontend
     const { data: profile } = await supabase
       .from('academy_profiles')
-      .select('id')
+      .select('id, strengths, weaknesses, goals')
       .eq('user_id', req.user.id)
       .maybeSingle();
 
@@ -77,6 +77,11 @@ exports.getStatus = async (req, res, next) => {
       admission_completed: !!admission && admission.passed,
       admission_score: admission?.score || null,
       profile_completed: !!profile,
+      profile: profile ? {
+        strengths: profile.strengths || [],
+        weaknesses: profile.weaknesses || [],
+        goals: profile.goals || [],
+      } : null,
     }));
   } catch (err) { next(err); }
 };
@@ -289,34 +294,75 @@ exports.startAdmission = async (req, res, next) => {
     const strengths = profile?.strengths || [];
     const weaknesses = profile?.weaknesses || [];
 
-    // Use AI to generate 7 QS-domain questions
-    const prompt = `Generate 7 multiple-choice questions for a Quantity Surveying admission test.
-The student's strengths: ${strengths.length ? strengths.join(', ') : 'Not yet assessed'}
-The student's weaknesses: ${weaknesses.length ? weaknesses.join(', ') : 'Not yet assessed'}
+    // Get previous test topics to avoid repetition
+    const { data: prevTests } = await supabase
+      .from('academy_admission_tests')
+      .select('questions')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(3);
 
-Focus on areas where the student needs improvement, but include some questions in their strength areas.
+    const previousTopics = [];
+    if (prevTests) {
+      prevTests.forEach(test => {
+        if (test.questions) {
+          test.questions.forEach(q => {
+            if (q.topic && !previousTopics.includes(q.topic)) {
+              previousTopics.push(q.topic);
+            }
+          });
+        }
+      });
+    }
 
-Topics should cover: Nigerian QS standards, SMM7, NRM2, building measurement, cost estimation, construction materials, contracts and procurement.
+    // Use AI to generate 7 QS-domain questions — deeply personalized
+    const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating a personalized admission assessment.
 
-Output valid JSON array with this exact structure:
-[
-  {
-    "question": "question text?",
-    "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
-    "correct_answer": "A",
-    "explanation": "brief explanation of correct answer",
-    "difficulty": "easy|medium|hard",
-    "topic": "topic area"
-  }
-]
+STUDENT PROFILE:
+- Strengths: ${strengths.length ? strengths.join(', ') : 'Not yet assessed'}
+- Weaknesses: ${weaknesses.length ? weaknesses.join(', ') : 'Not yet assessed'}
+${previousTopics.length ? `\nTOPICS ALREADY COVERED IN PREVIOUS ATTEMPTS (AVOID REPEATING THESE):\n${previousTopics.join(', ')}` : ''}
 
-Return exactly 7 questions. Do not include any text outside the JSON array.`;
+INSTRUCTIONS:
+1. Generate 7 UNIQUE, challenging multiple-choice questions for a Quantity Surveying admission test.
+2. PRIORITIZE the student's WEAKNESS areas — at least 5 questions should target their weaknesses.
+3. Include 1-2 questions in their STRENGTH areas to verify depth.
+4. Each question must be DIFFERENT from previously attempted topics listed above.
+5. Questions should test practical knowledge, not just theory.
+6. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI, BOQ Institute).
+7. Mix difficulty: 2 easy, 3 medium, 2 hard.
+
+TOPICS TO DRAW FROM (pick diverse ones):
+- Nigerian QS standards & practice
+- SMM7 (Standard Method of Measurement)
+- NRM2 (New Rules of Measurement)
+- Building measurement & takeoff
+- Cost estimation & pricing
+- BOQ preparation & analysis
+- Construction materials & rates
+- Contracts & procurement
+- Claims & variation management
+- Valuation & payment certification
+- Construction law (FIDIC, JCT equivalents in Nigeria)
+- Project management & cost control
+
+OUTPUT: Valid JSON array with exactly 7 objects. Each object must have:
+{
+  "question": "clear, specific question text?",
+  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
+  "correct_answer": "A",
+  "explanation": "brief explanation of correct answer",
+  "difficulty": "easy|medium|hard",
+  "topic": "specific topic area"
+}
+
+Return ONLY the JSON array. No text outside the array.`;
 
     // Try AI generation, fall back to curated questions
     let questions;
     try {
       const { callAI } = require('../services/aiService');
-      const raw = await callAI(prompt, { temperature: 0.5 });
+      const raw = await callAI(prompt, { temperature: 0.8 });
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length === 7) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { academyAPI } from '../../services/api';
@@ -14,12 +14,44 @@ const COMPETENCIES = [
 
 const STEP_LABELS = ['Your Strengths', 'Your Weaknesses', 'Confirm'];
 
-export default function StrengthsWeaknessesModal({ open, onComplete }) {
+export default function StrengthsWeaknessesModal({ open, onComplete, existingProfile }) {
   const [step, setStep] = useState(0);
   const [strengths, setStrengths] = useState([]);
   const [weaknesses, setWeaknesses] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [drQ, setDrQ] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Load existing profile when modal opens
+  useEffect(() => {
+    if (!open) return;
+
+    // If profile data passed as prop, use it directly
+    if (existingProfile?.strengths?.length || existingProfile?.weaknesses?.length) {
+      setStrengths(existingProfile.strengths || []);
+      setWeaknesses(existingProfile.weaknesses || []);
+      return;
+    }
+
+    // Otherwise fetch from API
+    const fetchProfile = async () => {
+      setLoadingProfile(true);
+      try {
+        const res = await academyAPI.getStatus();
+        const profile = res.data?.profile;
+        if (profile) {
+          setStrengths(profile.strengths || []);
+          setWeaknesses(profile.weaknesses || []);
+        }
+      } catch {
+        // Silently fail — user starts fresh
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, [open, existingProfile]);
 
   const selected = step === 0 ? strengths : weaknesses;
   const setSelected = step === 0 ? setStrengths : setWeaknesses;
@@ -59,6 +91,8 @@ export default function StrengthsWeaknessesModal({ open, onComplete }) {
 
   if (!open) return null;
 
+  const hasExistingData = strengths.length > 0 || weaknesses.length > 0;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -78,6 +112,11 @@ export default function StrengthsWeaknessesModal({ open, onComplete }) {
             <div className="p-8">
               <DrQThinkingAnimation message="Analysing your strengths and weaknesses..." />
             </div>
+          ) : loadingProfile ? (
+            <div className="p-8 flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+              <p className="text-sm text-gray-500">Loading your profile...</p>
+            </div>
           ) : (
             <>
               {/* Header */}
@@ -88,6 +127,11 @@ export default function StrengthsWeaknessesModal({ open, onComplete }) {
                   </h2>
                   <button onClick={() => onComplete?.()} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
                 </div>
+                {hasExistingData && step === 0 && (
+                  <p className="text-xs text-primary-600 bg-primary-50 rounded-lg px-3 py-1.5 mb-3">
+                    Your previous selections have been loaded. You can update them below.
+                  </p>
+                )}
                 {/* Progress dots */}
                 <div className="flex gap-2">
                   {[0, 1, 2].map((i) => (
