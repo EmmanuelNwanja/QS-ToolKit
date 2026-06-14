@@ -16,6 +16,9 @@ export default function AdminUsers() {
   const [actionData, setActionData] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [otpResult, setOtpResult] = useState(null);
+  const [showSubsModal, setShowSubsModal] = useState(false);
+  const [userSubs, setUserSubs] = useState(null);
+  const [loadingSubs, setLoadingSubs] = useState(false);
 
   const actionTypes = [
     { value: 'suspend', label: 'Suspend User', color: 'bg-red-500' },
@@ -24,6 +27,12 @@ export default function AdminUsers() {
     { value: 'override_subscription', label: 'Override Subscription', color: 'bg-purple-500' },
     { value: 'extend_subscription', label: 'Extend Subscription', color: 'bg-cyan-500' },
     { value: 'revoke_subscription', label: 'Revoke Subscription', color: 'bg-orange-500' },
+    { value: 'grant_academy', label: 'Grant Academy', color: 'bg-indigo-500' },
+    { value: 'extend_academy', label: 'Extend Academy', color: 'bg-indigo-400' },
+    { value: 'revoke_academy', label: 'Revoke Academy', color: 'bg-indigo-600' },
+    { value: 'grant_exam_prep', label: 'Grant Exam Prep', color: 'bg-teal-500' },
+    { value: 'extend_exam_prep', label: 'Extend Exam Prep', color: 'bg-teal-400' },
+    { value: 'revoke_exam_prep', label: 'Revoke Exam Prep', color: 'bg-teal-600' },
     { value: 'issue_credit', label: 'Issue Credit', color: 'bg-indigo-500' },
     { value: 'process_refund', label: 'Process Refund', color: 'bg-pink-500' },
     { value: 'generate_one_time_password', label: 'Generate One-Time Password', color: 'bg-amber-500' }
@@ -78,6 +87,36 @@ export default function AdminUsers() {
           break;
         case 'revoke_subscription':
           await userActionsAPI.revokeSubscription(uid, { reason: actionData.reason });
+          break;
+        case 'grant_academy':
+          await userActionsAPI.grantAcademy(uid, {
+            days: actionData.days || 30,
+            reason: actionData.reason
+          });
+          break;
+        case 'extend_academy':
+          await userActionsAPI.extendAcademy(uid, {
+            days: actionData.days || 7,
+            reason: actionData.reason
+          });
+          break;
+        case 'revoke_academy':
+          await userActionsAPI.revokeAcademy(uid, { reason: actionData.reason });
+          break;
+        case 'grant_exam_prep':
+          await userActionsAPI.grantExamPrep(uid, {
+            days: actionData.days || 30,
+            reason: actionData.reason
+          });
+          break;
+        case 'extend_exam_prep':
+          await userActionsAPI.extendExamPrep(uid, {
+            days: actionData.days || 7,
+            reason: actionData.reason
+          });
+          break;
+        case 'revoke_exam_prep':
+          await userActionsAPI.revokeExamPrep(uid, { reason: actionData.reason });
           break;
         case 'issue_credit':
           await userActionsAPI.issueCredit(uid, {
@@ -135,6 +174,20 @@ export default function AdminUsers() {
     setActionData({});
     setOtpResult(null);
     setShowActionModal(true);
+  };
+
+  const openSubsModal = async (user) => {
+    setSelectedUser(user);
+    setShowSubsModal(true);
+    setLoadingSubs(true);
+    try {
+      const res = await userActionsAPI.getUserSubscriptions(user.id);
+      setUserSubs(res.data);
+    } catch (err) {
+      setUserSubs(null);
+    } finally {
+      setLoadingSubs(false);
+    }
   };
 
   const getActionConfig = (action) => {
@@ -257,6 +310,12 @@ export default function AdminUsers() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
                             <button
+                              onClick={() => openSubsModal(user)}
+                              className="px-3 py-1 text-xs rounded font-medium text-white bg-blue-500 hover:bg-blue-600 transition"
+                            >
+                              Subs
+                            </button>
+                            <button
                               onClick={() => openActionModal(user, user.subscription_status === 'suspended' ? 'unsuspend' : 'suspend')}
                               className={`px-3 py-1 text-xs rounded font-medium text-white transition ${
                                 user.subscription_status === 'suspended'
@@ -349,6 +408,53 @@ export default function AdminUsers() {
                         required
                         min="1"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+
+                  {/* Days Field for Academy & Exam Prep Grant */}
+                  {['grant_academy', 'grant_exam_prep'].includes(actionType) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration (days)</label>
+                      <input
+                        type="number"
+                        value={actionData.days || ''}
+                        onChange={(e) => setActionData({ ...actionData, days: parseInt(e.target.value) })}
+                        placeholder="30"
+                        required
+                        min="1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Common: 7 (weekly), 30 (monthly), 90 (quarterly), 365 (annual)</p>
+                    </div>
+                  )}
+
+                  {/* Days Field for Academy & Exam Prep Extend */}
+                  {['extend_academy', 'extend_exam_prep'].includes(actionType) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Extend by (days)</label>
+                      <input
+                        type="number"
+                        value={actionData.days || ''}
+                        onChange={(e) => setActionData({ ...actionData, days: parseInt(e.target.value) })}
+                        placeholder="7"
+                        required
+                        min="1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+
+                  {/* Reason Field for Academy & Exam Prep Revoke */}
+                  {['revoke_academy', 'revoke_exam_prep'].includes(actionType) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                      <textarea
+                        value={actionData.reason || ''}
+                        onChange={(e) => setActionData({ ...actionData, reason: e.target.value })}
+                        placeholder="Provide a reason for revoking..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows="3"
                       />
                     </div>
                   )}
@@ -469,6 +575,139 @@ export default function AdminUsers() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Subscriptions Detail Modal */}
+          {showSubsModal && selectedUser && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Subscriptions</h3>
+                    <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setShowSubsModal(false); setSelectedUser(null); setUserSubs(null); }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+
+                {loadingSubs ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+                ) : userSubs ? (
+                  <div className="space-y-4">
+                    {/* Core Subscription */}
+                    <div className={`rounded-lg border p-4 ${userSubs.core?.plan !== 'free' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Core Plan</p>
+                          <p className="text-xs text-gray-500 mt-1 capitalize">{userSubs.core?.plan || 'free'}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          userSubs.core?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {userSubs.core?.status || 'inactive'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Academy Subscription */}
+                    <div className={`rounded-lg border p-4 ${userSubs.academy?.is_active ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">QS Academy</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {userSubs.academy?.is_active
+                              ? `Expires ${new Date(userSubs.academy.expires_at).toLocaleDateString()}`
+                              : 'Not subscribed'}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          userSubs.academy?.is_active ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {userSubs.academy?.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {userSubs.academy?.is_active && (
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'extend_academy'); }}
+                            className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium"
+                          >
+                            Extend
+                          </button>
+                          <button
+                            onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'revoke_academy'); }}
+                            className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium"
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Exam Prep Subscription */}
+                    <div className={`rounded-lg border p-4 ${userSubs.examPrep?.is_active ? 'border-teal-200 bg-teal-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Exam Prep</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {userSubs.examPrep?.is_active
+                              ? `Expires ${new Date(userSubs.examPrep.expires_at).toLocaleDateString()}`
+                              : 'Not subscribed'}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          userSubs.examPrep?.is_active ? 'bg-teal-100 text-teal-800' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {userSubs.examPrep?.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {userSubs.examPrep?.is_active && (
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'extend_exam_prep'); }}
+                            className="px-3 py-1 text-xs bg-teal-100 text-teal-700 rounded hover:bg-teal-200 font-medium"
+                          >
+                            Extend
+                          </button>
+                          <button
+                            onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'revoke_exam_prep'); }}
+                            className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium"
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quick Grant Buttons */}
+                    <div className="flex gap-2 pt-2 border-t border-gray-200">
+                      {!userSubs.academy?.is_active && (
+                        <button
+                          onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'grant_academy'); }}
+                          className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium"
+                        >
+                          + Grant Academy
+                        </button>
+                      )}
+                      {!userSubs.examPrep?.is_active && (
+                        <button
+                          onClick={() => { setShowSubsModal(false); openActionModal(selectedUser, 'grant_exam_prep'); }}
+                          className="px-3 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700 font-medium"
+                        >
+                          + Grant Exam Prep
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4">Failed to load subscriptions</p>
+                )}
               </div>
             </div>
           )}

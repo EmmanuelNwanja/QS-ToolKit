@@ -442,6 +442,488 @@ exports.revokeSubscription = async (req, res, next) => {
 };
 
 /**
+ * ─── ACADEMY & EXAM PREP SUBSCRIPTION MANAGEMENT ───
+ */
+
+/**
+ * Grant or override Academy subscription
+ * Creates or extends academy_subscriptions with custom duration
+ */
+exports.grantAcademySubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { days = 30, reason } = req.body;
+
+    if (!days || days < 1) {
+      return res.status(400).json(error('Days must be at least 1'));
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    // Expire any existing active academy subscription
+    await supabase
+      .from('academy_subscriptions')
+      .update({ status: 'expired', updated_at: now.toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    // Create new subscription
+    const { data: sub, error: subError } = await supabase
+      .from('academy_subscriptions')
+      .insert({
+        user_id: userId,
+        status: 'active',
+        started_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        created_at: now.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (subError) throw new Error(subError.message);
+
+    // Log audit
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_granted_academy',
+      planTo: 'academy',
+      details: {
+        days,
+        expiresAt: expiresAt.toISOString(),
+        reason,
+      },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'granted_academy_subscription',
+      'subscription',
+      userId,
+      { days, expiresAt: expiresAt.toISOString(), reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Academy subscription granted', {
+      subscription: { status: 'active', expires_at: expiresAt.toISOString() },
+      days,
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Extend Academy subscription
+ */
+exports.extendAcademySubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { days = 7, reason } = req.body;
+
+    if (!days || days < 1) {
+      return res.status(400).json(error('Days must be at least 1'));
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    // Find current active subscription
+    const { data: existing } = await supabase
+      .from('academy_subscriptions')
+      .select('id, expires_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    const now = new Date();
+    let newExpiry;
+
+    if (existing) {
+      const base = new Date(existing.expires_at) > now ? new Date(existing.expires_at) : now;
+      newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+      await supabase
+        .from('academy_subscriptions')
+        .update({ expires_at: newExpiry.toISOString(), updated_at: now.toISOString() })
+        .eq('id', existing.id);
+    } else {
+      // No active sub — create one
+      newExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      await supabase
+        .from('academy_subscriptions')
+        .insert({
+          user_id: userId,
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: newExpiry.toISOString(),
+          created_at: now.toISOString(),
+        });
+    }
+
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_extended_academy',
+      planTo: 'academy',
+      details: { days, expiresAt: newExpiry.toISOString(), reason },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'extended_academy_subscription',
+      'subscription',
+      userId,
+      { days, newExpiryDate: newExpiry.toISOString(), reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Academy subscription extended', {
+      subscription: { status: 'active', expires_at: newExpiry.toISOString() },
+      days,
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Revoke Academy subscription
+ */
+exports.revokeAcademySubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { reason } = req.body;
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    const now = new Date().toISOString();
+
+    const { error: dbError } = await supabase
+      .from('academy_subscriptions')
+      .update({ status: 'expired', updated_at: now })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    if (dbError) throw new Error(dbError.message);
+
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_revoked_academy',
+      planFrom: 'academy',
+      details: { reason },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'revoked_academy_subscription',
+      'subscription',
+      userId,
+      { reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Academy subscription revoked'));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Grant or override Exam Prep subscription
+ */
+exports.grantExamPrepSubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { days = 30, reason } = req.body;
+
+    if (!days || days < 1) {
+      return res.status(400).json(error('Days must be at least 1'));
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    // Expire any existing active exam prep subscription
+    await supabase
+      .from('exam_prep_subscriptions')
+      .update({ status: 'expired', updated_at: now.toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    const { data: sub, error: subError } = await supabase
+      .from('exam_prep_subscriptions')
+      .insert({
+        user_id: userId,
+        status: 'active',
+        started_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        created_at: now.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (subError) throw new Error(subError.message);
+
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_granted_exam_prep',
+      planTo: 'exam_prep',
+      details: { days, expiresAt: expiresAt.toISOString(), reason },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'granted_exam_prep_subscription',
+      'subscription',
+      userId,
+      { days, expiresAt: expiresAt.toISOString(), reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Exam Prep subscription granted', {
+      subscription: { status: 'active', expires_at: expiresAt.toISOString() },
+      days,
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Extend Exam Prep subscription
+ */
+exports.extendExamPrepSubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { days = 7, reason } = req.body;
+
+    if (!days || days < 1) {
+      return res.status(400).json(error('Days must be at least 1'));
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    const { data: existing } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('id, expires_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    const now = new Date();
+    let newExpiry;
+
+    if (existing) {
+      const base = new Date(existing.expires_at) > now ? new Date(existing.expires_at) : now;
+      newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+      await supabase
+        .from('exam_prep_subscriptions')
+        .update({ expires_at: newExpiry.toISOString(), updated_at: now.toISOString() })
+        .eq('id', existing.id);
+    } else {
+      newExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      await supabase
+        .from('exam_prep_subscriptions')
+        .insert({
+          user_id: userId,
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: newExpiry.toISOString(),
+          created_at: now.toISOString(),
+        });
+    }
+
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_extended_exam_prep',
+      planTo: 'exam_prep',
+      details: { days, expiresAt: newExpiry.toISOString(), reason },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'extended_exam_prep_subscription',
+      'subscription',
+      userId,
+      { days, newExpiryDate: newExpiry.toISOString(), reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Exam Prep subscription extended', {
+      subscription: { status: 'active', expires_at: newExpiry.toISOString() },
+      days,
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Revoke Exam Prep subscription
+ */
+exports.revokeExamPrepSubscription = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { reason } = req.body;
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    const now = new Date().toISOString();
+
+    const { error: dbError } = await supabase
+      .from('exam_prep_subscriptions')
+      .update({ status: 'expired', updated_at: now })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    if (dbError) throw new Error(dbError.message);
+
+    const subscriptionManagementService = require('../services/subscriptionManagementService');
+    await subscriptionManagementService.logSubscriptionChange(userId, {
+      action: 'admin_revoked_exam_prep',
+      planFrom: 'exam_prep',
+      details: { reason },
+      triggeredBy: req.adminUser.id,
+    });
+
+    await logAdminActivity(
+      req.adminUser.id,
+      'revoked_exam_prep_subscription',
+      'subscription',
+      userId,
+      { reason },
+      req.ip,
+      req.get('user-agent')
+    );
+
+    return res.json(success('Exam Prep subscription revoked'));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Get all subscriptions for a user (core + academy + exam prep)
+ */
+exports.getUserSubscriptions = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, name, subscription_status, subscription_plans(name, price_monthly)')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json(error('User not found'));
+    }
+
+    // Core subscription
+    const core = {
+      plan: user.subscription_plans?.name || 'free',
+      status: user.subscription_status || 'inactive',
+    };
+
+    // Academy subscription
+    const { data: academySub } = await supabase
+      .from('academy_subscriptions')
+      .select('id, status, started_at, expires_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const academy = academySub ? {
+      status: academySub.status,
+      expires_at: academySub.expires_at,
+      is_active: academySub.status === 'active' && new Date(academySub.expires_at) > new Date(),
+    } : { status: 'inactive', expires_at: null, is_active: false };
+
+    // Exam Prep subscription
+    const { data: examPrepSub } = await supabase
+      .from('exam_prep_subscriptions')
+      .select('id, status, started_at, expires_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const examPrep = examPrepSub ? {
+      status: examPrepSub.status,
+      expires_at: examPrepSub.expires_at,
+      is_active: examPrepSub.status === 'active' && new Date(examPrepSub.expires_at) > new Date(),
+    } : { status: 'inactive', expires_at: null, is_active: false };
+
+    return res.json(success('User subscriptions', { core, academy, examPrep }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * ─── REFUND & CREDIT MANAGEMENT ───
  */
 

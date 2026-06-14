@@ -75,6 +75,79 @@ router.post(
   userActionsController.revokeSubscription
 );
 
+// ── ACADEMY SUBSCRIPTION MANAGEMENT ────────────────────────
+
+/**
+ * Get all subscriptions for a user (core + academy + exam prep)
+ */
+router.get(
+  '/:userId/subscriptions',
+  requirePermission('manage_users'),
+  userActionsController.getUserSubscriptions
+);
+
+/**
+ * Grant Academy subscription
+ */
+router.post(
+  '/:userId/academy/grant',
+  requirePermission('manage_users'),
+  trackAdminActivity('granted_academy_subscription', 'subscription'),
+  userActionsController.grantAcademySubscription
+);
+
+/**
+ * Extend Academy subscription
+ */
+router.post(
+  '/:userId/academy/extend',
+  requirePermission('manage_users'),
+  trackAdminActivity('extended_academy_subscription', 'subscription'),
+  userActionsController.extendAcademySubscription
+);
+
+/**
+ * Revoke Academy subscription
+ */
+router.post(
+  '/:userId/academy/revoke',
+  requirePermission('manage_users'),
+  trackAdminActivity('revoked_academy_subscription', 'subscription'),
+  userActionsController.revokeAcademySubscription
+);
+
+// ── EXAM PREP SUBSCRIPTION MANAGEMENT ──────────────────────
+
+/**
+ * Grant Exam Prep subscription
+ */
+router.post(
+  '/:userId/exam-prep/grant',
+  requirePermission('manage_users'),
+  trackAdminActivity('granted_exam_prep_subscription', 'subscription'),
+  userActionsController.grantExamPrepSubscription
+);
+
+/**
+ * Extend Exam Prep subscription
+ */
+router.post(
+  '/:userId/exam-prep/extend',
+  requirePermission('manage_users'),
+  trackAdminActivity('extended_exam_prep_subscription', 'subscription'),
+  userActionsController.extendExamPrepSubscription
+);
+
+/**
+ * Revoke Exam Prep subscription
+ */
+router.post(
+  '/:userId/exam-prep/revoke',
+  requirePermission('manage_users'),
+  trackAdminActivity('revoked_exam_prep_subscription', 'subscription'),
+  userActionsController.revokeExamPrepSubscription
+);
+
 // ── REFUND & CREDIT MANAGEMENT ──────────────────────────────
 
 /**

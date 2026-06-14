@@ -193,6 +193,14 @@ export const userActionsAPI = {
   revokeSubscription:   (userId, data) => api.post(`/user-actions/${userId}/subscription/revoke`, data),
   issueCredit:          (userId, data) => api.post(`/user-actions/${userId}/credit`, data),
   processRefund:        (userId, data) => api.post(`/user-actions/${userId}/refund`, data),
+  // Academy & Exam Prep subscriptions
+  getUserSubscriptions:   (userId)       => api.get(`/user-actions/${userId}/subscriptions`),
+  grantAcademy:           (userId, data) => api.post(`/user-actions/${userId}/academy/grant`, data),
+  extendAcademy:          (userId, data) => api.post(`/user-actions/${userId}/academy/extend`, data),
+  revokeAcademy:          (userId, data) => api.post(`/user-actions/${userId}/academy/revoke`, data),
+  grantExamPrep:          (userId, data) => api.post(`/user-actions/${userId}/exam-prep/grant`, data),
+  extendExamPrep:         (userId, data) => api.post(`/user-actions/${userId}/exam-prep/extend`, data),
+  revokeExamPrep:         (userId, data) => api.post(`/user-actions/${userId}/exam-prep/revoke`, data),
 };
 
 // ─── Admin ─────────────────────────────────────────────────────
