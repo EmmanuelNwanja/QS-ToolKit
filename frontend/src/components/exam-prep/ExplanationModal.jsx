@@ -58,7 +58,7 @@ export default function ExplanationModal({ question, onClose }) {
             {/* Question */}
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Question</p>
-              <p className="text-sm text-gray-900 leading-relaxed">{question.question_text || question.question}</p>
+              <p className="text-sm text-gray-900 leading-relaxed">{(question.question_text || question.question || '').replace(/^\d+\.\s*/, '')}</p>
             </div>
 
             {/* Correct answer */}

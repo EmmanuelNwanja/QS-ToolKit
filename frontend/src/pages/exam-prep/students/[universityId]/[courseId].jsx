@@ -282,12 +282,14 @@ export default function CourseExamPage() {
               <p className="font-display font-bold text-primary-800 text-lg mb-1">
                 Question {current + 1}
               </p>
-              <p className="text-gray-800 leading-relaxed mb-6">{q.question_text}</p>
+              <p className="text-gray-800 leading-relaxed mb-6">{(q.question_text || q.question || '').replace(/^\d+\.\s*/, '')}</p>
 
               <div className="space-y-2">
                 {(q.options || []).map((opt, idx) => {
                   const letter = String.fromCharCode(65 + idx);
                   const selected = answers[q.id] === opt;
+                  // Strip existing letter prefix to avoid double display
+                  const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
                   return (
                     <button
                       key={idx}
@@ -303,7 +305,7 @@ export default function CourseExamPage() {
                       }`}>
                         {letter}
                       </span>
-                      <span className="text-sm">{opt}</span>
+                      <span className="text-sm">{optionText}</span>
                     </button>
                   );
                 })}

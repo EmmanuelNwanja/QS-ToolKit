@@ -416,6 +416,24 @@ exports.submitExam = async (req, res, next) => {
     let correctCount = 0;
     const detailedResults = [];
 
+    // Helper: convert various answer formats to a single letter (A-F)
+    const toLetter = (val) => {
+      if (val === null || val === undefined) return '';
+      const s = String(val).trim();
+      if (!s) return '';
+      // Already a single letter
+      if (/^[A-F]$/i.test(s)) return s.toUpperCase();
+      // Numeric index (0→A, 1→B, etc.)
+      const idx = parseInt(s, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < 6) return String.fromCharCode(65 + idx);
+      // Patterns: "B. option", "(B)", "[B]", "Option B"
+      const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i) || s.match(/option\s+([A-F])/i);
+      if (match) return match[1].toUpperCase();
+      // Last resort: first character if A-F
+      const first = s.charAt(0).toUpperCase();
+      return /^[A-F]$/.test(first) ? first : '';
+    };
+
     for (const ans of answers) {
       const q = questionMap[ans.question_id];
       if (!q) continue;
@@ -423,9 +441,11 @@ exports.submitExam = async (req, res, next) => {
       const questionMarks = q.marks || 1;
       totalMarks += questionMarks;
 
-      const userAnswer = (ans.answer || '').toUpperCase().trim();
-      const correctAnswer = (q.correct_answer || '').toUpperCase().trim();
-      const isCorrect = userAnswer === correctAnswer;
+      // Accept both `answer` and `selected_option` fields
+      const rawAnswer = ans.answer !== undefined ? ans.answer : ans.selected_option;
+      const userLetter = toLetter(rawAnswer);
+      const correctLetter = toLetter(q.correct_answer);
+      const isCorrect = userLetter !== '' && correctLetter !== '' && userLetter === correctLetter;
 
       if (isCorrect) {
         earnedMarks += questionMarks;
@@ -434,7 +454,7 @@ exports.submitExam = async (req, res, next) => {
 
       detailedResults.push({
         question_id: ans.question_id,
-        user_answer: ans.answer || '',
+        user_answer: rawAnswer,
         correct_answer: q.correct_answer,
         is_correct: isCorrect,
         marks_earned: isCorrect ? questionMarks : 0,

@@ -153,7 +153,7 @@ export default function ContestPage() {
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${b.correct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                         {b.correct ? '✓' : '✗'}
                       </span>
-                      <p className="text-sm text-gray-700 flex-1 truncate">{b.question}</p>
+                      <p className="text-sm text-gray-700 flex-1 truncate">{(b.question || '').replace(/^\d+\.\s*/, '')}</p>
                     </div>
                   ))}
                 </div>
@@ -209,22 +209,26 @@ export default function ContestPage() {
             {q ? (
               <AnimatePresence mode="wait">
                 <motion.div key={current} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} transition={{ duration: 0.2 }}>
-                  <p className="text-base font-medium text-gray-900 mb-5">{q.question}</p>
+                  <p className="text-base font-medium text-gray-900 mb-5">{q.question?.replace(/^\d+\.\s*/, '')}</p>
                   <div className="space-y-2">
-                    {(q.options || []).map((opt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => selectAnswer(current, opt)}
-                        className={`w-full text-left px-4 py-3.5 rounded-xl border-2 text-sm transition-all ${
-                          answers[current] === opt
-                            ? 'border-primary-500 bg-primary-50 text-primary-800 font-medium'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        <span className="mr-2 font-semibold text-gray-400">{String.fromCharCode(65 + i)}.</span>
-                        {opt}
-                      </button>
-                    ))}
+                    {(q.options || []).map((opt, i) => {
+                      // Strip existing letter prefix to avoid double display
+                      const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => selectAnswer(current, opt)}
+                          className={`w-full text-left px-4 py-3.5 rounded-xl border-2 text-sm transition-all ${
+                            answers[current] === opt
+                              ? 'border-primary-500 bg-primary-50 text-primary-800 font-medium'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="mr-2 font-semibold text-gray-400">{String.fromCharCode(65 + i)}.</span>
+                          {optionText}
+                        </button>
+                      );
+                    })}
                   </div>
                 </motion.div>
               </AnimatePresence>

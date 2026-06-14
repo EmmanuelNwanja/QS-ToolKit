@@ -93,7 +93,7 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
                     </span>
                     <p className="text-sm text-gray-900 leading-relaxed flex-1">
                       <span className="font-mono text-xs text-gray-400 mr-2">Q{i + 1}</span>
-                      {q.question_text || q.question}
+                      {(q.question_text || q.question || '').replace(/^\d+\.\s*/, '')}
                     </p>
                   </div>
 
@@ -105,11 +105,13 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
                       let optClass = 'bg-white border-gray-200';
                       if (isCorrectOpt) optClass = 'bg-emerald-100 border-emerald-300 text-emerald-800';
                       else if (isUserAnswer && !isCorrect) optClass = 'bg-red-100 border-red-300 text-red-800';
+                      // Strip existing letter prefix to avoid double display
+                      const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
 
                       return (
                         <div key={idx} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${optClass}`}>
                           <span className="font-bold flex-shrink-0">{OPTION_LETTERS[idx]}.</span>
-                          <span className="flex-1">{opt}</span>
+                          <span className="flex-1">{optionText}</span>
                           {isCorrectOpt && <span className="text-emerald-600 font-bold">✓ Correct</span>}
                           {isUserAnswer && !isCorrectOpt && <span className="text-red-600 font-bold">✗ Your answer</span>}
                         </div>

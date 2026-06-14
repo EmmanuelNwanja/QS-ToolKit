@@ -79,6 +79,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
   };
 
   const selectAnswer = (qIdx, option) => {
+    // Store the full option text (e.g., "B. 10 blocks/m²") for scoring
     setAnswers((a) => ({ ...a, [qIdx]: option }));
   };
 
@@ -89,15 +90,18 @@ export default function AdmissionTestModal({ open, onComplete }) {
     setConfirmSubmit(false);
     setDrQ(true);
     try {
-      const payload = Object.entries(answers).map(([qIdx, answer]) => ({
-        question_index: Number(qIdx),
-        answer,
-      }));
+      // Build payload with question_index as number and full answer text
+      const payload = Object.entries(answers)
+        .filter(([qIdx]) => qIdx !== undefined && qIdx !== null)
+        .map(([qIdx, answer]) => ({
+          question_index: Number(qIdx),
+          answer: String(answer || ''),
+        }));
       const res = await academyAPI.submitAdmission({ answers: payload });
       setResult(res.data);
       setSubmitted(true);
-    } catch {
-      toast.error('Submission failed. Please try again.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Submission failed. Please try again.');
       setDrQ(false);
     }
   }, [answers]);
@@ -245,24 +249,27 @@ export default function AdmissionTestModal({ open, onComplete }) {
                 exit={{ x: -20, opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <p className="text-base font-medium text-gray-900 mb-4">{q.question}</p>
+                <p className="text-base font-medium text-gray-900 mb-4">{q.question?.replace(/^\d+\.\s*/, '')}</p>
                 <div className="space-y-2">
-                  {(q.options || []).map((opt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => selectAnswer(current, opt)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm transition-all ${
-                        answers[current] === opt
-                          ? 'border-primary-500 bg-primary-50 text-primary-800 font-medium'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="mr-2 font-semibold text-gray-400">
-                        {String.fromCharCode(65 + i)}.
-                      </span>
-                      {opt}
-                    </button>
-                  ))}
+                  {(q.options || []).map((opt, i) => {
+                    const letter = String.fromCharCode(65 + i);
+                    // Strip existing letter prefix from option if present to avoid double display
+                    const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => selectAnswer(current, opt)}
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm transition-all ${
+                          answers[current] === opt
+                            ? 'border-primary-500 bg-primary-50 text-primary-800 font-medium'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <span className="font-semibold text-gray-500 mr-2">{letter}.</span>
+                        {optionText}
+                      </button>
+                    );
+                  })}
                 </div>
               </motion.div>
             </AnimatePresence>

@@ -331,6 +331,8 @@ INSTRUCTIONS:
 5. Questions should test practical knowledge, not just theory.
 6. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI, BOQ Institute).
 7. Mix difficulty: 2 easy, 3 medium, 2 hard.
+8. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1." — questions will be numbered automatically by the system.
+9. IMPORTANT: The question field must contain ONLY the question text, not including any option letters or numbers.
 
 TOPICS TO DRAW FROM (pick diverse ones):
 - Nigerian QS standards & practice
@@ -348,14 +350,15 @@ TOPICS TO DRAW FROM (pick diverse ones):
 
 OUTPUT: Valid JSON array with exactly 7 objects. Each object must have:
 {
-  "question": "clear, specific question text?",
+  "question": "clear, specific question text WITHOUT any numbering prefix",
   "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
-  "correct_answer": "A",
+  "correct_answer": "B",
   "explanation": "brief explanation of correct answer",
   "difficulty": "easy|medium|hard",
   "topic": "specific topic area"
 }
 
+The correct_answer must be a SINGLE LETTER (A, B, C, or D) matching the correct option.
 Return ONLY the JSON array. No text outside the array.`;
 
     // Try AI generation, fall back to curated questions
@@ -366,7 +369,13 @@ Return ONLY the JSON array. No text outside the array.`;
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length === 7) {
-          questions = parsed;
+          // Sanitize questions: strip leading numbers from question text
+          questions = parsed.map(q => ({
+            ...q,
+            question: (q.question || '').replace(/^\d+\.\s*/, '').trim(),
+            // Ensure correct_answer is a single letter
+            correct_answer: extractAnswerLetter(q.correct_answer)
+          }));
         }
       }
     } catch (aiErr) {
@@ -438,16 +447,38 @@ exports.submitAdmission = async (req, res, next) => {
     const questions = test.questions || [];
     const answerMap = {};
     answers.forEach(a => {
-      answerMap[a.question_index] = a.answer;
+      // Normalize key to number for consistent lookup
+      const key = Number(a.question_index);
+      if (!isNaN(key)) {
+        answerMap[key] = a.answer;
+      }
     });
+
+    // Helper: extract letter from option text (e.g., "B. 10 blocks/m²" → "B", "Option B" → "B")
+    const extractLetter = (val) => {
+      if (val === null || val === undefined) return '';
+      const s = String(val).trim();
+      if (!s) return '';
+      // If it's already a single letter A-F, return it (case-insensitive)
+      if (/^[A-F]$/i.test(s)) return s.toUpperCase();
+      // Try to extract letter from patterns like "B. ...", "B. ...", "Option B", "(B)", "[B]"
+      const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i) || s.match(/option\s+([A-F])/i);
+      if (match) return match[1].toUpperCase();
+      // Last resort: check if starts with A-F followed by non-alpha
+      const firstLetterMatch = s.match(/^([A-F])[^a-zA-Z]/i);
+      return firstLetterMatch ? firstLetterMatch[1].toUpperCase() : '';
+    };
+
     let correctCount = 0;
     const results = questions.map((q, idx) => {
-      const userAnswer = (answerMap[idx] || '').toString();
-      const isCorrect = userAnswer.toUpperCase() === q.correct_answer.toUpperCase();
+      const rawAnswer = answerMap[idx] || '';
+      const userAnswer = extractLetter(rawAnswer);
+      const correctLetter = extractLetter(q.correct_answer);
+      const isCorrect = userAnswer !== '' && correctLetter !== '' && userAnswer === correctLetter;
       if (isCorrect) correctCount++;
       return {
         question: q.question,
-        user_answer: userAnswer,
+        user_answer: rawAnswer,
         correct_answer: q.correct_answer,
         is_correct: isCorrect,
         explanation: q.explanation,
@@ -1108,8 +1139,10 @@ exports.submitContest = async (req, res, next) => {
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
-      const userAnswer = (answers[i]?.answer || '').toUpperCase();
-      const isCorrect = userAnswer === q.correct_answer.toUpperCase();
+      // Extract letter from user answer and correct answer for reliable comparison
+      const userLetter = extractAnswerLetter(answers[i]?.answer || '');
+      const correctLetter = extractAnswerLetter(q.correct_answer);
+      const isCorrect = userLetter !== '' && correctLetter !== '' && userLetter === correctLetter;
 
       // Base points
       let points = 0;
@@ -1359,6 +1392,26 @@ exports.getAnalytics = async (req, res, next) => {
     }));
   } catch (err) { next(err); }
 };
+
+// ─── Helpers (scoring) ──────────────────────────────────────────
+
+/**
+ * Extract a single letter (A-F) from various answer formats.
+ * Handles: "B", "B.", "B. option text", "Option B", "(B)", etc.
+ */
+function extractAnswerLetter(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val).trim();
+  if (!s) return '';
+  // Already a single letter
+  if (/^[A-F]$/i.test(s)) return s.toUpperCase();
+  // Common patterns: "B. ...", "(B)", "[B]", "Option B"
+  const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i) || s.match(/option\s+([A-F])/i);
+  if (match) return match[1].toUpperCase();
+  // Last resort: first character if it's A-F
+  const first = s.charAt(0).toUpperCase();
+  return /^[A-F]$/.test(first) ? first : '';
+}
 
 // ─── Fallback Questions ────────────────────────────────────────
 

@@ -140,13 +140,15 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">🚩 Flagged</span>
                   )}
                 </div>
-                <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{question.question_text || question.question}</p>
+                <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{(question.question_text || question.question || '').replace(/^\d+\.\s*/, '')}</p>
               </div>
 
               {/* Options */}
               <div className="space-y-2">
                 {(question.options || []).map((opt, idx) => {
                   const selected = answers[question.id] === idx;
+                  // Strip existing letter prefix to avoid double display
+                  const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
                   return (
                     <button
                       key={idx}
@@ -162,7 +164,7 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
                       }`}>
                         {OPTION_LETTERS[idx]}
                       </span>
-                      <span className="text-sm text-gray-800 leading-relaxed">{opt}</span>
+                      <span className="text-sm text-gray-800 leading-relaxed">{optionText}</span>
                     </button>
                   );
                 })}
