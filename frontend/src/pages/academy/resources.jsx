@@ -10,6 +10,7 @@ const RESOURCE_TYPES = [
   { value: '', label: 'All Types' },
   { value: 'video', label: '🎥 Video' },
   { value: 'article', label: '📄 Article' },
+  { value: 'document', label: '📑 Document' },
   { value: 'quiz', label: '❓ Quiz' },
   { value: 'exercise', label: '✏️ Exercise' },
   { value: 'case_study', label: '📋 Case Study' },
@@ -17,20 +18,51 @@ const RESOURCE_TYPES = [
 
 const LEVELS = [
   { value: '', label: 'All Levels' },
-  { value: '1', label: 'Level 1' },
-  { value: '2', label: 'Level 2' },
-  { value: '3', label: 'Level 3' },
-  { value: '4', label: 'Level 4' },
-  { value: '5', label: 'Level 5' },
+  { value: '1', label: 'Level 1 - Foundation' },
+  { value: '2', label: 'Level 2 - Intermediate' },
+  { value: '3', label: 'Level 3 - Advanced' },
+  { value: '4', label: 'Level 4 - Expert' },
+  { value: '5', label: 'Level 5 - Master' },
 ];
 
 const TYPE_BADGES = {
   video: 'bg-blue-100 text-blue-700',
   article: 'bg-gray-100 text-gray-700',
+  document: 'bg-indigo-100 text-indigo-700',
   quiz: 'bg-purple-100 text-purple-700',
   exercise: 'bg-emerald-100 text-emerald-700',
   case_study: 'bg-gold-100 text-gold-700',
 };
+
+// Curated resources for the Nigerian QS domain
+const FEATURED_RESOURCES = [
+  {
+    id: 'featured-1',
+    title: 'Understanding SMM7 - Standard Method of Measurement',
+    type: 'video',
+    level: '1',
+    excerpt: 'A comprehensive video guide to SMM7 (Standard Method of Measurement 7th Edition) for building works.',
+    video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    pathway_name: 'Technical QS Practice'
+  },
+  {
+    id: 'featured-2',
+    title: 'BOQ Preparation Masterclass',
+    type: 'video', 
+    level: '2',
+    excerpt: 'Learn how to prepare a professional Bill of Quantities from scratch.',
+    video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    pathway_name: 'Technical QS Practice'
+  },
+  {
+    id: 'featured-3',
+    title: 'Nigerian Construction Standards Guide',
+    type: 'document',
+    level: '1',
+    excerpt: 'Essential standards every Nigerian QS professional must know.',
+    pathway_name: 'Technical QS Practice'
+  },
+];
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState([]);
@@ -158,19 +190,36 @@ export default function ResourcesPage() {
                           key={r.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="card hover:shadow-md transition-all cursor-pointer group"
+                          className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all cursor-pointer group bg-white"
                           onClick={() => handleViewResource(r.id)}
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGES[r.type] || 'bg-gray-100 text-gray-600'}`}>
-                              {r.type?.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700 mb-1">{r.title}</h3>
-                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{r.excerpt}</p>
-                          {r.pathway_name && (
-                            <p className="text-xs text-primary-500 mt-2">{r.pathway_name}</p>
+                          {/* Video thumbnail */}
+                          {r.type === 'video' && (r.video_url || r.resource_url) && (
+                            <div className="aspect-video bg-gradient-to-br from-primary-100 to-primary-200 relative">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                  <span className="text-primary-600 text-xl ml-1">▶</span>
+                                </div>
+                              </div>
+                              <div className="absolute top-2 left-2">
+                                <span className="px-2 py-0.5 bg-black/50 text-white text-xs rounded">VIDEO</span>
+                              </div>
+                            </div>
                           )}
+                          
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGES[r.type] || 'bg-gray-100 text-gray-600'}`}>
+                                {r.type?.replace('_', ' ')}
+                              </span>
+                              <span className="text-xs text-gray-400">Level {r.level}</span>
+                            </div>
+                            <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700 mb-1 line-clamp-2">{r.title}</h3>
+                            <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{r.excerpt}</p>
+                            {r.pathway_name && (
+                              <p className="text-xs text-primary-500 mt-2">{r.pathway_name}</p>
+                            )}
+                          </div>
                         </motion.div>
                       ))}
                     </div>
@@ -200,6 +249,34 @@ export default function ResourcesPage() {
                       <span className="text-xs text-primary-500">• {selectedResource.pathway_name}</span>
                     )}
                   </div>
+                  {/* Video embed if available */}
+                  {(selectedResource.video_url || selectedResource.resource_url) && (
+                    <div className="mb-6">
+                      {(selectedResource.video_url || selectedResource.resource_url || '').includes('youtube.com') || 
+                       (selectedResource.video_url || selectedResource.resource_url || '').includes('youtu.be') ? (
+                        <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
+                          <iframe
+                            src={(selectedResource.video_url || selectedResource.resource_url || '').replace('watch?v=', 'embed/')}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            title={selectedResource.title}
+                          />
+                        </div>
+                      ) : (
+                        <a 
+                          href={selectedResource.video_url || selectedResource.resource_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 text-sm"
+                        >
+                          📎 Open resource ↗
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Content */}
                   {selectedResource.content ? (
                     <div className="prose prose-sm prose-primary max-w-none">
                       <MarkdownRenderer content={selectedResource.content} />

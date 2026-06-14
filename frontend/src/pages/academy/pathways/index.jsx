@@ -53,6 +53,9 @@ export default function PathwaysPage() {
       <Head><title>Pathways — QS Academy</title></Head>
       <Layout title="🛤️ Pathways">
         <div className="max-w-6xl space-y-6">
+          <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
+            <span>←</span> Back to Academy
+          </Link>
           <div>
             <h2 className="font-display text-2xl font-bold text-primary-800">Career Pathways</h2>
             <p className="text-sm text-gray-500 mt-1">Choose your QS specialisation. Each pathway has 5 levels of progressive mastery.</p>

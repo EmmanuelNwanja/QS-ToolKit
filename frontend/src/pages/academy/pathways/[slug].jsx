@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
+import PathwayLevelContent from '../../../components/academy/PathwayLevelContent';
 import { academyAPI } from '../../../services/api';
 
 export default function PathwayDetailPage() {
@@ -62,7 +63,6 @@ export default function PathwayDetailPage() {
     setCompletingModule(moduleId);
     try {
       await academyAPI.completeModule({ pathway_slug: slug, module_id: moduleId });
-      toast.success('Module completed! +10 points');
       setCompletedCount(prev => prev + 1);
       // Update levels state to mark module as completed
       setLevels(prev => {
@@ -79,6 +79,12 @@ export default function PathwayDetailPage() {
     } finally {
       setCompletingModule(null);
     }
+  };
+
+  const handleSubmitProject = async (projectData) => {
+    // In a real implementation, this would upload the file and submit to the backend
+    // For now, we'll simulate the submission
+    toast.success('Project submitted for AI review!');
   };
 
   if (loading) {
@@ -164,85 +170,151 @@ export default function PathwayDetailPage() {
               const levelCompleted = levelModules.filter(m => m.completed).length;
 
               return (
-                <motion.div
+                <LevelAccordion
                   key={level.level_number}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  className={`card border-l-4 transition-all ${
-                    isCurrent ? 'border-l-gold-500 bg-gold-50/50' :
-                    isCompleted ? 'border-l-emerald-500' :
-                    'border-l-gray-200'
-                  } ${isLocked ? 'opacity-60' : ''}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                      isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                      isCurrent ? 'bg-gold-100 text-gold-700' :
-                      'bg-gray-100 text-gray-500'
-                    }`}>
-                      {isCompleted ? '✓' : level.level_number}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900">{level.title}</h3>
-                        {levelModules.length > 0 && (
-                          <span className="text-xs text-gray-400">{levelCompleted}/{levelModules.length} modules</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">{level.description}</p>
-                      {level.competencies && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {level.competencies.map((c) => (
-                            <span key={c} className="px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">{c}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {isCurrent && (
-                      <span className="px-2.5 py-1 bg-gold-100 text-gold-700 text-xs font-semibold rounded-full flex-shrink-0">Current</span>
-                    )}
-                  </div>
-
-                  {/* Modules list */}
-                  {levelModules.length > 0 && (
-                    <div className="mt-4 ml-14 space-y-2">
-                      {levelModules.map((mod) => {
-                        const typeIcons = { article: '📖', video: '🎬', quiz: '📝', exercise: '💪', case_study: '📋', worksheet: '📄' };
-                        return (
-                          <div
-                            key={mod.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
-                              mod.completed ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-100 hover:border-primary-200'
-                            }`}
-                          >
-                            <span className="text-lg">{typeIcons[mod.module_type] || '📄'}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium ${mod.completed ? 'text-emerald-800' : 'text-gray-900'}`}>{mod.title}</p>
-                              <p className="text-xs text-gray-400">{mod.module_type} · {mod.duration_minutes} min · {mod.points} pts</p>
-                            </div>
-                            {mod.completed ? (
-                              <span className="text-emerald-600 text-xs font-semibold">✓ Done</span>
-                            ) : progress ? (
-                              <button
-                                onClick={() => handleCompleteModule(mod.id)}
-                                disabled={completingModule === mod.id}
-                                className="text-xs px-3 py-1 bg-primary-100 text-primary-700 rounded-full font-medium hover:bg-primary-200 disabled:opacity-50"
-                              >
-                                {completingModule === mod.id ? '...' : 'Complete'}
-                              </button>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </motion.div>
+                  level={level}
+                  levelModules={levelModules}
+                  isCurrent={isCurrent}
+                  isCompleted={isCompleted}
+                  isLocked={isLocked}
+                  levelCompleted={levelCompleted}
+                  progress={progress}
+                  onCompleteModule={handleCompleteModule}
+                  onSubmitProject={handleSubmitProject}
+                  completingModule={completingModule}
+                  index={i}
+                />
               );
             })}
           </div>
         </div>
       </Layout>
     </ProtectedRoute>
+  );
+}
+
+/**
+ * Level Accordion Component - Expandable level with interactive content
+ */
+function LevelAccordion({ 
+  level, 
+  levelModules, 
+  isCurrent, 
+  isCompleted, 
+  isLocked, 
+  levelCompleted, 
+  progress, 
+  onCompleteModule, 
+  onSubmitProject,
+  completingModule,
+  index 
+}) {
+  const [isExpanded, setIsExpanded] = useState(isCurrent || false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08 }}
+      className={`border rounded-xl overflow-hidden transition-all ${
+        isCurrent ? 'border-gold-300 bg-gold-50/30 shadow-sm' :
+        isCompleted ? 'border-emerald-200 bg-emerald-50/20' :
+        isLocked ? 'border-gray-200 bg-gray-50 opacity-60' :
+        'border-gray-200 hover:border-primary-200 hover:shadow-sm'
+      }`}
+    >
+      {/* Level Header - Always visible and clickable */}
+      <button
+        onClick={() => !isLocked && setIsExpanded(!isExpanded)}
+        disabled={isLocked}
+        className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-white/50 transition-colors"
+      >
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${
+          isCompleted ? 'bg-emerald-100 text-emerald-700' :
+          isCurrent ? 'bg-gold-100 text-gold-700' :
+          'bg-gray-100 text-gray-500'
+        }`}>
+          {isCompleted ? '✓' : level.level_number}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-gray-900">{level.title}</h3>
+            {levelModules.length > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                {levelCompleted}/{levelModules.length} completed
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{level.description}</p>
+          {level.competencies && level.competencies.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {level.competencies.slice(0, 3).map((c) => (
+                <span key={c} className="px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">{c}</span>
+              ))}
+              {level.competencies.length > 3 && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">
+                  +{level.competencies.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {isCurrent && (
+            <span className="px-3 py-1 bg-gold-100 text-gold-700 text-xs font-semibold rounded-full">
+              🎯 Current
+            </span>
+          )}
+          {isCompleted && (
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">
+              ✓ Done
+            </span>
+          )}
+          {isLocked && (
+            <span className="px-3 py-1 bg-gray-100 text-gray-500 text-xs font-semibold rounded-full">
+              🔒
+            </span>
+          )}
+          {!isLocked && (
+            <svg 
+              className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
+      </button>
+
+      {/* Level Content - Expandable */}
+      <AnimatePresence>
+        {isExpanded && !isLocked && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="px-5 pb-5 border-t border-gray-100">
+              <div className="pt-4">
+                <PathwayLevelContent
+                  level={level}
+                  modules={levelModules}
+                  onCompleteModule={onCompleteModule}
+                  onSubmitProject={onSubmitProject}
+                  userProgress={{
+                    points: levelModules.filter(m => m.completed).length * 10,
+                    badges: isCompleted ? ['level_complete'] : [],
+                    streak: 0
+                  }}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

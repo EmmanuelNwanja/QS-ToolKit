@@ -60,6 +60,9 @@ export default function ExamPrepDashboard() {
       <Head><title>Exam Prep — QSToolkit</title></Head>
       <Layout title="📝 Exam Prep">
         <div className="max-w-6xl space-y-6">
+          <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
+            <span>←</span> Back to Dashboard
+          </Link>
 
           {/* Subscription banner */}
           {subExpired && (

@@ -57,6 +57,9 @@ export default function AnalyticsPage() {
       <Head><title>Analytics — QS Academy</title></Head>
       <Layout title="📊 Progress Analytics">
         <div className="max-w-6xl space-y-6">
+          <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
+            <span>←</span> Back to Academy
+          </Link>
           {/* Pathway progress */}
           <motion.div {...fadeUp} className="card">
             <h2 className="section-title mb-4">🛤️ Pathway Progress</h2>

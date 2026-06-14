@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Layout from '../../components/Layout';
@@ -96,6 +97,9 @@ export default function ArenaPage() {
       <Head><title>Arena — QS Academy</title></Head>
       <Layout title="⚔️ Knowledge Arena">
         <div className="max-w-6xl space-y-6">
+          <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
+            <span>←</span> Back to Academy
+          </Link>
           {/* Header with token balance */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
