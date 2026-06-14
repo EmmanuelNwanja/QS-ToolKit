@@ -20,6 +20,7 @@ export default function AcademyDashboard() {
   const router = useRouter();
   const [status, setStatus] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [pathwayProgress, setPathwayProgress] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSWModal, setShowSWModal] = useState(false);
   const [showAdmission, setShowAdmission] = useState(false);
@@ -27,12 +28,14 @@ export default function AcademyDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [statusRes, analyticsRes] = await Promise.allSettled([
+        const [statusRes, analyticsRes, progressRes] = await Promise.allSettled([
           academyAPI.getStatus(),
           academyAPI.getAnalytics(),
+          academyAPI.getProgress(),
         ]);
         if (statusRes.status === 'fulfilled') setStatus(statusRes.value.data);
         if (analyticsRes.status === 'fulfilled') setAnalytics(analyticsRes.value.data);
+        if (progressRes.status === 'fulfilled') setPathwayProgress(progressRes.value.data.progress || []);
       } catch {}
       finally { setLoading(false); }
     }
@@ -49,8 +52,14 @@ export default function AcademyDashboard() {
 
   const handleAdmissionComplete = (result) => {
     setShowAdmission(false);
-    toast.success('Welcome to QS Academy! 🎓');
-    router.push('/academy/pathways');
+    if (result?.passed) {
+      toast.success('Welcome to QS Academy! 🎓');
+      router.push('/academy/pathways');
+    } else if (result) {
+      toast.error(`You scored ${result.score}%. The pass mark is ${result.pass_mark || 60}%. Please try again.`);
+    }
+    // Reload status to reflect admission completion
+    academyAPI.getStatus().then(res => setStatus(res.data)).catch(() => {});
   };
 
   return (
@@ -105,6 +114,47 @@ export default function AcademyDashboard() {
                   </div>
                 ))}
               </motion.div>
+
+              {/* Pathway Progress */}
+              {pathwayProgress.length > 0 && (
+                <motion.div {...fadeUp} className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-lg font-bold text-primary-800">My Learning Pathways</h2>
+                    <Link href="/academy/pathways" className="text-xs text-primary-600 hover:underline">View all →</Link>
+                  </div>
+                  <div className="space-y-3">
+                    {pathwayProgress.slice(0, 3).map((p) => {
+                      const pct = p.progress_percent || 0;
+                      return (
+                        <Link
+                          key={p.enrollment_id}
+                          href={`/academy/pathways/${p.pathway?.slug}`}
+                          className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-sm text-gray-900 group-hover:text-primary-700 truncate">
+                                {p.pathway?.title || 'Pathway'}
+                              </h3>
+                              <span className="text-xs text-gray-400">Level {p.pathway?.current_level || 1}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-primary-500' : 'bg-gold-500'}`}
+                                style={{ width: `${Math.min(pct, 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {p.completed_modules}/{p.total_modules} modules · {pct}% complete
+                            </p>
+                          </div>
+                          <span className="text-xs text-primary-600 group-hover:text-primary-700 font-medium flex-shrink-0">→</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Recommended pathway */}
               {analytics?.recommended_pathway && (

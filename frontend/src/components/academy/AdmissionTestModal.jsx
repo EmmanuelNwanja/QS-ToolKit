@@ -55,7 +55,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current);
-          handleSubmit();
+          if (handleSubmitRef.current) handleSubmitRef.current();
           return 0;
         }
         return t - 1;
@@ -74,7 +74,9 @@ export default function AdmissionTestModal({ open, onComplete }) {
     setAnswers((a) => ({ ...a, [qIdx]: option }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitRef = useRef(null);
+
+  const handleSubmit = useCallback(async () => {
     clearInterval(timerRef.current);
     setConfirmSubmit(false);
     setDrQ(true);
@@ -90,7 +92,10 @@ export default function AdmissionTestModal({ open, onComplete }) {
       toast.error('Submission failed. Please try again.');
       setDrQ(false);
     }
-  };
+  }, [answers]);
+
+  // Keep ref in sync for timer
+  useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
 
   if (!open) return null;
 
@@ -185,7 +190,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
           ) : questions.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 text-sm mb-4">No questions available. Please try again later.</p>
-              <button onClick={() => onComplete?.()} className="btn-secondary px-4 py-2 text-sm">Close</button>
+              <button onClick={() => onComplete?.({ passed: false })} className="btn-secondary px-4 py-2 text-sm">Close</button>
             </div>
           ) : q ? (
             <AnimatePresence mode="wait">

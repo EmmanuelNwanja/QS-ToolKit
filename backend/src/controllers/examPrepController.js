@@ -284,12 +284,16 @@ exports.startExam = async (req, res, next) => {
       return res.status(403).json(error('Subscription required. Free trial already used.', { code: 'SUBSCRIPTION_REQUIRED' }));
     }
 
-    // Create attempt record
+    // Create attempt record — include all NOT NULL columns from exam_definitions
     const { data: attempt, error: insertErr } = await supabase
       .from('exam_attempts')
       .insert({
         user_id: req.user.id,
         exam_id: id,
+        exam_category: exam.category || 'university',
+        exam_name: exam.exam_name || 'Exam',
+        total_questions: exam.total_questions || 0,
+        time_limit_seconds: (exam.time_limit_minutes || 60) * 60,
         is_trial: isTrial,
         status: 'in_progress',
         started_at: new Date().toISOString()
@@ -490,11 +494,19 @@ exports.getAttempt = async (req, res, next) => {
 
 exports.getUniversities = async (req, res, next) => {
   try {
-    const { data: universities, error: err } = await supabase
+    const { search } = req.query;
+
+    let query = supabase
       .from('exam_universities')
       .select('*')
       .eq('is_active', true)
       .order('name');
+
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
+    }
+
+    const { data: universities, error: err } = await query;
 
     if (err) throw err;
 
@@ -544,20 +556,26 @@ exports.getUniversityCourses = async (req, res, next) => {
 
     if (err) throw err;
 
-    // Count questions per course by matching course_code and university name
+    // Count questions per course by matching course_code
+    // Use fuzzy university name matching (strip commas, case-insensitive)
     const courseCodes = (courses || []).map(c => c.code).filter(Boolean);
     let questionCounts = {};
     if (courseCodes.length > 0) {
       const { data: questions } = await supabase
         .from('exam_questions')
-        .select('course_code')
+        .select('course_code, university')
         .eq('is_active', true)
-        .eq('university', university.name)
         .in('course_code', courseCodes);
 
+      const normalizedName = university.name.toLowerCase().replace(/,/g, '').trim();
+
       (questions || []).forEach(q => {
-        const code = q.course_code;
-        if (code) questionCounts[code] = (questionCounts[code] || 0) + 1;
+        const qUni = (q.university || '').toLowerCase().replace(/,/g, '').trim();
+        // Match if normalized names are equal, or one contains the other
+        if (qUni === normalizedName || normalizedName.includes(qUni) || qUni.includes(normalizedName)) {
+          const code = q.course_code;
+          if (code) questionCounts[code] = (questionCounts[code] || 0) + 1;
+        }
       });
     }
 
@@ -574,7 +592,7 @@ exports.getUniversityCourses = async (req, res, next) => {
 
 exports.getPastQuestions = async (req, res, next) => {
   try {
-    const { university, course, year, category, page = 1, limit = 20 } = req.query;
+    const { university, course, year, category, search, page = 1, limit = 20 } = req.query;
 
     let query = supabase
       .from('exam_definitions')
@@ -586,6 +604,7 @@ exports.getPastQuestions = async (req, res, next) => {
     if (course) query = query.eq('course_id', course);
     if (year) query = query.eq('year', parseInt(year));
     if (category) query = query.eq('category', category);
+    if (search) query = query.ilike('exam_name', `%${search}%`);
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     query = query.range(offset, offset + parseInt(limit) - 1).order('year', { ascending: false });
@@ -599,5 +618,72 @@ exports.getPastQuestions = async (req, res, next) => {
       page: parseInt(page),
       limit: parseInt(limit)
     }));
+  } catch (err) { next(err); }
+};
+
+// ─── Global Search ────────────────────────────────────────────
+
+exports.globalSearch = async (req, res, next) => {
+  try {
+    const { q, type = 'all' } = req.query;
+    if (!q || q.trim().length < 2) {
+      return res.json(success('Search results', { universities: [], courses: [], exams: [] }));
+    }
+
+    const searchTerm = q.trim();
+    const results = { universities: [], courses: [], exams: [] };
+
+    // Search universities
+    if (type === 'all' || type === 'universities') {
+      const { data } = await supabase
+        .from('exam_universities')
+        .select('id, name, short_name, logo_url')
+        .eq('is_active', true)
+        .ilike('name', `%${searchTerm}%`)
+        .limit(10);
+      results.universities = data || [];
+    }
+
+    // Search courses
+    if (type === 'all' || type === 'courses') {
+      const { data } = await supabase
+        .from('exam_courses')
+        .select('id, name, code, university_id, university:exam_universities(name)')
+        .eq('is_active', true)
+        .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%`)
+        .limit(10);
+      results.courses = data || [];
+    }
+
+    // Search exams/past questions
+    if (type === 'all' || type === 'exams') {
+      const { data } = await supabase
+        .from('exam_definitions')
+        .select('id, exam_name, category, year, university_id, course_id')
+        .eq('is_published', true)
+        .ilike('exam_name', `%${searchTerm}%`)
+        .limit(10);
+      results.exams = data || [];
+    }
+
+    return res.json(success('Search results', results));
+  } catch (err) { next(err); }
+};
+
+// ─── Search Analytics ─────────────────────────────────────────
+
+exports.logSearch = async (req, res, next) => {
+  try {
+    const { query: searchQuery, type, results_count } = req.body;
+
+    await supabase.from('exam_search_logs').insert({
+      user_id: req.user.id,
+      query: searchQuery,
+      search_type: type || 'all',
+      results_count: results_count || 0,
+      searched_at: new Date().toISOString()
+    });
+
+    return res.json(success('Search logged'));
   } catch (err) { next(err); }
 };

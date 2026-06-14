@@ -1488,10 +1488,55 @@ exports.getExamPrepStats = async (req, res, next) => {
       pass_rates_by_type: passRatesByType,
       question_bank_total: questionBankTotal || 0,
       question_bank_by_category: questionBankByCategory,
-      university_stats: universityStats
+      university_stats: universityStats,
+      search_analytics: await getSearchAnalytics()
     }));
   } catch (err) { next(err); }
 };
+
+async function getSearchAnalytics() {
+  try {
+    // Top searches
+    const { data: searches } = await supabase
+      .from('exam_search_logs')
+      .select('query, search_type, results_count, searched_at')
+      .order('searched_at', { ascending: false })
+      .limit(1000);
+
+    if (!searches || searches.length === 0) {
+      return { total_searches: 0, top_queries: [], searches_by_type: [], recent_searches: [] };
+    }
+
+    // Count queries
+    const queryCounts = {};
+    const typeCounts = {};
+    searches.forEach(s => {
+      const q = (s.query || '').toLowerCase().trim();
+      if (q) {
+        queryCounts[q] = (queryCounts[q] || 0) + 1;
+      }
+      const t = s.search_type || 'all';
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+
+    const topQueries = Object.entries(queryCounts)
+      .map(([query, count]) => ({ query, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    const searchesByType = Object.entries(typeCounts)
+      .map(([type, count]) => ({ type, count }));
+
+    return {
+      total_searches: searches.length,
+      top_queries: topQueries,
+      searches_by_type: searchesByType,
+      recent_searches: searches.slice(0, 20)
+    };
+  } catch {
+    return { total_searches: 0, top_queries: [], searches_by_type: [], recent_searches: [] };
+  }
+}
 
 /**
  * Verify admin access

@@ -20,6 +20,7 @@ export default function UniversityPage() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modeModal, setModeModal] = useState(null);
+  const [courseSearch, setCourseSearch] = useState('');
 
   useEffect(() => {
     if (!universityId) return;
@@ -79,15 +80,44 @@ export default function UniversityPage() {
                 </div>
               </motion.div>
 
+              {/* Course search */}
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                <input
+                  type="text"
+                  value={courseSearch}
+                  onChange={(e) => setCourseSearch(e.target.value)}
+                  placeholder="Search courses by name or code..."
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
               {/* Courses list */}
               {courses.length === 0 ? (
                 <div className="card text-center py-10 text-gray-400">
                   <p className="text-3xl mb-2">📚</p>
                   <p className="text-sm">No courses available yet</p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {courses.map((course, i) => (
+              ) : (() => {
+                const filtered = courseSearch.trim()
+                  ? courses.filter(c =>
+                      c.name?.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                      c.code?.toLowerCase().includes(courseSearch.toLowerCase())
+                    )
+                  : courses;
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="card text-center py-10 text-gray-400">
+                      <p className="text-3xl mb-2">🔍</p>
+                      <p className="text-sm">No courses match &ldquo;{courseSearch}&rdquo;</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {filtered.map((course, i) => (
                     <motion.div
                       key={course.id}
                       variants={cardAnim}
@@ -123,7 +153,8 @@ export default function UniversityPage() {
                     </motion.div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </>
           )}
 

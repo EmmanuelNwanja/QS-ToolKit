@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
-import { projectAPI, leaderboardAPI, userAPI } from '../services/api';
+import { projectAPI, leaderboardAPI, userAPI, academyAPI } from '../services/api';
 import { formatNaira, formatCompact, CALCULATORS } from '../utils/helpers';
 
 export default function DashboardPage() {
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [rank, setRank]   = useState(null);
   const [usage, setUsage] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
+  const [pathwayProgress, setPathwayProgress] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Redirect admins to admin dashboard
@@ -28,16 +29,20 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, projectsRes, rankRes, usageRes] = await Promise.allSettled([
+        const [statsRes, projectsRes, rankRes, usageRes, academyRes] = await Promise.allSettled([
           projectAPI.stats(),
           projectAPI.list({ limit: 5 }),
           leaderboardAPI.getMe(),
-          userAPI.getUsage()
+          userAPI.getUsage(),
+          academyAPI.getProgress().catch(() => null)
         ]);
         if (statsRes.status === 'fulfilled') setStats(statsRes.value.data.stats);
         if (projectsRes.status === 'fulfilled') setRecentProjects(projectsRes.value.data.projects || []);
         if (rankRes.status === 'fulfilled') setRank(rankRes.value.data.rank);
         if (usageRes.status === 'fulfilled') setUsage(usageRes.value.data);
+        if (academyRes.status === 'fulfilled' && academyRes.value?.data?.progress) {
+          setPathwayProgress(academyRes.value.data.progress);
+        }
       } catch {}
       finally { setLoading(false); }
     }
@@ -248,9 +253,31 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500">Learn & grow your career</p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-500">AI-powered learning pathways, knowledge arena & resource library.</p>
+                {pathwayProgress.length > 0 ? (
+                  <div className="space-y-2">
+                    {pathwayProgress.slice(0, 2).map((p) => {
+                      const pct = p.progress_percent || 0;
+                      return (
+                        <div key={p.enrollment_id}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-gray-600 truncate">{p.pathway?.title}</span>
+                            <span className="text-gray-400 ml-2 flex-shrink-0">{pct}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full ${pct >= 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-primary-500' : 'bg-gold-500'}`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">AI-powered learning pathways, knowledge arena & resource library.</p>
+                )}
                 <div className="mt-3 flex items-center gap-1 text-xs text-primary-700 font-medium">
-                  <span>Explore</span>
+                  <span>{pathwayProgress.length > 0 ? 'Continue Learning' : 'Explore'}</span>
                   <span>→</span>
                 </div>
               </Link>

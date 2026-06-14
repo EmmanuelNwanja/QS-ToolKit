@@ -12,9 +12,12 @@ export default function PathwayDetailPage() {
   const router = useRouter();
   const { slug } = router.query;
   const [pathway, setPathway] = useState(null);
+  const [levels, setLevels] = useState({});
   const [progress, setProgress] = useState(null);
+  const [completedCount, setCompletedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [completingModule, setCompletingModule] = useState(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -24,7 +27,12 @@ export default function PathwayDetailPage() {
           academyAPI.getPathway(slug),
           academyAPI.getProgress(),
         ]);
-        if (pathRes.status === 'fulfilled') setPathway(pathRes.value.data.pathway);
+        if (pathRes.status === 'fulfilled') {
+          const data = pathRes.value.data;
+          setPathway(data.pathway);
+          setLevels(data.levels || {});
+          setCompletedCount(data.completed_count || 0);
+        }
         if (progRes.status === 'fulfilled') {
           const progressList = progRes.value.data.progress || [];
           setProgress(progressList.find((e) => e.pathway?.slug === slug) || null);
@@ -47,6 +55,29 @@ export default function PathwayDetailPage() {
       toast.error(err.response?.data?.error || 'Enrollment failed');
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const handleCompleteModule = async (moduleId) => {
+    setCompletingModule(moduleId);
+    try {
+      await academyAPI.completeModule({ pathway_slug: slug, module_id: moduleId });
+      toast.success('Module completed! +10 points');
+      setCompletedCount(prev => prev + 1);
+      // Update levels state to mark module as completed
+      setLevels(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(level => {
+          updated[level] = updated[level].map(m =>
+            m.id === moduleId ? { ...m, completed: true } : m
+          );
+        });
+        return updated;
+      });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to complete module');
+    } finally {
+      setCompletingModule(null);
     }
   };
 
@@ -112,11 +143,11 @@ export default function PathwayDetailPage() {
             {progress && (
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs text-primary-300 mb-1">
-                  <span>Progress</span>
+                  <span>Progress — {completedCount} modules completed</span>
                   <span>Level {progress.current_level} of {pathway.levels?.length || 5}</span>
                 </div>
                 <div className="w-full bg-white/20 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-gold-400 transition-all" style={{ width: `${((progress.current_level) / (pathway.levels?.length || 5)) * 100}%` }} />
+                  <div className="h-2 rounded-full bg-gold-400 transition-all" style={{ width: `${pathway.module_count > 0 ? (completedCount / pathway.module_count) * 100 : 0}%` }} />
                 </div>
               </div>
             )}
@@ -129,6 +160,8 @@ export default function PathwayDetailPage() {
               const isCurrent = progress && progress.current_level === level.level_number;
               const isCompleted = progress && progress.current_level > level.level_number;
               const isLocked = progress && progress.current_level < level.level_number - 1;
+              const levelModules = levels[level.level_number] || [];
+              const levelCompleted = levelModules.filter(m => m.completed).length;
 
               return (
                 <motion.div
@@ -151,7 +184,12 @@ export default function PathwayDetailPage() {
                       {isCompleted ? '✓' : level.level_number}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{level.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">{level.title}</h3>
+                        {levelModules.length > 0 && (
+                          <span className="text-xs text-gray-400">{levelCompleted}/{levelModules.length} modules</span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500 mt-1">{level.description}</p>
                       {level.competencies && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
@@ -160,14 +198,45 @@ export default function PathwayDetailPage() {
                           ))}
                         </div>
                       )}
-                      {level.outcomes && (
-                        <p className="text-xs text-gray-400 mt-2">Outcome: {level.outcomes}</p>
-                      )}
                     </div>
                     {isCurrent && (
                       <span className="px-2.5 py-1 bg-gold-100 text-gold-700 text-xs font-semibold rounded-full flex-shrink-0">Current</span>
                     )}
                   </div>
+
+                  {/* Modules list */}
+                  {levelModules.length > 0 && (
+                    <div className="mt-4 ml-14 space-y-2">
+                      {levelModules.map((mod) => {
+                        const typeIcons = { article: '📖', video: '🎬', quiz: '📝', exercise: '💪', case_study: '📋', worksheet: '📄' };
+                        return (
+                          <div
+                            key={mod.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                              mod.completed ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-100 hover:border-primary-200'
+                            }`}
+                          >
+                            <span className="text-lg">{typeIcons[mod.module_type] || '📄'}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium ${mod.completed ? 'text-emerald-800' : 'text-gray-900'}`}>{mod.title}</p>
+                              <p className="text-xs text-gray-400">{mod.module_type} · {mod.duration_minutes} min · {mod.points} pts</p>
+                            </div>
+                            {mod.completed ? (
+                              <span className="text-emerald-600 text-xs font-semibold">✓ Done</span>
+                            ) : progress ? (
+                              <button
+                                onClick={() => handleCompleteModule(mod.id)}
+                                disabled={completingModule === mod.id}
+                                className="text-xs px-3 py-1 bg-primary-100 text-primary-700 rounded-full font-medium hover:bg-primary-200 disabled:opacity-50"
+                              >
+                                {completingModule === mod.id ? '...' : 'Complete'}
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               );
             })}

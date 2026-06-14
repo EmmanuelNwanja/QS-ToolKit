@@ -30,8 +30,8 @@ export default function ContestPage() {
     if (!id) return;
     async function load() {
       try {
-        const res = await academyAPI.getContests({});
-        const found = (res.data.contests || []).find((c) => String(c.id) === String(id));
+        const res = await academyAPI.getContest(id);
+        const found = res.data?.contest;
         if (found) {
           setContest(found);
           if (found.status === 'in_progress' && found.questions) {

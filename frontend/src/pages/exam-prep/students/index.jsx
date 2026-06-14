@@ -15,6 +15,8 @@ const cardAnim = {
 export default function StudentExamsPage() {
   const [universities, setUniversities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -29,6 +31,26 @@ export default function StudentExamsPage() {
     }
     load();
   }, []);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!search.trim()) {
+      const res = await examAPI.getUniversities();
+      setUniversities(res.data.universities || []);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await examAPI.getUniversities({ search: search.trim() });
+      setUniversities(res.data.universities || []);
+      // Log search for analytics
+      examAPI.logSearch({ query: search.trim(), type: 'universities', results_count: (res.data.universities || []).length }).catch(() => {});
+    } catch {
+      toast.error('Search failed');
+    } finally {
+      setSearching(false);
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -47,6 +69,38 @@ export default function StudentExamsPage() {
               <div className="h-px flex-1 bg-gray-100" />
               <span className="text-xs text-gray-400">{universities.length} universities</span>
             </div>
+
+            {/* Search bar */}
+            <form onSubmit={handleSearch} className="mb-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search universities by name..."
+                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={searching}
+                  className="btn-primary px-4 py-2.5 text-sm"
+                >
+                  {searching ? '...' : 'Search'}
+                </button>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={async () => { setSearch(''); const res = await examAPI.getUniversities(); setUniversities(res.data.universities || []); }}
+                    className="btn-secondary px-4 py-2.5 text-sm"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </form>
 
             {loading ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

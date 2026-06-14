@@ -64,6 +64,11 @@ router.get('/resources/:id', [
 ], ctrl.getResource);
 
 // ── Contests ───────────────────────────────────────────────────
+router.get('/contests', ctrl.getContests);
+router.get('/contests/:id', [
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid contest ID required'),
+  validate
+], ctrl.getContestById);
 router.post('/contests', [
   body('title').trim().notEmpty().withMessage('title is required'),
   body('description').optional().isString(),

@@ -53,9 +53,30 @@ exports.getStatus = async (req, res, next) => {
       .limit(1)
       .maybeSingle();
 
+    // Check admission test completion
+    const { data: admission } = await supabase
+      .from('academy_admission_tests')
+      .select('id, status, score, passed')
+      .eq('user_id', req.user.id)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Check strengths/weaknesses profile
+    const { data: profile } = await supabase
+      .from('academy_profiles')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
     return res.json(success('Academy status', {
       active: hasAccess,
-      subscription: sub || null
+      subscription_active: hasAccess,
+      subscription: sub || null,
+      admission_completed: !!admission && admission.passed,
+      admission_score: admission?.score || null,
+      profile_completed: !!profile,
     }));
   } catch (err) { next(err); }
 };
@@ -372,6 +393,55 @@ exports.submitAdmission = async (req, res, next) => {
 
     if (updateErr) throw updateErr;
 
+    // Compute AI pathway recommendation based on weak topics
+    let recommended_pathway = null;
+    const wrongTopics = results.filter(r => !r.is_correct && r.topic).map(r => r.topic);
+    if (wrongTopics.length > 0) {
+      const topicToPathway = {
+        'measurement': { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Improve your measurement & quantification skills' },
+        'boq': { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Strengthen your BOQ preparation' },
+        'estimation': { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Build stronger cost estimation foundations' },
+        'cost': { slug: 'commercial-management', name: 'Construction Commercial Management', focus_area: 'Develop your cost management expertise' },
+        'valuation': { slug: 'commercial-management', name: 'Construction Commercial Management', focus_area: 'Master valuation and financial control' },
+        'contract': { slug: 'dispute-resolution', name: 'Construction Dispute Resolution', focus_area: 'Strengthen contract administration knowledge' },
+        'law': { slug: 'dispute-resolution', name: 'Construction Dispute Resolution', focus_area: 'Build your construction law foundation' },
+        'dispute': { slug: 'dispute-resolution', name: 'Construction Dispute Resolution', focus_area: 'Develop dispute resolution skills' },
+        'project': { slug: 'project-management', name: 'Construction Project Management', focus_area: 'Enhance your project management capabilities' },
+        'management': { slug: 'project-management', name: 'Construction Project Management', focus_area: 'Build core management competencies' },
+        'technology': { slug: 'digital-construction', name: 'QS Technology & Digital Construction', focus_area: 'Embrace digital tools and innovation' },
+        'bim': { slug: 'digital-construction', name: 'QS Technology & Digital Construction', focus_area: 'Develop your BIM and digital skills' },
+        'building': { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Strengthen building technology knowledge' },
+        'material': { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Learn construction materials and properties' },
+        'professional': { slug: 'commercial-management', name: 'Construction Commercial Management', focus_area: 'Develop professional practice skills' },
+        'ethics': { slug: 'commercial-management', name: 'Construction Commercial Management', focus_area: 'Understand professional ethics and standards' },
+        'real_estate': { slug: 'real-estate-advisory', name: 'Real Estate & Property Advisory', focus_area: 'Explore property valuation and advisory' },
+        'property': { slug: 'real-estate-advisory', name: 'Real Estate & Property Advisory', focus_area: 'Build property market knowledge' },
+      };
+
+      // Find most frequent weak topic category
+      const topicCounts = {};
+      wrongTopics.forEach(t => {
+        const lower = t.toLowerCase();
+        Object.keys(topicToPathway).forEach(key => {
+          if (lower.includes(key)) {
+            const pw = topicToPathway[key];
+            topicCounts[pw.slug] = topicCounts[pw.slug] || { ...pw, count: 0 };
+            topicCounts[pw.slug].count++;
+          }
+        });
+      });
+
+      const sorted = Object.values(topicCounts).sort((a, b) => b.count - a.count);
+      if (sorted.length > 0) {
+        recommended_pathway = { slug: sorted[0].slug, name: sorted[0].name, focus_area: sorted[0].focus_area };
+      }
+    }
+
+    // Default recommendation if no weak topics matched
+    if (!recommended_pathway) {
+      recommended_pathway = { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Build a strong foundation in quantity surveying fundamentals' };
+    }
+
     return res.json(success(passed ? 'Congratulations! You passed the admission test.' : 'Admission test completed. You did not meet the pass mark.', {
       test_id: test.id,
       score,
@@ -380,6 +450,7 @@ exports.submitAdmission = async (req, res, next) => {
       total_questions: questions.length,
       pass_mark: 60,
       redirect_to: passed ? '/academy/pathways' : '/academy',
+      recommended_pathway,
       results
     }));
   } catch (err) { next(err); }
@@ -431,7 +502,23 @@ exports.getPathwayDetail = async (req, res, next) => {
 
     if (err || !pathway) return res.status(404).json(error('Pathway not found'));
 
-    // Check enrollment
+    // Fetch modules for this pathway, grouped by level
+    const { data: modules } = await supabase
+      .from('academy_modules')
+      .select('id, level, title, description, module_type, order_index, duration_minutes, points, resource_id')
+      .eq('pathway_slug', slug)
+      .eq('is_published', true)
+      .order('level')
+      .order('order_index');
+
+    // Group modules by level
+    const levelsMap = {};
+    (modules || []).forEach(m => {
+      if (!levelsMap[m.level]) levelsMap[m.level] = [];
+      levelsMap[m.level].push(m);
+    });
+
+    // Fetch user's module progress for this pathway
     const { data: enrollment } = await supabase
       .from('academy_enrollments')
       .select('id, enrolled_at')
@@ -439,10 +526,32 @@ exports.getPathwayDetail = async (req, res, next) => {
       .eq('pathway_id', pathway.id)
       .maybeSingle();
 
+    let completedModules = [];
+    if (enrollment) {
+      const { data: progress } = await supabase
+        .from('academy_module_progress')
+        .select('module_id, completed')
+        .eq('user_id', req.user.id)
+        .eq('pathway_id', pathway.id)
+        .eq('completed', true);
+      completedModules = (progress || []).map(p => p.module_id);
+    }
+
+    // Enrich modules with completion status
+    const enrichedLevels = {};
+    Object.keys(levelsMap).forEach(level => {
+      enrichedLevels[level] = levelsMap[level].map(m => ({
+        ...m,
+        completed: completedModules.includes(m.id)
+      }));
+    });
+
     return res.json(success('Pathway detail', {
-      pathway,
+      pathway: { ...pathway, module_count: (modules || []).length },
+      levels: enrichedLevels,
       enrolled: !!enrollment,
-      enrolled_at: enrollment?.enrolled_at || null
+      enrolled_at: enrollment?.enrolled_at || null,
+      completed_count: completedModules.length
     }));
   } catch (err) { next(err); }
 };
@@ -672,7 +781,14 @@ exports.getResource = async (req, res, next) => {
 
 exports.createContest = async (req, res, next) => {
   try {
-    const { title, description, scheduled_at, duration_minutes = 30, max_participants } = req.body;
+    const {
+      title, description, topic, contest_type = 'group',
+      question_count = 10, time_limit = 10, difficulty = 'medium',
+      opponent, scheduled_at, duration_minutes = 30, max_participants
+    } = req.body;
+
+    const contestTitle = title || topic || 'Untitled Contest';
+    const time_limit_seconds = (time_limit || 10) * 60;
 
     // Scheduled contests require Pro+ plan
     if (scheduled_at) {
@@ -688,22 +804,53 @@ exports.createContest = async (req, res, next) => {
       }
     }
 
+    // Duel contests require an opponent
+    if (contest_type === 'duel' && !opponent) {
+      return res.status(400).json(error('Duel contests require an opponent (username or email)'));
+    }
+
     const { data: contest, error: insertErr } = await supabase
       .from('academy_contests')
       .insert({
         creator_id: req.user.id,
-        title,
+        title: contestTitle,
         description: description || '',
+        topic: topic || contestTitle,
+        contest_type,
+        question_count: question_count || 10,
+        time_limit_seconds: time_limit_seconds || 600,
+        difficulty: difficulty || 'medium',
         scheduled_at: scheduled_at || null,
         duration_minutes,
         max_participants: max_participants || null,
-        status: scheduled_at ? 'scheduled' : 'draft',
+        status: scheduled_at ? 'scheduled' : 'pending',
         created_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (insertErr) throw insertErr;
+
+    // Handle duel opponent invitation
+    if (contest_type === 'duel' && opponent) {
+      const { data: opponentUser } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .or(`name.ilike.%${opponent}%,email.ilike.%${opponent}%`)
+        .neq('id', req.user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (opponentUser) {
+        // Create invitation record (using contest participants with pending status)
+        await supabase.from('academy_contest_participants').insert({
+          contest_id: contest.id,
+          user_id: opponentUser.id,
+          status: 'invited',
+          joined_at: new Date().toISOString()
+        });
+      }
+    }
 
     return res.status(201).json(success('Contest created', { contest }));
   } catch (err) { next(err); }
@@ -735,6 +882,22 @@ exports.getContests = async (req, res, next) => {
       page: parseInt(page),
       limit: parseInt(limit)
     }));
+  } catch (err) { next(err); }
+};
+
+exports.getContestById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { data: contest, error: err } = await supabase
+      .from('academy_contests')
+      .select('*, creator:users(name, email), participants:academy_contest_participants(user_id, status, joined_at, user:users(name, email))')
+      .eq('id', id)
+      .single();
+
+    if (err || !contest) return res.status(404).json(error('Contest not found'));
+
+    return res.json(success('Contest', { contest }));
   } catch (err) { next(err); }
 };
 
@@ -1016,12 +1179,6 @@ exports.getAnalytics = async (req, res, next) => {
       .select('module_id, completed, completed_at')
       .eq('user_id', req.user.id);
 
-    // Contest stats
-    const { data: contestSubmissions } = await supabase
-      .from('academy_contest_submissions')
-      .select('total_points, submitted_at')
-      .eq('user_id', req.user.id);
-
     // Admission test
     const { data: admissionTest } = await supabase
       .from('academy_admission_tests')
@@ -1035,10 +1192,53 @@ exports.getAnalytics = async (req, res, next) => {
     // Token balance
     const { data: tokens } = await supabase
       .from('academy_tokens')
-      .select('amount')
+      .select('amount, source')
       .eq('user_id', req.user.id);
 
     const totalTokens = (tokens || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    // Contest wins
+    const { data: contestResults } = await supabase
+      .from('academy_contest_submissions')
+      .select('total_points, contest:academy_contests(id)')
+      .eq('user_id', req.user.id);
+
+    // Get all submissions per contest to determine wins
+    let contestsWon = 0;
+    const contestIds = [...new Set((contestResults || []).map(c => c.contest?.id).filter(Boolean))];
+    if (contestIds.length > 0) {
+      for (const cid of contestIds) {
+        const { data: allSubs } = await supabase
+          .from('academy_contest_submissions')
+          .select('total_points')
+          .eq('contest_id', cid)
+          .order('total_points', { ascending: false });
+        if (allSubs && allSubs.length > 0) {
+          const userSub = (contestResults || []).find(c => c.contest?.id === cid);
+          if (userSub && userSub.total_points >= allSubs[0].total_points) {
+            contestsWon++;
+          }
+        }
+      }
+    }
+
+    // Pathway progress for current level
+    const { data: pathwayProgress } = await supabase
+      .from('academy_pathway_progress')
+      .select('current_level, pathway:academy_pathways(slug)')
+      .eq('user_id', req.user.id);
+
+    const currentLevel = (pathwayProgress || []).reduce((max, p) => Math.max(max, p.current_level || 1), 1);
+
+    // Compute recommended pathway from latest admission test
+    let recommended_pathway = null;
+    if (admissionTest && !admissionTest.passed && admissionTest.score !== null) {
+      // Failed — recommend based on lowest-scoring areas
+      recommended_pathway = { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Build a strong foundation in QS fundamentals' };
+    } else if ((moduleProgress || []).length === 0 && (enrollments || []).length === 0) {
+      // New user — recommend starting path
+      recommended_pathway = { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Begin your QS journey with core technical skills' };
+    }
 
     // Study streak (simplified: count consecutive days with activity)
     const completedModules = (moduleProgress || []).filter(m => m.completed && m.completed_at);
@@ -1063,11 +1263,17 @@ exports.getAnalytics = async (req, res, next) => {
       enrollments_count: (enrollments || []).length,
       completed_modules: completedModules.length,
       total_modules_completed: completedModules.length,
-      contests_participated: (contestSubmissions || []).length,
-      total_contest_points: (contestSubmissions || []).reduce((s, c) => s + (c.total_points || 0), 0),
+      contests_participated: (contestResults || []).length,
+      contests_won: contestsWon,
+      total_contest_points: (contestResults || []).reduce((s, c) => s + (c.total_points || 0), 0),
       admission_test: admissionTest || null,
+      tokens_earned: totalTokens,
       total_tokens: totalTokens,
-      study_streak_days: streak
+      study_streak_days: streak,
+      courses_completed: completedModules.length,
+      current_level: currentLevel,
+      recommended_pathway,
+      recent_activity: []
     }));
   } catch (err) { next(err); }
 };

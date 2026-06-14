@@ -292,6 +292,7 @@ export const academyAPI = {
   getResource:      (id)                      => api.get(`/academy/resources/${id}`),
   createContest:    (data)                    => api.post('/academy/contests', data),
   getContests:      (params)                  => api.get('/academy/contests', { params }),
+  getContest:       (id)                      => api.get(`/academy/contests/${id}`),
   joinContest:      (id)                      => api.post(`/academy/contests/${id}/join`),
   submitContest:    (id, data)                => api.post(`/academy/contests/${id}/submit`, data),
   getContestResults: (id)                     => api.get(`/academy/contests/${id}/results`),
@@ -311,9 +312,11 @@ export const examAPI = {
   submitExam:         (id, data)              => api.post(`/exam-prep/exams/${id}/submit`, data),
   getAttempts:        ()                      => api.get('/exam-prep/attempts'),
   getAttempt:         (id)                    => api.get(`/exam-prep/attempts/${id}`),
-  getUniversities:    ()                      => api.get('/exam-prep/universities'),
+  getUniversities:    (params)                => api.get('/exam-prep/universities', { params }),
   getUniversityCourses: (id)                  => api.get(`/exam-prep/universities/${id}/courses`),
   getPastQuestions:    (params)               => api.get('/exam-prep/past-questions', { params }),
+  globalSearch:       (params)                => api.get('/exam-prep/search', { params }),
+  logSearch:          (data)                  => api.post('/exam-prep/search/log', data),
 };
 
 // ─── Utilities ─────────────────────────────────────────────────

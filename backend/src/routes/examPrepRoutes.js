@@ -46,7 +46,10 @@ router.get('/attempts/:id', [
 ], ctrl.getAttempt);
 
 // ── Universities & Past Questions ──────────────────────────────
-router.get('/universities', ctrl.getUniversities);
+router.get('/universities', [
+  query('search').optional().isString(),
+  validate
+], ctrl.getUniversities);
 router.get('/universities/:id/courses', [
   param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid university ID required'),
   validate
@@ -56,7 +59,19 @@ router.get('/past-questions', [
   query('course').optional().isString(),
   query('year').optional().isInt({ min: 2000, max: 2030 }),
   query('category').optional().isString(),
+  query('search').optional().isString(),
   validate
 ], ctrl.getPastQuestions);
+router.get('/search', [
+  query('q').optional().isString(),
+  query('type').optional().isIn(['universities', 'courses', 'exams', 'all']),
+  validate
+], ctrl.globalSearch);
+router.post('/search/log', [
+  body('query').trim().notEmpty().withMessage('query is required'),
+  body('type').optional().isString(),
+  body('results_count').optional().isInt({ min: 0 }),
+  validate
+], ctrl.logSearch);
 
 module.exports = router;
