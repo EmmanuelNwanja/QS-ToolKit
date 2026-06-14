@@ -24,6 +24,8 @@ const NAV_ITEMS = [
 
 export default function Layout({ children, title }) {
   const { user, logout, planName } = useAuthStore();
+
+  const PLAN_DISPLAY_NAMES = { free: 'Free', basic: 'Starter', pro: 'Pro', enterprise: 'Elite' };
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -146,7 +148,7 @@ export default function Layout({ children, title }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{planName()} plan</p>
+              <p className="text-xs text-gray-500">{PLAN_DISPLAY_NAMES[planName()] || planName()} plan</p>
             </div>
             <button
               onClick={logout}
@@ -189,7 +191,7 @@ export default function Layout({ children, title }) {
             )}
             <NotificationBell />
             <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
-              {planName() === 'free' ? '⬆ Upgrade' : `✅ ${planName().charAt(0).toUpperCase() + planName().slice(1)}`}
+              {planName() === 'free' ? '⬆ Upgrade' : `✅ ${PLAN_DISPLAY_NAMES[planName()] || planName()}`}
             </Link>
           </div>
         </header>

@@ -1,8 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { DM_Sans, DM_Serif_Display } from 'next/font/google';
 import useAuthStore from '../context/authStore';
 import pushNotificationService from '../services/pushNotificationService';
 import '../styles/globals.css';
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+});
+
+const dmSerif = DM_Serif_Display({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  weight: ['400'],
+});
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
 const SW_URL = `/service-worker.js?v=${encodeURIComponent(APP_VERSION)}`;
@@ -92,7 +107,7 @@ export default function App({ Component, pageProps }) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <>
+    <div className={`${dmSans.variable} ${dmSerif.variable}`}>
       {getLayout(<Component {...pageProps} />)}
 
       {/* Update available banner — shown when a new service worker is waiting */}
@@ -130,6 +145,6 @@ export default function App({ Component, pageProps }) {
           error: { iconTheme: { primary: '#dc2626', secondary: '#fff' } }
         }}
       />
-    </>
+    </div>
   );
 }

@@ -30,23 +30,23 @@ const scaleIn = {
 
 const PLANS = [
   {
-    name: 'Basic',
-    price: '₦5,000',
+    name: 'Starter',
+    price: '₦8,999',
     period: '/month',
     desc: 'For students and entry-level QSs getting started.',
     features: ['2 projects/month', '30 calculator uses', '2 BOQs', '2 invoices & quotes', 'PDF & Excel exports', '1 user, 1 device']
   },
   {
     name: 'Pro',
-    price: '₦15,000',
+    price: '₦23,999',
     period: '/month',
     desc: 'For practicing professionals who need more volume.',
     features: ['5 projects/month', '80 calculator uses', '5 BOQs', '5 invoices & quotes', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support'],
     popular: true
   },
   {
-    name: 'Enterprise',
-    price: '₦70,000',
+    name: 'Elite',
+    price: '₦84,999',
     period: '/month',
     desc: 'For firms and teams managing multiple projects.',
     features: ['50 projects/month', '700 calculator uses', '50 BOQs', '50 invoices & quotes', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles', 'Top priority support']
@@ -54,14 +54,14 @@ const PLANS = [
 ];
 
 const COMPARISONS = [
-  { feature: 'Monthly projects', basic: '2', pro: '5', enterprise: '50' },
-  { feature: 'Calculator uses', basic: '30', pro: '80', enterprise: '700' },
-  { feature: 'BOQs', basic: '2', pro: '5', enterprise: '50' },
-  { feature: 'Invoices & quotes', basic: '2 each', pro: '5 each', enterprise: '50 each' },
-  { feature: 'PDF & Excel exports', basic: '✓', pro: '✓', enterprise: '✓' },
-  { feature: 'Users / devices', basic: '1 / 1', pro: '1 / 2', enterprise: '5 / 15' },
-  { feature: 'Team roles', basic: '—', pro: '—', enterprise: '✓' },
-  { feature: 'Support', basic: 'Standard', pro: 'Priority', enterprise: 'Top priority' }
+  { feature: 'Monthly projects', starter: '2', pro: '5', elite: '50' },
+  { feature: 'Calculator uses', starter: '30', pro: '80', elite: '700' },
+  { feature: 'BOQs', starter: '2', pro: '5', elite: '50' },
+  { feature: 'Invoices & quotes', starter: '2 each', pro: '5 each', elite: '50 each' },
+  { feature: 'PDF & Excel exports', starter: '✓', pro: '✓', elite: '✓' },
+  { feature: 'Users / devices', starter: '1 / 1', pro: '1 / 2', elite: '5 / 15' },
+  { feature: 'Team roles', starter: '—', pro: '—', elite: '✓' },
+  { feature: 'Support', starter: 'Standard', pro: 'Priority', elite: 'Top priority' }
 ];
 
 function SectionLabel({ text, light = false }) {
@@ -81,8 +81,89 @@ export default function PricingPage() {
   return (
     <>
       <Head>
-        <title>Pricing — QSToolkit</title>
-        <meta name="description" content="Simple, transparent pricing for Quantity Surveying professionals." />
+        <title>Pricing — QSToolkit | Plans from ₦8,999/mo</title>
+        <meta name="description" content="Simple, transparent pricing for Nigerian quantity surveying professionals. Starter ₦8,999/mo, Pro ₦23,999/mo, Elite ₦84,999/mo. Free plan available." />
+        <meta name="keywords" content="QSToolkit pricing, quantity surveying software cost, QS software Nigeria, BOQ software price, construction software pricing" />
+        <link rel="canonical" href="https://qs.solnuv.com/pricing" />
+        <meta property="og:title" content="Pricing — QSToolkit | Plans from ₦8,999/mo" />
+        <meta property="og:description" content="Simple, transparent pricing for Nigerian quantity surveying professionals." />
+        <meta property="og:url" content="https://qs.solnuv.com/pricing" />
+
+        {/* Product structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Product',
+              name: 'QSToolkit',
+              description: "Nigeria's Professional Quantity Surveying Platform with BOQs, 70+ QS Calculators, Invoices, Project Tracking, and AI-powered Dr. Q assistant.",
+              brand: { '@type': 'Brand', name: 'QSToolkit' },
+              offers: [
+                {
+                  '@type': 'Offer',
+                  price: '0',
+                  priceCurrency: 'NGN',
+                  name: 'Free Plan',
+                  url: 'https://qs.solnuv.com/auth/register',
+                  availability: 'https://schema.org/InStock',
+                },
+                {
+                  '@type': 'Offer',
+                  price: '8999',
+                  priceCurrency: 'NGN',
+                  name: 'Starter Plan (Monthly)',
+                  url: 'https://qs.solnuv.com/pricing',
+                  availability: 'https://schema.org/InStock',
+                },
+                {
+                  '@type': 'Offer',
+                  price: '23999',
+                  priceCurrency: 'NGN',
+                  name: 'Pro Plan (Monthly)',
+                  url: 'https://qs.solnuv.com/pricing',
+                  availability: 'https://schema.org/InStock',
+                },
+                {
+                  '@type': 'Offer',
+                  price: '84999',
+                  priceCurrency: 'NGN',
+                  name: 'Elite Plan (Monthly)',
+                  url: 'https://qs.solnuv.com/pricing',
+                  availability: 'https://schema.org/InStock',
+                },
+              ],
+            }),
+          }}
+        />
+
+        {/* FAQ structured data for pricing page */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: [
+                {
+                  '@type': 'Question',
+                  name: 'Can I change plans at any time?',
+                  acceptedAnswer: { '@type': 'Answer', text: 'Yes. You can upgrade or downgrade your plan at any time. Upgrades take effect immediately with prorated billing. Downgrades apply at the end of your current billing cycle.' },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'What payment methods do you accept?',
+                  acceptedAnswer: { '@type': 'Answer', text: 'We accept bank transfers and Paystack payments (cards, bank transfer, USSD). Direct bank transfers are verified manually within 24 hours.' },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Is there a free plan?',
+                  acceptedAnswer: { '@type': 'Answer', text: 'Yes. You get 3 free lifetime calculator uses on signup. No credit card required. Upgrade when you need more.' },
+                },
+              ],
+            }),
+          }}
+        />
       </Head>
 
       <div className="min-h-screen bg-white font-sans overflow-x-hidden">
@@ -251,18 +332,18 @@ export default function PricingPage() {
                   <thead>
                     <tr className="border-b border-gray-100">
                       <th className="text-left px-6 py-4 font-medium text-gray-400">Feature</th>
-                      <th className="text-center px-6 py-4 font-display font-bold text-primary-800">Basic</th>
+                      <th className="text-center px-6 py-4 font-display font-bold text-primary-800">Starter</th>
                       <th className="text-center px-6 py-4 font-display font-bold text-primary-800 bg-gold-500/[0.03]">Pro</th>
-                      <th className="text-center px-6 py-4 font-display font-bold text-primary-800">Enterprise</th>
+                      <th className="text-center px-6 py-4 font-display font-bold text-primary-800">Elite</th>
                     </tr>
                   </thead>
                   <tbody>
                     {COMPARISONS.map((row, i) => (
                       <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-3.5 text-gray-600">{row.feature}</td>
-                        <td className="text-center px-6 py-3.5 text-gray-500">{row.basic}</td>
+                        <td className="text-center px-6 py-3.5 text-gray-500">{row.starter}</td>
                         <td className="text-center px-6 py-3.5 text-gray-700 font-medium bg-gold-500/[0.02]">{row.pro}</td>
-                        <td className="text-center px-6 py-3.5 text-gray-500">{row.enterprise}</td>
+                        <td className="text-center px-6 py-3.5 text-gray-500">{row.elite}</td>
                       </tr>
                     ))}
                   </tbody>

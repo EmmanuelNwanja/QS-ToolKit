@@ -15,9 +15,9 @@ const PLAN_LIMITS = {
 
 const PLAN_PRICES = {
   free: { monthly: 0, annual: 0 },
-  basic: { monthly: 5000, annual: 50000 },
-  pro: { monthly: 15000, annual: 150000 },
-  enterprise: { monthly: 50000, annual: 500000 },
+  basic: { monthly: 8999, annual: 89990 },
+  pro: { monthly: 23999, annual: 239990 },
+  enterprise: { monthly: 84999, annual: 849990 },
 };
 
 /**

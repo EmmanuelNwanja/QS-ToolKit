@@ -1,0 +1,20 @@
+# QSToolkit - https://qs.solnuv.com
+# Allow search engines to crawl all public pages
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /projects
+Disallow: /boq
+Disallow: /invoices
+Disallow: /settings
+Disallow: /subscription
+Disallow: /feedback
+Disallow: /admin
+Disallow: /auth
+Disallow: /qs-flow
+Disallow: /parametric
+Disallow: /engine
+Disallow: /leaderboard
+Disallow: /_next
+
+Sitemap: https://qs.solnuv.com/sitemap.xml

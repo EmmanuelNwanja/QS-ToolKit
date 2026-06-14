@@ -15,6 +15,14 @@ const FEATURES = {
   enterprise: ['50 project logs/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices · 50 valuations · 50 quotations/month', 'PDF & Excel exports', '5 users · 15 devices', 'Team roles & permissions', 'Top priority support']
 };
 
+const PLAN_DISPLAY_NAMES = {
+  free: 'Free',
+  basic: 'Starter',
+  student: 'Starter',
+  pro: 'Pro',
+  enterprise: 'Elite',
+};
+
 const PROMO_ELIGIBLE = ['basic', 'student', 'pro'];
 
 export default function SubscriptionPage() {
@@ -256,7 +264,11 @@ export default function SubscriptionPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Subscription & Plans — QSToolkit</title></Head>
+      <Head>
+        <title>Subscription & Plans — QSToolkit</title>
+        <meta name="description" content="Manage your QSToolkit subscription. Starter ₦8,999/mo, Pro ₦23,999/mo, Elite ₦84,999/mo. Upgrade, downgrade or view billing history." />
+        <link rel="canonical" href="https://qs.solnuv.com/subscription" />
+      </Head>
       <Layout title="Subscription & Plans">
         <div className="max-w-5xl space-y-6">
 
@@ -278,8 +290,8 @@ export default function SubscriptionPage() {
               mySub.status === 'active' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
             }`}>
               <div>
-                <p className="font-semibold text-gray-900 capitalize">
-                  {mySub.status === 'active' ? '✅' : '⚠️'} Current Plan: <strong>{mySub.plan?.name || 'Free'}</strong>
+                <p className="font-semibold text-gray-900">
+                  {mySub.status === 'active' ? '✅' : '⚠️'} Current Plan: <strong>{PLAN_DISPLAY_NAMES[mySub.plan?.name] || mySub.plan?.name || 'Free'}</strong>
                   {mySub.billing_cycle === 'annual' && <span className="ml-2 badge-green">Annual</span>}
                 </p>
                 {mySub.expires_at && (
@@ -341,7 +353,7 @@ export default function SubscriptionPage() {
                   )}
 
                   <div className="flex-1">
-                    <h3 className="font-display text-lg font-bold text-primary-800 capitalize">{plan.name}</h3>
+                    <h3 className="font-display text-lg font-bold text-primary-800">{PLAN_DISPLAY_NAMES[plan.name] || plan.name}</h3>
                     <div className="flex flex-col mt-1 mb-1">
                       {displayPrice(plan)}
                       <div className="flex items-center gap-2 mt-0.5">
@@ -413,7 +425,7 @@ export default function SubscriptionPage() {
                         disabled={!!paying}
                         className={`w-full text-sm ${plan.name === 'pro' ? 'btn-primary' : 'btn-secondary'}`}
                       >
-                        Get {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}
+                        Get {PLAN_DISPLAY_NAMES[plan.name] || plan.name}
                       </button>
                     )}
 

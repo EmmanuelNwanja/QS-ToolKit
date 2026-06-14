@@ -30,6 +30,10 @@ const SMTP_HOSTS = (process.env.SMTP_HOSTS || '')
 const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT || 15000);
 const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
 const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT || 20000);
+const PLAN_DISPLAY_NAMES = {
+  free: 'Free', basic: 'Starter', pro: 'Pro', enterprise: 'Elite'
+};
+
 const BRAND = {
   primary:    '#1a3c5e',
   gold:       '#f59e0b',
@@ -550,15 +554,17 @@ exports.sendSubscriptionConfirmation = async (user, billingCycle = 'monthly', ex
     enterprise: ['50 projects/month', '700 calculator uses/month', '50 BOQ/month', '50 invoices, 50 valuations, 50 quotations/month', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles & permissions', 'Top priority support']
   };
 
+  const displayName = PLAN_DISPLAY_NAMES[planName.toLowerCase()] || planName;
+
   const html = layout({
-    preheader: `Your ${planName} subscription is now active.`,
+    preheader: `Your ${displayName} subscription is now active.`,
     body: `
-      ${heroSection({ emoji: '✅', title: 'Subscription Activated!', subtitle: `Your ${planName} plan is live.` })}
+      ${heroSection({ emoji: '✅', title: 'Subscription Activated!', subtitle: `Your ${displayName} plan is live.` })}
       ${bodySection(`
-        ${bodyText(`Hi ${firstName}, your payment went through and your <strong>${planName} (${cycle})</strong> plan is now active.`)}
+        ${bodyText(`Hi ${firstName}, your payment went through and your <strong>${displayName} (${cycle})</strong> plan is now active.`)}
         ${sectionTitle('Your Plan Details')}
         <table cellpadding="0" cellspacing="0" width="100%">
-          ${infoRow('Plan', `${planName} · ${cycle}`)}
+          ${infoRow('Plan', `${displayName} · ${cycle}`)}
           ${infoRow('Next Renewal / Expiry', expiry)}
         </table>
         ${sectionTitle("What's Included")}
@@ -570,7 +576,7 @@ exports.sendSubscriptionConfirmation = async (user, billingCycle = 'monthly', ex
       `)}
     `
   });
-  return send({ to: user.email, subject: `Your QSToolkit ${planName} plan is active`, html });
+  return send({ to: user.email, subject: `Your QSToolkit ${displayName} plan is active`, html });
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -719,13 +725,14 @@ exports.sendExpiryReminder = async ({ email, name, planName, expiresAt, renewUrl
   const expiry    = expiresAt
     ? new Date(expiresAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })
     : 'soon';
+  const displayName = PLAN_DISPLAY_NAMES[planName?.toLowerCase()] || planName;
 
   const html = layout({
-    preheader: `Your QSToolkit ${planName} plan expires in 3 days`,
+    preheader: `Your QSToolkit ${displayName} plan expires in 3 days`,
     body: `
       ${heroSection({ emoji: '⏰', title: 'Your subscription is expiring soon', subtitle: `Renew to avoid interruption` })}
       ${bodySection(`
-        ${bodyText(`Hi ${firstName}, this is a friendly reminder that your <strong>${planName}</strong> subscription expires on <strong>${expiry}</strong>.`)}
+        ${bodyText(`Hi ${firstName}, this is a friendly reminder that your <strong>${displayName}</strong> subscription expires on <strong>${expiry}</strong>.`)}
         ${bodyText(`After that date, you'll lose access to your plan's features until you renew.`)}
         ${noteBox(`Your projects, BOQs, and saved calculations are <strong>never deleted</strong>. They'll be waiting for you when you come back.`, 'success')}
         ${ctaButton('Renew My Subscription →', renewUrl || `${BRAND.url}/subscription`)}
@@ -734,7 +741,7 @@ exports.sendExpiryReminder = async ({ email, name, planName, expiresAt, renewUrl
     `
   });
 
-  return send({ to: email, subject: `Your QSToolkit ${planName} plan expires in 3 days`, html });
+  return send({ to: email, subject: `Your QSToolkit ${displayName} plan expires in 3 days`, html });
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -799,6 +806,109 @@ exports.sendPhilanthropistGiftNotification = async (beneficiary, meta) => {
     subject: `🎁 ${donorLabel} gifted you a QSToolkit ${meta.plan_name} subscription!`,
     html
   });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ACCOUNT SUSPENDED
+// ════════════════════════════════════════════════════════════════
+exports.sendAccountSuspended = async (user, reason) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+
+  const html = layout({
+    preheader: 'Your QSToolkit account has been suspended',
+    body: `
+      ${heroSection({ emoji: '🚫', title: 'Account Suspended', subtitle: 'Your access has been temporarily restricted.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, your QSToolkit account has been suspended by an administrator.`)}
+        ${reason ? noteBox(`<strong>Reason:</strong> ${reason}`, 'warning') : ''}
+        ${bodyText('During suspension, you cannot access your projects, calculators, or other platform features. Your data is preserved and will be available if the suspension is lifted.')}
+        ${bodyText('If you believe this was done in error, please contact our support team.', 'margin-top:16px;')}
+        ${ctaButton('Contact Support →', `mailto:${BRAND.email}`)}
+      `)}
+    `
+  });
+
+  return send({ to: user.email, subject: 'Your QSToolkit account has been suspended', html });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ACCOUNT RESTORED
+// ════════════════════════════════════════════════════════════════
+exports.sendAccountRestored = async (user) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+
+  const html = layout({
+    preheader: 'Your QSToolkit account has been restored',
+    body: `
+      ${heroSection({ emoji: '✅', title: 'Account Restored!', subtitle: 'You can now access your account again.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, great news — your QSToolkit account has been restored and is now fully active.`)}
+        ${bodyText('You can log in and resume using all your plan features right away.')}
+        ${ctaButton('Log In to QSToolkit →', `${BRAND.url}/auth/login`)}
+        ${noteBox('If you have any questions about what happened, please reach out to our support team.', 'info')}
+      `)}
+    `
+  });
+
+  return send({ to: user.email, subject: 'Your QSToolkit account has been restored ✅', html });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  CREDIT ISSUED
+// ════════════════════════════════════════════════════════════════
+exports.sendCreditIssued = async (user, { amount, reason, newBalance }) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+  const creditAmount = `₦${Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  const balanceStr   = `₦${Number(newBalance || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+
+  const html = layout({
+    preheader: `You've received ${creditAmount} account credit on QSToolkit`,
+    body: `
+      ${heroSection({ emoji: '💰', title: 'Account Credit Added!', subtitle: `${creditAmount} has been credited to your account.` })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, an administrator has added account credit to your QSToolkit account.`)}
+        ${sectionTitle('Credit Details')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Amount Credited', `<strong style="color:${BRAND.gold};font-size:16px;">${creditAmount}</strong>`)}
+          ${reason ? infoRow('Reason', reason) : ''}
+          ${infoRow('New Balance', balanceStr)}
+        </table>
+        ${bodyText('You can use this credit toward any QSToolkit subscription plan.')}
+        ${ctaButton('View My Subscription →', `${BRAND.url}/subscription`)}
+      `)}
+    `
+  });
+
+  return send({ to: user.email, subject: `${creditAmount} account credit added to your QSToolkit`, html });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  REFUND NOTIFICATION
+// ════════════════════════════════════════════════════════════════
+exports.sendRefundNotification = async (user, { amount, reason, method }) => {
+  const firstName    = user.name?.split(' ')[0] || 'there';
+  const refundAmount = `₦${Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  const methodLabels = { original_payment: 'Original payment method', credit: 'Account credit', paystack: 'Paystack refund' };
+
+  const html = layout({
+    preheader: `Your refund of ${refundAmount} has been processed`,
+    body: `
+      ${heroSection({ emoji: '↩️', title: 'Refund Processed', subtitle: `${refundAmount} has been refunded to your account.` })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, a refund has been processed on your QSToolkit account.`)}
+        ${sectionTitle('Refund Details')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Amount Refunded', `<strong style="color:${BRAND.primary};font-size:16px;">${refundAmount}</strong>`)}
+          ${infoRow('Refund Method', methodLabels[method] || method || '—')}
+          ${reason ? infoRow('Reason', reason) : ''}
+        </table>
+        ${noteBox('Refunds to original payment methods typically take 5–10 business days to appear on your statement.', 'info')}
+        ${ctaButton('View My Subscription →', `${BRAND.url}/subscription`)}
+      `)}
+    `
+  });
+
+  return send({ to: user.email, subject: `Refund of ${refundAmount} processed — QSToolkit`, html });
 };
 
 // ════════════════════════════════════════════════════════════════

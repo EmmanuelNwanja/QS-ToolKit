@@ -12,7 +12,12 @@ export default function CalculatorsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Calculators — QSToolkit</title></Head>
+      <Head>
+        <title>70+ QS Calculators — QSToolkit</title>
+        <meta name="description" content="70+ quantity surveying calculators for Nigerian construction: concrete, steel, blockwork, formwork, roofing, plumbing & more. BS 4449 standards, local mix ratios." />
+        <meta name="keywords" content="QS calculators Nigeria, quantity surveying calculator, concrete calculator, steel calculator, blockwork calculator, formwork calculator" />
+        <link rel="canonical" href="https://qs.solnuv.com/calculators" />
+      </Head>
       <Layout title="🧮 QS Calculators">
         <div className="max-w-5xl">
           {/* Intro */}

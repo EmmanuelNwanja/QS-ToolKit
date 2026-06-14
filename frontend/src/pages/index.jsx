@@ -127,28 +127,36 @@ const STATS = [
 
 const FAQS = [
   {
+    q: 'What is QSToolkit?',
+    a: 'QSToolkit is a professional quantity surveying platform built for Nigerian QS professionals. It includes 70+ QS calculators, bill of quantities (BOQ) generator, invoice and quotation creator, project tracker, and an AI assistant called Dr. Q.'
+  },
+  {
     q: 'What makes QSToolkit different from other QS software?',
-    a: 'Built for Nigerian standards. No installations to manage. Access from any device, collaborate with your team, and scale as you grow. No formulas to break. No licenses to renew.'
+    a: 'Built for Nigerian construction standards. No installations to manage. Access from any device, collaborate with your team, and scale as you grow. No formulas to break. No licenses to renew.'
   },
   {
     q: 'Can I export BOQs and invoices with my company logo?',
-    a: 'Yes. Upload your logo and brand colours in Settings. Every PDF and Excel export carries your identity — professionally formatted and ready to send.'
+    a: 'Yes. Upload your logo and brand colours in Settings. Every PDF and Excel export carries your identity — professionally formatted and ready to send to clients.'
   },
   {
     q: 'Is there a free trial?',
-    a: 'You can explore the calculators and create a limited number of documents on signup without paying. Upgrade when you are ready to unlock full limits.'
+    a: 'Yes. You get 3 free calculator uses when you sign up. No credit card required. Upgrade to Starter (₦8,999/mo), Pro (₦23,999/mo), or Elite (₦84,999/mo) when ready.'
   },
   {
     q: 'How does the client feedback system work?',
     a: 'Generate a unique link for each client. They rate you on quality, timeliness, and communication. Your average score feeds into the live leaderboard — turning reputation into a competitive edge.'
   },
   {
-    q: 'Can I use this on my phone?',
-    a: 'QSToolkit is a progressive web app. Use it on phone, tablet, or desktop. You can even install it to your home screen for offline-like access.'
+    q: 'Can I use QSToolkit on my phone?',
+    a: 'Yes. QSToolkit is a progressive web app (PWA). Use it on phone, tablet, or desktop. Install it to your home screen for app-like access.'
   },
   {
     q: 'What happens to my data?',
     a: 'Your data is stored securely in Supabase PostgreSQL. We do not sell your data. You control what you share. Your work belongs to you.'
+  },
+  {
+    q: 'Who is QSToolkit for?',
+    a: 'QSToolkit is for quantity surveyors, construction professionals, project managers, and QS firms in Nigeria. Whether you are an independent QS or a large firm, QSToolkit scales with your needs.'
   }
 ];
 
@@ -256,7 +264,51 @@ export default function LandingPage() {
     <>
       <Head>
         <title>QSToolkit — Quantity Surveying Without the Software Headaches</title>
-        <meta name="description" content="Calculate, quantify, and invoice from any device. No installs. No lock-in. Built for QS professionals." />
+        <meta name="description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator, project tracker & AI assistant. Free to start. Built for Nigerian construction standards." />
+        <meta name="keywords" content="quantity surveying Nigeria, BOQ software, bill of quantities, QS calculators, construction invoices, project tracking, Nigerian QS professionals, quantity surveyor app" />
+        <link rel="canonical" href="https://qs.solnuv.com" />
+        <meta property="og:title" content="QSToolkit — Quantity Surveying Without the Software Headaches" />
+        <meta property="og:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker. Free to start." />
+        <meta property="og:url" content="https://qs.solnuv.com" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="QSToolkit — Quantity Surveying Without the Software Headaches" />
+        <meta name="twitter:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker." />
+
+        {/* FAQ structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: FAQS.map((faq) => ({
+                '@type': 'Question',
+                name: faq.q,
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: faq.a,
+                },
+              })),
+            }),
+          }}
+        />
+
+        {/* Breadcrumb structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://qs.solnuv.com' },
+                { '@type': 'ListItem', position: 2, name: 'Calculators', item: 'https://qs.solnuv.com/calculators' },
+                { '@type': 'ListItem', position: 3, name: 'Pricing', item: 'https://qs.solnuv.com/pricing' },
+              ],
+            }),
+          }}
+        />
       </Head>
 
       <div className="min-h-screen bg-white font-sans overflow-x-hidden">

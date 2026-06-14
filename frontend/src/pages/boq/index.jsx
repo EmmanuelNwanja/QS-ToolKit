@@ -27,7 +27,12 @@ export default function BoqListPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Bill of Quantities — QSToolkit</title></Head>
+      <Head>
+        <title>Bill of Quantities — QSToolkit</title>
+        <meta name="description" content="Create, manage and export professional Bills of Quantities (BOQs) with QSToolkit. PDF & Excel export, approval tracking, Nigerian QS standards." />
+        <meta name="keywords" content="bill of quantities, BOQ, quantity surveying, Nigeria, QS, BOQ software, BOQ generator" />
+        <link rel="canonical" href="https://qs.solnuv.com/boq" />
+      </Head>
       <Layout title="📋 Bill of Quantities">
         <div className="max-w-5xl space-y-5">
 

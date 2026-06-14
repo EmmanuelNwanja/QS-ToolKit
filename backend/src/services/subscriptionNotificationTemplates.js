@@ -5,6 +5,10 @@
 
 const logger = require('../utils/logger');
 
+const PLAN_DISPLAY_NAMES = {
+  free: 'Free', basic: 'Starter', pro: 'Pro', enterprise: 'Elite'
+};
+
 /**
  * Send subscription expiry reminder email
  * Called by scheduler when subscription is expiring soon
@@ -13,6 +17,7 @@ const logger = require('../utils/logger');
 exports.sendSubscriptionExpiryReminder = async (params, emailService) => {
   try {
     const { email, userName, plan, expiresAt, daysUntil } = params;
+    const displayName = PLAN_DISPLAY_NAMES[plan?.toLowerCase()] || plan?.toUpperCase() || 'PRO';
 
     const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -20,7 +25,7 @@ exports.sendSubscriptionExpiryReminder = async (params, emailService) => {
       day: 'numeric',
     });
 
-    const subject = `⏰ Your QSToolkit ${plan.toUpperCase()} subscription expires in ${daysUntil} days`;
+    const subject = `⏰ Your QSToolkit ${displayName} subscription expires in ${daysUntil} days`;
 
     const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -34,7 +39,7 @@ exports.sendSubscriptionExpiryReminder = async (params, emailService) => {
         </p>
         
         <p style="font-size: 16px; color: #334155; line-height: 1.6; margin: 0 0 20px 0;">
-          Your <strong>${plan.toUpperCase()}</strong> subscription will expire on <strong style="color: #dc2626;">${expiryDate}</strong> (in <strong>${daysUntil} day${daysUntil > 1 ? 's' : ''}</strong>).
+          Your <strong>${displayName}</strong> subscription will expire on <strong style="color: #dc2626;">${expiryDate}</strong> (in <strong>${daysUntil} day${daysUntil > 1 ? 's' : ''}</strong>).
         </p>
         
         <p style="font-size: 16px; color: #334155; line-height: 1.6; margin: 0 0 20px 0;">
@@ -67,7 +72,7 @@ Your subscription is expiring soon!
 
 Hi ${userName},
 
-Your ${plan.toUpperCase()} subscription will expire on ${expiryDate} (in ${daysUntil} day${daysUntil > 1 ? 's' : ''}).
+Your ${displayName} subscription will expire on ${expiryDate} (in ${daysUntil} day${daysUntil > 1 ? 's' : ''}).
 
 To continue enjoying uninterrupted access to premium features, please renew your subscription.
 
@@ -106,6 +111,7 @@ Questions? Contact us at support@qs.solnuv.com
 exports.sendSubscriptionDowngradeNotice = async (params, emailService) => {
   try {
     const { email, userName, previousPlan } = params;
+    const displayName = PLAN_DISPLAY_NAMES[previousPlan?.toLowerCase()] || previousPlan?.toUpperCase() || 'PRO';
 
     const subject = `Your QSToolkit subscription has expired - Downgraded to Free tier`;
 
@@ -121,7 +127,7 @@ exports.sendSubscriptionDowngradeNotice = async (params, emailService) => {
         </p>
         
         <p style="font-size: 16px; color: #334155; line-height: 1.6; margin: 0 0 20px 0;">
-          Your <strong>${previousPlan.toUpperCase()}</strong> subscription has expired. Your account has been automatically downgraded to our <strong>Free tier</strong>.
+          Your <strong>${displayName}</strong> subscription has expired. Your account has been automatically downgraded to our <strong>Free tier</strong>.
         </p>
         
         <div style="background: white; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
@@ -154,7 +160,7 @@ Your subscription has expired - Downgraded to Free tier
 
 Hi ${userName},
 
-Your ${previousPlan.toUpperCase()} subscription has expired. Your account has been downgraded to our Free tier.
+Your ${displayName} subscription has expired. Your account has been downgraded to our Free tier.
 
 What changed: You now have access to limited features. To restore full access, please renew your subscription.
 
