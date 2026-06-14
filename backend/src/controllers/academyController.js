@@ -388,11 +388,15 @@ exports.submitAdmission = async (req, res, next) => {
       return res.status(404).json(error('No in-progress admission test found'));
     }
 
-    // Score the test
+    // Score the test — build a lookup by question_index for correct matching
     const questions = test.questions || [];
+    const answerMap = {};
+    answers.forEach(a => {
+      answerMap[a.question_index] = a.answer;
+    });
     let correctCount = 0;
     const results = questions.map((q, idx) => {
-      const userAnswer = answers[idx]?.answer || '';
+      const userAnswer = (answerMap[idx] || '').toString();
       const isCorrect = userAnswer.toUpperCase() === q.correct_answer.toUpperCase();
       if (isCorrect) correctCount++;
       return {
@@ -418,7 +422,8 @@ exports.submitAdmission = async (req, res, next) => {
         correct_count: correctCount,
         total_questions: questions.length,
         status: 'completed',
-        submitted_at: new Date().toISOString()
+        submitted_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
       })
       .eq('id', test.id);
 

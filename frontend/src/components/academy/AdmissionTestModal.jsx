@@ -136,7 +136,10 @@ export default function AdmissionTestModal({ open, onComplete }) {
           {result.recommended_pathway && (
             <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 my-4">
               <p className="text-xs text-gold-700 uppercase tracking-wide mb-1">Recommended Pathway</p>
-              <p className="font-semibold text-gold-800">{result.recommended_pathway}</p>
+              <p className="font-semibold text-gold-800">{result.recommended_pathway.name}</p>
+              {result.recommended_pathway.focus_area && (
+                <p className="text-xs text-gold-600 mt-1">{result.recommended_pathway.focus_area}</p>
+              )}
             </div>
           )}
           <button

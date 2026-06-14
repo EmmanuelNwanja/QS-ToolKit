@@ -474,7 +474,7 @@ exports.grantAcademySubscription = async (req, res, next) => {
     // Expire any existing active academy subscription
     await supabase
       .from('academy_subscriptions')
-      .update({ status: 'expired', updated_at: now.toISOString() })
+      .update({ status: 'expired' })
       .eq('user_id', userId)
       .eq('status', 'active');
 
@@ -564,7 +564,7 @@ exports.extendAcademySubscription = async (req, res, next) => {
       newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
       await supabase
         .from('academy_subscriptions')
-        .update({ expires_at: newExpiry.toISOString(), updated_at: now.toISOString() })
+        .update({ expires_at: newExpiry.toISOString() })
         .eq('id', existing.id);
     } else {
       // No active sub — create one
@@ -629,7 +629,7 @@ exports.revokeAcademySubscription = async (req, res, next) => {
 
     const { error: dbError } = await supabase
       .from('academy_subscriptions')
-      .update({ status: 'expired', updated_at: now })
+      .update({ status: 'expired' })
       .eq('user_id', userId)
       .eq('status', 'active');
 
@@ -687,7 +687,7 @@ exports.grantExamPrepSubscription = async (req, res, next) => {
     // Expire any existing active exam prep subscription
     await supabase
       .from('exam_prep_subscriptions')
-      .update({ status: 'expired', updated_at: now.toISOString() })
+      .update({ status: 'expired' })
       .eq('user_id', userId)
       .eq('status', 'active');
 
@@ -770,7 +770,7 @@ exports.extendExamPrepSubscription = async (req, res, next) => {
       newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
       await supabase
         .from('exam_prep_subscriptions')
-        .update({ expires_at: newExpiry.toISOString(), updated_at: now.toISOString() })
+        .update({ expires_at: newExpiry.toISOString() })
         .eq('id', existing.id);
     } else {
       newExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
@@ -834,7 +834,7 @@ exports.revokeExamPrepSubscription = async (req, res, next) => {
 
     const { error: dbError } = await supabase
       .from('exam_prep_subscriptions')
-      .update({ status: 'expired', updated_at: now })
+      .update({ status: 'expired' })
       .eq('user_id', userId)
       .eq('status', 'active');
 
