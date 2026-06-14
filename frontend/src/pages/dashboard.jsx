@@ -236,6 +236,42 @@ export default function DashboardPage() {
                   View 10+ Calculators
                 </Link>
               </div>
+
+              {/* QS Academy */}
+              <Link href="/academy" className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <span className="text-xl">🎓</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">QS Academy</h3>
+                    <p className="text-xs text-gray-500">Learn & grow your career</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">AI-powered learning pathways, knowledge arena & resource library.</p>
+                <div className="mt-3 flex items-center gap-1 text-xs text-primary-700 font-medium">
+                  <span>Explore</span>
+                  <span>→</span>
+                </div>
+              </Link>
+
+              {/* Exam Prep */}
+              <Link href="/exam-prep" className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <span className="text-xl">📝</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">Exam Prep</h3>
+                    <p className="text-xs text-gray-500">Professional exam preparation</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
+                <div className="mt-3 flex items-center gap-1 text-xs text-primary-700 font-medium">
+                  <span>Start Preparing</span>
+                  <span>→</span>
+                </div>
+              </Link>
             </div>
           </div>
 

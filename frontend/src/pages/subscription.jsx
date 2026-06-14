@@ -443,6 +443,46 @@ export default function SubscriptionPage() {
             })}
           </div>
 
+          {/* Add-on Cards */}
+          <div className="mt-2">
+            <h3 className="font-display text-lg font-bold text-primary-800 mb-4">Add-ons</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl border border-purple-200 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <span className="text-xl">🎓</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">QS Academy</h4>
+                    <p className="text-xs text-gray-500">AI-powered learning, knowledge arena</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
+                <p className="text-sm text-gray-500 mb-3">AI-powered learning pathways, knowledge arena & resource library.</p>
+                <button className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                  Subscribe
+                </button>
+              </div>
+
+              <div className="bg-white rounded-xl border border-emerald-200 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <span className="text-xl">📝</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">QS Exam Prep</h4>
+                    <p className="text-xs text-gray-500">Professional exam prep, past questions</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
+                <p className="text-sm text-gray-500 mb-3">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
+                <button className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                  Subscribe
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="card bg-blue-50 border-blue-100">
             <h3 className="font-semibold text-blue-800 mb-2">Secure Nigerian Payment</h3>
             <p className="text-sm text-blue-700">

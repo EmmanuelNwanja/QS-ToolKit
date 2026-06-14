@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { label: 'Paystack Plans',     href: '/admin/paystack-plans', icon: '🧩', superAdminOnly: true },
   { label: 'Push Notifications', href: '/admin/notifications',  icon: '🔔' },
   { label: 'Analytics',          href: '/admin/analytics',      icon: '📈' },
+  { label: 'Academy',            href: '/admin/academy',        icon: '🎓' },
+  { label: 'Exam Prep',          href: '/admin/exam-prep',      icon: '📝' },
   { label: 'Activity Log',       href: '/admin/activity-logs',  icon: '📋', superAdminOnly: true },
   { label: 'Admins',             href: '/admin/manage-admins',  icon: '🔐', superAdminOnly: true },
 ];

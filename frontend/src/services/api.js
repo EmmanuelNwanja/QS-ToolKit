@@ -223,7 +223,9 @@ export const adminAPI = {
   getPushNotifications:  () => api.get('/admin/notifications'),
   sendPushNotification:  (data) => api.post('/admin/notifications', data),
   getActivityLogs:       (params) => api.get('/admin/activity-logs', { params }),
-  getAnalytics:          (params) => api.get('/admin/analytics', { params })
+  getAnalytics:          (params) => api.get('/admin/analytics', { params }),
+  getAcademyStats:       ()       => api.get('/admin/academy/stats'),
+  getExamPrepStats:      ()       => api.get('/admin/exam-prep/stats'),
 };
 
 // ─── Push Notifications ────────────────────────────────────────
@@ -268,6 +270,45 @@ export const revisionAPI = {
   list:     (boqId) => api.get(`/boq/${boqId}/revisions`),
   get:      (boqId, revId) => api.get(`/boq/${boqId}/revisions/${revId}`),
   variance: (boqId, revA, revB) => api.get(`/boq/${boqId}/variance`, { params: { rev_a: revA, rev_b: revB } })
+};
+
+// ─── QS Academy ────────────────────────────────────────────────
+export const academyAPI = {
+  getStatus:       ()                         => api.get('/academy/status'),
+  subscribe:       (data)                     => api.post('/academy/subscribe', data),
+  getProfile:       ()                        => api.get('/academy/profile'),
+  saveProfile:      (data)                    => api.post('/academy/profile', data),
+  startAdmission:   ()                        => api.post('/academy/admission/start'),
+  submitAdmission:  (data)                    => api.post('/academy/admission/submit', data),
+  getAdmissionResult: ()                      => api.get('/academy/admission/result'),
+  getPathways:      ()                        => api.get('/academy/pathways'),
+  getPathway:       (slug)                    => api.get(`/academy/pathways/${slug}`),
+  enrollPathway:    (slug)                    => api.post(`/academy/pathways/${slug}/enroll`),
+  getProgress:      ()                        => api.get('/academy/pathways/progress'),
+  getResources:     (params)                  => api.get('/academy/resources', { params }),
+  getResource:      (id)                      => api.get(`/academy/resources/${id}`),
+  createContest:    (data)                    => api.post('/academy/contests', data),
+  getContests:      (params)                  => api.get('/academy/contests', { params }),
+  joinContest:      (id)                      => api.post(`/academy/contests/${id}/join`),
+  submitContest:    (id, data)                => api.post(`/academy/contests/${id}/submit`, data),
+  getContestResults: (id)                     => api.get(`/academy/contests/${id}/results`),
+  getTokens:        ()                        => api.get('/academy/tokens'),
+  getAnalytics:     ()                        => api.get('/academy/analytics'),
+};
+
+// ─── QS Exam Prep ─────────────────────────────────────────────
+export const examAPI = {
+  getStatus:          ()                      => api.get('/exam-prep/status'),
+  subscribe:          (data)                  => api.post('/exam-prep/subscribe', data),
+  getExams:           (params)                => api.get('/exam-prep/exams', { params }),
+  getExamQuestions:    (id, params)            => api.get(`/exam-prep/exams/${id}/questions`, { params }),
+  startExam:          (id)                    => api.post(`/exam-prep/exams/${id}/start`),
+  submitExam:         (id, data)              => api.post(`/exam-prep/exams/${id}/submit`, data),
+  getAttempts:        ()                      => api.get('/exam-prep/attempts'),
+  getAttempt:         (id)                    => api.get(`/exam-prep/attempts/${id}`),
+  getUniversities:    ()                      => api.get('/exam-prep/universities'),
+  getUniversityCourses: (id)                  => api.get(`/exam-prep/universities/${id}/courses`),
+  getPastQuestions:    (params)               => api.get('/exam-prep/past-questions', { params }),
 };
 
 // ─── Utilities ─────────────────────────────────────────────────
