@@ -29,6 +29,10 @@ export default function AdmissionTestModal({ open, onComplete }) {
         return;
       }
       setQuestions(data.questions || []);
+      // If resumed, show toast
+      if (data.resumed) {
+        toast('Resuming your admission test...', { icon: '📝' });
+      }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to load questions. Please try again.';
       toast.error(msg);

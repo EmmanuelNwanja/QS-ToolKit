@@ -236,16 +236,47 @@ exports.startAdmission = async (req, res, next) => {
       return res.json(success('Admission already passed', { passed: true, score: existingResult.score }));
     }
 
-    // Check for in-progress test
+    // Check for in-progress test — resume or clean up stale ones
     const { data: inProgress } = await supabase
       .from('academy_admission_tests')
-      .select('id')
+      .select('id, questions, started_at')
       .eq('user_id', req.user.id)
       .eq('status', 'in_progress')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (inProgress) {
-      return res.status(409).json(error('You already have an in-progress admission test'));
+      // Check if stale (older than 30 minutes)
+      const startedAt = new Date(inProgress.started_at).getTime();
+      const now = Date.now();
+      const thirtyMinMs = 30 * 60 * 1000;
+
+      if (now - startedAt > thirtyMinMs) {
+        // Stale — mark as expired and allow new test
+        await supabase
+          .from('academy_admission_tests')
+          .update({ status: 'expired' })
+          .eq('id', inProgress.id);
+      } else {
+        // Fresh — return existing questions for continuation
+        const questions = inProgress.questions || [];
+        const safeQuestions = questions.map((q, idx) => ({
+          index: idx,
+          question: q.question,
+          options: q.options,
+          topic: q.topic,
+          difficulty: q.difficulty
+        }));
+
+        return res.json(success('Resuming admission test', {
+          test_id: inProgress.id,
+          questions: safeQuestions,
+          time_limit_minutes: 30,
+          total_questions: questions.length,
+          resumed: true
+        }));
+      }
     }
 
     // Get user's profile for personalized questions
