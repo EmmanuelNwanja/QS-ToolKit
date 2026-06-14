@@ -153,16 +153,31 @@ exports.verifyPaymentSubmission = async (submissionId, adminUserId, adminNote = 
     }
 
     // Activate subscription
-    const subscriptionResult = await subscriptionManagementService.activateSubscription(
-      submission.user_id,
-      submission.plan_name,
-      submission.billing_interval,
-      {
-        paymentId: transaction?.id || null,
-        reference: `bank-${submissionId}`,
-        triggeredBy: adminUserId,
-      }
-    );
+    let subscriptionResult;
+    if (submission.plan_name === 'academy_weekly') {
+      subscriptionResult = await activateAcademySubscription(
+        submission.user_id,
+        adminUserId,
+        submissionId
+      );
+    } else if (submission.plan_name === 'exam_prep_weekly') {
+      subscriptionResult = await activateExamPrepSubscription(
+        submission.user_id,
+        adminUserId,
+        submissionId
+      );
+    } else {
+      subscriptionResult = await subscriptionManagementService.activateSubscription(
+        submission.user_id,
+        submission.plan_name,
+        submission.billing_interval,
+        {
+          paymentId: transaction?.id || null,
+          reference: `bank-${submissionId}`,
+          triggeredBy: adminUserId,
+        }
+      );
+    }
 
     // Send notification to user
     await supabase.from('notifications').insert({
@@ -342,5 +357,113 @@ exports.getPaymentStats = async () => {
     throw err;
   }
 };
+
+/**
+ * Activate academy subscription (7 days from verification)
+ */
+async function activateAcademySubscription(userId, adminUserId, submissionId) {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const { data: existing } = await supabase
+    .from('academy_subscriptions')
+    .select('id, expires_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .gt('expires_at', now.toISOString())
+    .maybeSingle();
+
+  let finalExpiresAt = expiresAt;
+  if (existing && new Date(existing.expires_at) > now) {
+    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+
+  if (existing) {
+    await supabase
+      .from('academy_subscriptions')
+      .update({ expires_at: finalExpiresAt.toISOString(), updated_at: now.toISOString() })
+      .eq('id', existing.id);
+  } else {
+    await supabase
+      .from('academy_subscriptions')
+      .insert({
+        user_id: userId,
+        status: 'active',
+        started_at: now.toISOString(),
+        expires_at: finalExpiresAt.toISOString(),
+        created_at: now.toISOString(),
+      });
+  }
+
+  await subscriptionManagementService.logSubscriptionChange(userId, {
+    action: 'academy_subscription_activated',
+    planTo: 'academy_weekly',
+    details: {
+      billingInterval: 'weekly',
+      expiresAt: finalExpiresAt.toISOString(),
+      submissionId,
+    },
+    triggeredBy: adminUserId,
+  });
+
+  return {
+    subscription: { plan_name: 'academy_weekly', status: 'active' },
+    expiresAt: finalExpiresAt.toISOString(),
+  };
+}
+
+/**
+ * Activate exam prep subscription (7 days from verification)
+ */
+async function activateExamPrepSubscription(userId, adminUserId, submissionId) {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const { data: existing } = await supabase
+    .from('exam_prep_subscriptions')
+    .select('id, expires_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .gt('expires_at', now.toISOString())
+    .maybeSingle();
+
+  let finalExpiresAt = expiresAt;
+  if (existing && new Date(existing.expires_at) > now) {
+    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+
+  if (existing) {
+    await supabase
+      .from('exam_prep_subscriptions')
+      .update({ expires_at: finalExpiresAt.toISOString(), updated_at: now.toISOString() })
+      .eq('id', existing.id);
+  } else {
+    await supabase
+      .from('exam_prep_subscriptions')
+      .insert({
+        user_id: userId,
+        status: 'active',
+        started_at: now.toISOString(),
+        expires_at: finalExpiresAt.toISOString(),
+        created_at: now.toISOString(),
+      });
+  }
+
+  await subscriptionManagementService.logSubscriptionChange(userId, {
+    action: 'exam_prep_subscription_activated',
+    planTo: 'exam_prep_weekly',
+    details: {
+      billingInterval: 'weekly',
+      expiresAt: finalExpiresAt.toISOString(),
+      submissionId,
+    },
+    triggeredBy: adminUserId,
+  });
+
+  return {
+    subscription: { plan_name: 'exam_prep_weekly', status: 'active' },
+    expiresAt: finalExpiresAt.toISOString(),
+  };
+}
 
 module.exports = exports;

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
-import { subscriptionAPI } from '../services/api';
+import { subscriptionAPI, academyAPI, examAPI } from '../services/api';
 
 const FEATURES = {
   free:       ['3 free lifetime calculator uses', 'No project logging', '1 device'],
@@ -49,6 +49,14 @@ export default function SubscriptionPage() {
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
   const [transferDone, setTransferDone]     = useState(false);
   const fileInputRef = useRef(null);
+
+  // Add-on bank transfer state
+  const [addOnModal, setAddOnModal]         = useState(null); // 'academy' | 'exam_prep' | null
+  const [addOnBankSettings, setAddOnBankSettings] = useState(null);
+  const [addOnBankLoading, setAddOnBankLoading] = useState(false);
+  const [addOnTransferRef, setAddOnTransferRef] = useState('');
+  const [addOnTransferDone, setAddOnTransferDone] = useState(false);
+  const [addOnSubmitting, setAddOnSubmitting] = useState(false);
 
   // Philanthropist modal state
   const [showPhilModal, setShowPhilModal] = useState(false);
@@ -102,6 +110,40 @@ export default function SubscriptionPage() {
       .catch(() => setBankSettings(null))
       .finally(() => setBankSettingsLoading(false));
   }, [paymentMethod]);
+
+  // Fetch bank settings for add-on modal
+  useEffect(() => {
+    if (!addOnModal) return;
+    setAddOnBankLoading(true);
+    const api = addOnModal === 'academy' ? academyAPI : examAPI;
+    api.getBankTransferSettings()
+      .then(r => setAddOnBankSettings(r.data.data || null))
+      .catch(() => setAddOnBankSettings(null))
+      .finally(() => setAddOnBankLoading(false));
+  }, [addOnModal]);
+
+  async function handleAddOnBankTransfer() {
+    if (!addOnTransferRef.trim()) { toast.error('Please enter your bank transaction reference'); return; }
+    setAddOnSubmitting(true);
+    try {
+      const api = addOnModal === 'academy' ? academyAPI : examAPI;
+      await api.submitBankTransfer({ referenceNote: addOnTransferRef.trim() });
+      setAddOnTransferDone(true);
+      toast.success('Submission received! An admin will verify and activate your subscription within 24 hours.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Submission failed');
+    } finally {
+      setAddOnSubmitting(false);
+    }
+  }
+
+  function closeAddOnModal() {
+    setAddOnModal(null);
+    setAddOnBankSettings(null);
+    setAddOnTransferRef('');
+    setAddOnTransferDone(false);
+    setAddOnSubmitting(false);
+  }
 
   const displayPrice = (plan) => {
     if (plan.price_monthly === 0) return 'Free';
@@ -459,8 +501,17 @@ export default function SubscriptionPage() {
                 </div>
                 <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
                 <p className="text-sm text-gray-500 mb-3">AI-powered learning pathways, knowledge arena & resource library.</p>
-                <button className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                <button
+                  onClick={() => setAddOnModal('academy')}
+                  className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
                   Subscribe
+                </button>
+                <button
+                  onClick={() => setAddOnModal('academy')}
+                  className="w-full text-xs text-purple-600 hover:text-purple-700 font-medium py-1.5 mt-1.5 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                >
+                  Pay via Bank Transfer
                 </button>
               </div>
 
@@ -476,8 +527,17 @@ export default function SubscriptionPage() {
                 </div>
                 <p className="text-2xl font-bold text-primary-700 mb-1">₦2,000<span className="text-sm font-normal text-gray-400">/week</span></p>
                 <p className="text-sm text-gray-500 mb-3">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
-                <button className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                <button
+                  onClick={() => setAddOnModal('exam_prep')}
+                  className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+                >
                   Subscribe
+                </button>
+                <button
+                  onClick={() => setAddOnModal('exam_prep')}
+                  className="w-full text-xs text-emerald-600 hover:text-emerald-700 font-medium py-1.5 mt-1.5 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors"
+                >
+                  Pay via Bank Transfer
                 </button>
               </div>
             </div>
@@ -718,6 +778,91 @@ export default function SubscriptionPage() {
         )}
 
       </Layout>
+
+      {/* ── Add-on Bank Transfer Modal ─────────────────────────── */}
+      {addOnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={closeAddOnModal}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            {!addOnTransferDone && (
+              <div className="p-6">
+                <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Bank Transfer Details</h2>
+                <p className="text-sm text-slate-500 mb-5">
+                  Transfer <span className="font-semibold text-slate-800">₦2,000</span> to the account below for the{' '}
+                  <span className="font-semibold capitalize">{addOnModal === 'academy' ? 'QS Academy' : 'QS Exam Prep'}</span> weekly subscription.
+                </p>
+
+                {addOnBankLoading && <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700" /></div>}
+
+                {!addOnBankLoading && addOnBankSettings?.is_active === false && (
+                  <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Direct bank transfer is temporarily unavailable. Please contact support@qs.solnuv.com.</p>
+                )}
+
+                {!addOnBankLoading && addOnBankSettings?.is_active !== false && addOnBankSettings && (
+                  <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-2 text-sm border border-slate-200">
+                    {addOnBankSettings.bank_name && (
+                      <div className="flex justify-between"><span className="text-slate-500">Bank</span><span className="font-semibold text-slate-800">{addOnBankSettings.bank_name}</span></div>
+                    )}
+                    {addOnBankSettings.account_number && (
+                      <div className="flex justify-between"><span className="text-slate-500">Account No.</span><span className="font-mono font-semibold text-slate-800 text-base tracking-widest">{addOnBankSettings.account_number}</span></div>
+                    )}
+                    {addOnBankSettings.account_name && (
+                      <div className="flex justify-between"><span className="text-slate-500">Account Name</span><span className="font-semibold text-slate-800">{addOnBankSettings.account_name}</span></div>
+                    )}
+                    {addOnBankSettings.additional_instructions && (
+                      <p className="text-slate-500 pt-2 border-t border-slate-200 text-xs">{addOnBankSettings.additional_instructions}</p>
+                    )}
+                  </div>
+                )}
+
+                {!addOnBankLoading && !addOnBankSettings && (
+                  <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Bank account details are not configured yet. Please contact support@qs.solnuv.com.</p>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Transaction Reference / Narration <span className="text-red-500">*</span></label>
+                    <input
+                      value={addOnTransferRef}
+                      onChange={e => setAddOnTransferRef(e.target.value)}
+                      placeholder="e.g. Bank teller ID or transfer narration"
+                      className="input w-full"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Enter the reference or narration from your bank receipt to help us match the payment.</p>
+                  </div>
+
+                  <button
+                    onClick={handleAddOnBankTransfer}
+                    disabled={addOnSubmitting || addOnBankSettings?.is_active === false}
+                    className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {addOnSubmitting ? 'Submitting...' : 'Submit for Verification'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {addOnTransferDone && (
+              <div className="p-6 text-center">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                  <svg className="text-emerald-600" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h2 className="font-display font-bold text-xl text-primary-800 mb-2">Submission Received!</h2>
+                <p className="text-sm text-slate-600 mb-6">Your payment proof has been submitted. An admin will review and activate your <span className="font-semibold capitalize">{addOnModal === 'academy' ? 'QS Academy' : 'QS Exam Prep'}</span> subscription within 24 hours.</p>
+                <button onClick={closeAddOnModal} className="btn-primary w-full py-3">Done</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </ProtectedRoute>
   );
 }

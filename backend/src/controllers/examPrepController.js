@@ -1,7 +1,7 @@
 const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
-const logger = require('../utils/logger');
+const paymentSettingsController = require('./paymentSettingsController');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -30,7 +30,6 @@ async function checkFreeTrialUsed(userId, examId) {
     .select('id')
     .eq('user_id', userId)
     .eq('exam_id', examId)
-    .eq('is_trial', true)
     .maybeSingle();
   return !!data;
 }
@@ -62,8 +61,7 @@ exports.getStatus = async (req, res, next) => {
     const { data: trials } = await supabase
       .from('exam_trials')
       .select('id, exam_id, used_at')
-      .eq('user_id', req.user.id)
-      .eq('is_trial', true);
+      .eq('user_id', req.user.id);
 
     return res.json(success('Exam prep status', {
       active: hasAccess,
@@ -74,17 +72,49 @@ exports.getStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Subscribe (Paystack) ─────────────────────────────────────
+// ─── Subscribe (Paystack or Bank Transfer) ────────────────────
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json(error('Email is required'));
+    const { email, payment_method } = req.body;
 
     const hasAccess = await checkExamPrepAccess(req.user.id);
     if (hasAccess) {
       return res.status(409).json(error('You already have an active exam prep subscription'));
     }
+
+    // Bank transfer path
+    if (payment_method === 'bank_transfer') {
+      const { referenceNote } = req.body;
+
+      const { data: submission, error: insertErr } = await supabase
+        .from('direct_payment_submissions')
+        .insert({
+          user_id: req.user.id,
+          plan_name: 'exam_prep_weekly',
+          billing_interval: 'weekly',
+          amount_ngn: 2000,
+          reference_note: referenceNote || null,
+          status: 'pending',
+          submitted_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      return res.status(201).json(success('Payment submitted for verification', {
+        id: submission.id,
+        status: submission.status,
+        planName: submission.plan_name,
+        amountNgn: submission.amount_ngn,
+        submittedAt: submission.submitted_at,
+        message: 'Your payment will be verified within 24 hours.',
+      }));
+    }
+
+    // Paystack path (default)
+    if (!email) return res.status(400).json(error('Email is required'));
 
     let paystackRes;
     try {
@@ -115,6 +145,10 @@ exports.subscribe = async (req, res, next) => {
     }));
   } catch (err) { next(err); }
 };
+
+// ─── Bank Transfer Settings ───────────────────────────────────
+
+exports.getBankTransferSettings = paymentSettingsController.getBankTransferSettings;
 
 // ─── Exams ─────────────────────────────────────────────────────
 
@@ -170,7 +204,7 @@ exports.getExamQuestions = async (req, res, next) => {
     // Fetch questions
     let questionQuery = supabase
       .from('exam_questions')
-      .select('id, question, options, difficulty, topic, marks')
+      .select('id, question_text, options, difficulty, topic, marks')
       .eq('exam_id', id);
 
     const { data: questions, error: err } = await questionQuery;
@@ -227,7 +261,6 @@ exports.startExam = async (req, res, next) => {
       await supabase.from('exam_trials').insert({
         user_id: req.user.id,
         exam_id: id,
-        is_trial: true,
         used_at: new Date().toISOString()
       });
     } else if (!hasAccess && hasTrial) {

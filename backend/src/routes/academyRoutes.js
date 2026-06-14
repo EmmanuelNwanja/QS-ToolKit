@@ -10,8 +10,10 @@ router.use(protect);
 
 // ── Subscription & Access ──────────────────────────────────────
 router.get('/status', ctrl.getStatus);
+router.get('/bank-transfer-settings', ctrl.getBankTransferSettings);
 router.post('/subscribe', paymentLimiter, [
-  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required if paying via Paystack'),
+  body('payment_method').optional().isIn(['paystack', 'bank_transfer']).withMessage('payment_method must be paystack or bank_transfer'),
   validate
 ], ctrl.subscribe);
 

@@ -2,6 +2,7 @@ const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
+const paymentSettingsController = require('./paymentSettingsController');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -22,24 +23,6 @@ async function checkAcademyAccess(userId) {
     .gt('expires_at', new Date().toISOString())
     .single();
   return !!data;
-}
-
-async function getUserProfile(userId) {
-  const { data } = await supabase
-    .from('users')
-    .select('email, name, org_role')
-    .eq('id', userId)
-    .single();
-  return data;
-}
-
-function shuffleArray(arr) {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
 }
 
 // ─── Subscription Status ───────────────────────────────────────
@@ -63,12 +46,11 @@ exports.getStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Subscribe (Paystack) ─────────────────────────────────────
+// ─── Subscribe (Paystack or Bank Transfer) ────────────────────
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json(error('Email is required'));
+    const { email, payment_method } = req.body;
 
     // Check if already has active subscription
     const hasAccess = await checkAcademyAccess(req.user.id);
@@ -76,7 +58,39 @@ exports.subscribe = async (req, res, next) => {
       return res.status(409).json(error('You already have an active academy subscription'));
     }
 
-    // Initialize Paystack transaction
+    // Bank transfer path
+    if (payment_method === 'bank_transfer') {
+      const { referenceNote } = req.body;
+
+      const { data: submission, error: insertErr } = await supabase
+        .from('direct_payment_submissions')
+        .insert({
+          user_id: req.user.id,
+          plan_name: 'academy_weekly',
+          billing_interval: 'weekly',
+          amount_ngn: 2000,
+          reference_note: referenceNote || null,
+          status: 'pending',
+          submitted_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      return res.status(201).json(success('Payment submitted for verification', {
+        id: submission.id,
+        status: submission.status,
+        planName: submission.plan_name,
+        amountNgn: submission.amount_ngn,
+        submittedAt: submission.submitted_at,
+        message: 'Your payment will be verified within 24 hours.',
+      }));
+    }
+
+    // Paystack path (default)
+    if (!email) return res.status(400).json(error('Email is required'));
+
     let paystackRes;
     try {
       paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
@@ -106,6 +120,10 @@ exports.subscribe = async (req, res, next) => {
     }));
   } catch (err) { next(err); }
 };
+
+// ─── Bank Transfer Settings ───────────────────────────────────
+
+exports.getBankTransferSettings = paymentSettingsController.getBankTransferSettings;
 
 // ─── Profile ───────────────────────────────────────────────────
 
@@ -228,8 +246,8 @@ Return exactly 7 questions. Do not include any text outside the JSON array.`;
     // Try AI generation, fall back to curated questions
     let questions;
     try {
-      const aiService = require('../services/aiService');
-      const raw = await aiService.generateContent(prompt, { temperature: 0.5 });
+      const { callAI } = require('../services/aiService');
+      const raw = await callAI(prompt, { temperature: 0.5 });
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length === 7) {
@@ -344,6 +362,7 @@ exports.submitAdmission = async (req, res, next) => {
       correct_count: correctCount,
       total_questions: questions.length,
       pass_mark: 60,
+      redirect_to: passed ? '/academy/pathways' : '/academy',
       results
     }));
   } catch (err) { next(err); }
@@ -388,7 +407,7 @@ exports.getPathwayDetail = async (req, res, next) => {
 
     const { data: pathway, error: err } = await supabase
       .from('academy_pathways')
-      .select('*, academy_pathway_modules(*)')
+      .select('*')
       .eq('slug', slug)
       .eq('is_published', true)
       .single();
@@ -800,9 +819,8 @@ exports.submitContest = async (req, res, next) => {
     await supabase.from('academy_tokens').insert({
       user_id: req.user.id,
       amount: totalPoints,
-      source_type: 'contest',
-      source_id: id,
-      description: `Contest: ${contest.title} - ${totalPoints} points`,
+      source: 'contest',
+      reference_id: id,
       created_at: new Date().toISOString()
     });
 
@@ -868,7 +886,7 @@ exports.getTokens = async (req, res, next) => {
     // Calculate total balance
     const { data: tokens } = await supabase
       .from('academy_tokens')
-      .select('amount, source_type, description, created_at')
+      .select('amount, source, created_at')
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
