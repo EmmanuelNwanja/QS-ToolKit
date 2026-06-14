@@ -544,7 +544,29 @@ exports.getUniversityCourses = async (req, res, next) => {
 
     if (err) throw err;
 
-    return res.json(success('University courses', { university, courses: courses || [] }));
+    // Count questions per course by matching course_code and university name
+    const courseCodes = (courses || []).map(c => c.code).filter(Boolean);
+    let questionCounts = {};
+    if (courseCodes.length > 0) {
+      const { data: questions } = await supabase
+        .from('exam_questions')
+        .select('course_code')
+        .eq('is_active', true)
+        .eq('university', university.name)
+        .in('course_code', courseCodes);
+
+      (questions || []).forEach(q => {
+        const code = q.course_code;
+        if (code) questionCounts[code] = (questionCounts[code] || 0) + 1;
+      });
+    }
+
+    const enriched = (courses || []).map(c => ({
+      ...c,
+      question_count: questionCounts[c.code] || 0
+    }));
+
+    return res.json(success('University courses', { university, courses: enriched }));
   } catch (err) { next(err); }
 };
 
