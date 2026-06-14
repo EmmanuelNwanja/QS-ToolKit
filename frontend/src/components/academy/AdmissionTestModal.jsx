@@ -26,7 +26,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
       setLoading(true);
       const res = await academyAPI.startAdmission();
       const data = res.data;
-      // If already passed, pass result back immediately
+      // If already passed, pass result back immediately (user can retake if they want)
       if (data.passed) {
         onComplete?.({ passed: true, score: data.score });
         return;
@@ -122,6 +122,10 @@ export default function AdmissionTestModal({ open, onComplete }) {
   }
 
   if (submitted && result) {
+    const isExcellent = result.score >= 80;
+    const isGood = result.score >= 60;
+    const isLearning = result.score < 60;
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <motion.div
@@ -130,16 +134,23 @@ export default function AdmissionTestModal({ open, onComplete }) {
           className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 text-center"
         >
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🎓</span>
+            <span className="text-3xl">{isExcellent ? '🌟' : isGood ? '🎓' : '📚'}</span>
           </div>
-          <h2 className="font-display text-2xl font-bold text-primary-800 mb-2">Assessment Complete!</h2>
+          <h2 className="font-display text-2xl font-bold text-primary-800 mb-2">
+            {isExcellent ? 'Outstanding Performance!' : isGood ? 'Great Job!' : 'Assessment Complete!'}
+          </h2>
           <p className="text-4xl font-bold text-primary-700 my-4">{result.score}%</p>
           <p className="text-sm text-gray-500 mb-2">
             You answered {result.correct_count} out of {result.total_questions || result.total} correctly.
           </p>
+          {isLearning && (
+            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-2">
+              📊 Dr. Q has analyzed your responses and created a personalized learning pathway just for you!
+            </p>
+          )}
           {result.recommended_pathway && (
             <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 my-4">
-              <p className="text-xs text-gold-700 uppercase tracking-wide mb-1">Recommended Pathway</p>
+              <p className="text-xs text-gold-700 uppercase tracking-wide mb-1">Your Personalized Pathway</p>
               <p className="font-semibold text-gold-800">{result.recommended_pathway.name}</p>
               {result.recommended_pathway.focus_area && (
                 <p className="text-xs text-gold-600 mt-1">{result.recommended_pathway.focus_area}</p>
@@ -150,7 +161,7 @@ export default function AdmissionTestModal({ open, onComplete }) {
             onClick={() => onComplete?.(result)}
             className="btn-primary px-8 py-2.5 text-sm mt-4"
           >
-            Continue to Academy →
+            {isLearning ? 'Start Learning Pathway →' : 'Continue to Academy →'}
           </button>
         </motion.div>
       </div>

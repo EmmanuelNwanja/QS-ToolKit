@@ -54,9 +54,11 @@ exports.getStatus = async (req, res, next) => {
       .maybeSingle();
 
     // Check admission test completion
+    // Note: admission_completed is true if user has taken the test, regardless of score
+    // The admission test is an assessment tool, not a gate
     const { data: admission } = await supabase
       .from('academy_admission_tests')
-      .select('id, status, score, passed')
+      .select('id, status, score, passed, correct_count, total_questions')
       .eq('user_id', req.user.id)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
@@ -74,8 +76,11 @@ exports.getStatus = async (req, res, next) => {
       active: hasAccess,
       subscription_active: hasAccess,
       subscription: sub || null,
-      admission_completed: !!admission && admission.passed,
+      admission_completed: !!admission, // True if test was taken, regardless of score
       admission_score: admission?.score || null,
+      admission_passed: admission?.passed || false,
+      correct_count: admission?.correct_count || null,
+      total_questions: admission?.total_questions || null,
       profile_completed: !!profile,
       profile: profile ? {
         strengths: profile.strengths || [],
@@ -555,14 +560,20 @@ exports.submitAdmission = async (req, res, next) => {
       recommended_pathway = { slug: 'technical-qs-practice', name: 'Technical QS Practice', focus_area: 'Build a strong foundation in quantity surveying fundamentals' };
     }
 
-    return res.json(success(passed ? 'Congratulations! You passed the admission test.' : 'Admission test completed. You did not meet the pass mark.', {
+    // Admission test is an assessment tool, not a gate
+    // Always allow the user to proceed with their recommended pathway
+    const responseMessage = passed 
+      ? 'Congratulations! You passed the admission test.' 
+      : 'Assessment complete! Dr. Q has analyzed your responses and recommended a personalized learning pathway.';
+
+    return res.json(success(responseMessage, {
       test_id: test.id,
       score,
       passed,
       correct_count: correctCount,
       total_questions: questions.length,
       pass_mark: 60,
-      redirect_to: passed ? '/academy/pathways' : '/academy',
+      redirect_to: '/academy/pathways', // Always redirect to pathways
       recommended_pathway,
       results
     }));

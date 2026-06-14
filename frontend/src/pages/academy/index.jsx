@@ -52,11 +52,19 @@ export default function AcademyDashboard() {
 
   const handleAdmissionComplete = (result) => {
     setShowAdmission(false);
-    if (result?.passed) {
-      toast.success('Welcome to QS Academy! 🎓');
+    if (result) {
+      // Admission test is an assessment, not a gate - always allow progression
+      if (result.passed) {
+        toast.success(`Great job! You scored ${result.score}%. Welcome to QS Academy! 🎓`, { duration: 4000 });
+      } else {
+        // Show informational message, not an error
+        toast(`Assessment complete! You scored ${result.score}%. Dr. Q has recommended a personalized pathway for you.`, {
+          icon: '📊',
+          duration: 5000
+        });
+      }
+      // Always redirect to pathways after assessment
       router.push('/academy/pathways');
-    } else if (result) {
-      toast.error(`You scored ${result.score}%. The pass mark is ${result.pass_mark || 60}%. Please try again.`);
     }
     // Reload status to reflect admission completion
     academyAPI.getStatus().then(res => setStatus(res.data)).catch(() => {});
