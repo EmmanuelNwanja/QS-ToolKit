@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://server.solnuv.com';
+const BACKEND_ORIGIN = new URL(BACKEND_URL).origin;
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -52,11 +55,11 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
           { key: 'Content-Security-Policy', value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://js.paystack.co",
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://js.paystack.co https://static.cloudflareinsights.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com",
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' https://*.supabase.co https://api.paystack.co wss://*.supabase.co",
+            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com`,
             "frame-src 'self' https://js.paystack.co",
           ].join('; ') },
         ]
