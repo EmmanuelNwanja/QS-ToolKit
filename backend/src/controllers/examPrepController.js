@@ -242,6 +242,8 @@ exports.getExamQuestions = async (req, res, next) => {
       .eq('exam_id', exam.id);
 
     // If no questions linked by exam_id, match by metadata (university, course, year)
+    // Reset err so later strategies can succeed even if earlier ones errored
+    err = null;
     if (!questions || questions.length === 0) {
       // Get university name and course code from the exam definition
       let uniName = null;
@@ -285,6 +287,9 @@ exports.getExamQuestions = async (req, res, next) => {
       questions = metaResult.data;
       err = metaResult.error;
 
+      // Clear err if this strategy returned no results (don't let empty-result errors block later strategies)
+      if (!questions || questions.length === 0) err = null;
+
       // Strategy 2: If no year match, try without year constraint
       if ((!questions || questions.length === 0) && exam.year && uniName && courseCode) {
         let fallbackQuery = supabase
@@ -297,6 +302,7 @@ exports.getExamQuestions = async (req, res, next) => {
         const fallbackResult = await fallbackQuery;
         questions = fallbackResult.data;
         err = fallbackResult.error;
+        if (!questions || questions.length === 0) err = null;
       }
 
       // Strategy 3: If still no match, try matching by exam_name (for professional exams)
@@ -315,6 +321,26 @@ exports.getExamQuestions = async (req, res, next) => {
         if (nameResult.data && nameResult.data.length > 0) {
           questions = nameResult.data;
           err = nameResult.error;
+        }
+      }
+
+      // Strategy 4: Last resort — match by university name only (ignore course_code)
+      // Returns related questions from the same university when no exact course match exists
+      if ((!questions || questions.length === 0) && uniName) {
+        let uniOnlyQuery = supabase
+          .from('exam_questions')
+          .select('id, question_text, options, difficulty, topic, marks')
+          .eq('is_active', true)
+          .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
+
+        if (exam.year) {
+          uniOnlyQuery = uniOnlyQuery.eq('year', exam.year);
+        }
+
+        const uniOnlyResult = await uniOnlyQuery;
+        if (uniOnlyResult.data && uniOnlyResult.data.length > 0) {
+          questions = uniOnlyResult.data;
+          err = uniOnlyResult.error;
         }
       }
     }
