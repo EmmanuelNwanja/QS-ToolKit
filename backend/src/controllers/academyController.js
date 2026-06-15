@@ -627,9 +627,10 @@ exports.getPathwayDetail = async (req, res, next) => {
     if (err || !pathway) return res.status(404).json(error('Pathway not found'));
 
     // Fetch modules for this pathway, grouped by level
+    // Include content and questions for direct module delivery
     const { data: modules } = await supabase
       .from('academy_modules')
-      .select('id, level, title, description, module_type, order_index, duration_minutes, points, resource_id')
+      .select('id, level, title, description, module_type, order_index, duration_minutes, points, resource_id, content, questions')
       .eq('pathway_slug', slug)
       .eq('is_published', true)
       .order('level')

@@ -235,11 +235,11 @@ exports.getExamQuestions = async (req, res, next) => {
       return res.status(403).json(error('Subscription required. Free trial already used for this exam.', { code: 'SUBSCRIPTION_REQUIRED' }));
     }
 
-    // Fetch questions — match by exam_id first, fallback to metadata
+    // Fetch questions — match by exam_id first (use resolved UUID), fallback to metadata
     let { data: questions, error: err } = await supabase
       .from('exam_questions')
       .select('id, question_text, options, difficulty, topic, marks')
-      .eq('exam_id', id);
+      .eq('exam_id', exam.id);
 
     // If no questions linked by exam_id, match by metadata (university, course, year)
     if (!questions || questions.length === 0) {
@@ -250,7 +250,7 @@ exports.getExamQuestions = async (req, res, next) => {
       if (exam.university_id) {
         const { data: uni } = await supabase
           .from('exam_universities')
-          .select('name')
+          .select('name, short_name')
           .eq('id', exam.university_id)
           .maybeSingle();
         uniName = uni?.name;
@@ -265,13 +265,13 @@ exports.getExamQuestions = async (req, res, next) => {
         courseCode = course?.code;
       }
 
+      // Strategy 1: Try exact match (university + course_code + year)
       let metaQuery = supabase
         .from('exam_questions')
         .select('id, question_text, options, difficulty, topic, marks')
         .eq('is_active', true);
 
       if (uniName) {
-        // Fuzzy match: strip commas, case-insensitive
         metaQuery = metaQuery.or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
       }
       if (courseCode) {
@@ -284,6 +284,39 @@ exports.getExamQuestions = async (req, res, next) => {
       const metaResult = await metaQuery;
       questions = metaResult.data;
       err = metaResult.error;
+
+      // Strategy 2: If no year match, try without year constraint
+      if ((!questions || questions.length === 0) && exam.year && uniName && courseCode) {
+        let fallbackQuery = supabase
+          .from('exam_questions')
+          .select('id, question_text, options, difficulty, topic, marks')
+          .eq('is_active', true)
+          .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`)
+          .eq('course_code', courseCode);
+
+        const fallbackResult = await fallbackQuery;
+        questions = fallbackResult.data;
+        err = fallbackResult.error;
+      }
+
+      // Strategy 3: If still no match, try matching by exam_name (for professional exams)
+      if ((!questions || questions.length === 0) && exam.exam_name) {
+        let nameQuery = supabase
+          .from('exam_questions')
+          .select('id, question_text, options, difficulty, topic, marks')
+          .eq('is_active', true)
+          .ilike('exam_name', `%${exam.exam_name}%`);
+
+        if (exam.category) {
+          nameQuery = nameQuery.eq('exam_category', exam.category);
+        }
+
+        const nameResult = await nameQuery;
+        if (nameResult.data && nameResult.data.length > 0) {
+          questions = nameResult.data;
+          err = nameResult.error;
+        }
+      }
     }
 
     if (err) throw err;
@@ -310,7 +343,7 @@ exports.getExamQuestions = async (req, res, next) => {
     }));
 
     return res.json(success('Exam questions', {
-      exam_id: id,
+      exam_id: exam.id,
       exam_name: exam.exam_name,
       questions: safeQuestions,
       total_questions: safeQuestions.length,
@@ -343,12 +376,12 @@ exports.startExam = async (req, res, next) => {
       return res.status(403).json(error('Subscription required. Free trial already used.', { code: 'SUBSCRIPTION_REQUIRED' }));
     }
 
-    // Create attempt record — include all NOT NULL columns from exam_definitions
+    // Create attempt record — use resolved UUID for exam_id
     const { data: attempt, error: insertErr } = await supabase
       .from('exam_attempts')
       .insert({
         user_id: req.user.id,
-        exam_id: id,
+        exam_id: exam.id,
         exam_category: exam.category || 'university',
         exam_name: exam.exam_name || 'Exam',
         total_questions: exam.total_questions || 0,
@@ -381,11 +414,15 @@ exports.submitExam = async (req, res, next) => {
       return res.status(400).json(error('answers array is required'));
     }
 
-    // Find attempt
+    // Resolve exam (supports UUID or slug)
+    const exam = await findExamByIdOrSlug(id);
+    if (!exam) return res.status(404).json(error('Exam not found'));
+
+    // Find attempt — use resolved UUID
     let attemptQuery = supabase
       .from('exam_attempts')
       .select('*')
-      .eq('exam_id', id)
+      .eq('exam_id', exam.id)
       .eq('user_id', req.user.id)
       .eq('status', 'in_progress');
 
@@ -402,20 +439,14 @@ exports.submitExam = async (req, res, next) => {
       return res.status(404).json(error('No in-progress attempt found for this exam'));
     }
 
-    // Get exam definition for passing_score
-    const { data: examDef } = await supabase
-      .from('exam_definitions')
-      .select('passing_score')
-      .eq('id', id)
-      .single();
+    // Get passing_score from exam definition (already resolved)
+    const passingScore = exam.passing_score || 50;
 
-    const passingScore = examDef?.passing_score || 50;
-
-    // Get questions
+    // Get questions — use resolved exam.id (UUID), not the raw id param which could be a slug
     const { data: questions } = await supabase
       .from('exam_questions')
       .select('id, correct_answer, explanation, difficulty, topic, marks')
-      .eq('exam_id', id);
+      .eq('exam_id', exam.id);
 
     if (!questions || questions.length === 0) {
       return res.status(400).json(error('No questions found for this exam'));
