@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "start": "cd frontend && npm start",
+    "lint": "cd frontend && npm run lint"
+  },
   "dependencies": {
     "@dietrichgebert/ponytail": "^4.8.3"
   }
