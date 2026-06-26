@@ -649,20 +649,31 @@ exports.generatePracticeExam = async (req, res, _next) => {
     const { callAI, buildUserContext, SYSTEM_PROMPTS } = require('../services/aiService');
     const userContext = await buildUserContext(req.user.id);
 
+    // Collect previously seen topics from past attempts to avoid repetition
+    const seenTopics = [...new Set(attempts?.flatMap(a =>
+      (a.detailed_results || []).map(r => r.topic).filter(Boolean)
+    ) || [])];
+
     const hasWeakTopics = weakTopics.length > 0;
-    const personalizedContext = hasWeakTopics
-      ? `USER CONTEXT:\n${userContext}
+    const topicInstruction = hasWeakTopics
+      ? `WEAK TOPICS (ranked by lowest accuracy):
+${weakTopics.map((t, i) => `${i + 1}. ${t} (${Math.round((topicStats[t]?.accuracy || 0) * 100)}% accuracy)`).join('\n')}
+Prioritize these weak topics but ALSO include questions from other areas for variety.`
+      : 'Cover a broad range of QS topics — measurement, valuation, contracts, materials, project management, construction law, professional practice.';
 
-WEAK TOPICS (ranked by lowest accuracy):
-${weakTopics.map((t, i) => `${i + 1}. ${t} (${Math.round((topicStats[t]?.accuracy || 0) * 100)}% accuracy across ${topicStats[t]?.total || 0} questions)`).join('\n')}
+    const seenTopicsSection = seenTopics.length > 0
+      ? `\nPREVIOUSLY SEEN TOPICS (avoid repeating these exact topics — pick FRESH ones):\n${seenTopics.join(', ')}`
+      : '';
 
-Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must target the weakest 3-5 topics.`
-      : `USER CONTEXT:\n${userContext}
+    const personalizedContext = `USER CONTEXT:\n${userContext}
 
-Generate exactly ${Math.min(question_count, 20)} MCQ questions for a Nigerian QS practice exam.
-Mix difficulty: easy, medium, and hard. Cover diverse topics.`;
+${topicInstruction}${seenTopicsSection}
 
-    const prompt = `${SYSTEM_PROMPTS.admissionTest || 'Generate MCQ questions for a Nigerian QS practice exam. Return JSON array.'}\n\n${personalizedContext}`;
+Generate exactly ${Math.min(question_count, 20)} questions.
+EVERY question must be from a DIFFERENT topic. No two questions from the same sub-topic.
+Mix difficulty: 30% easy, 50% medium, 20% hard.`;
+
+    const prompt = `${SYSTEM_PROMPTS.practiceExam || SYSTEM_PROMPTS.admissionTest}\n\n${personalizedContext}`;
 
     let questions;
     try {
@@ -681,48 +692,55 @@ Mix difficulty: easy, medium, and hard. Cover diverse topics.`;
       logger.warn('AI practice exam generation failed, falling back to DB', { error: aiErr.message });
     }
 
-    // Fallback: pick questions from past exams matching weak topics
+    // Fallback: pick random questions, prioritizing weak topics but avoiding repetition
     if (!questions || questions.length === 0) {
-      let fallbackQ = supabase
-        .from('exam_questions')
-        .select('question_text, options, correct_answer, explanation, difficulty, topic')
-        .in('topic', weakTopics.slice(0, 5))
-        .not('correct_answer', 'is', null)
-        .limit(question_count);
+      // Try weak topics first
+      if (weakTopics.length > 0) {
+        let fallbackQ = supabase
+          .from('exam_questions')
+          .select('question_text, options, correct_answer, explanation, difficulty, topic')
+          .in('topic', weakTopics.slice(0, 5))
+          .not('correct_answer', 'is', null)
+          .order('id') // deterministic order for offset
+          .limit(question_count * 3); // fetch more for randomization
 
-      const { data: fallbackQuestions } = await fallbackQ;
-      if (fallbackQuestions && fallbackQuestions.length > 0) {
-        questions = fallbackQuestions.map(q => ({
-          question: q.question_text,
-          options: q.options,
-          correct_answer: extractAnswerLetter(q.correct_answer),
-          explanation: q.explanation,
-          difficulty: q.difficulty,
-          topic: q.topic
-        }));
+        const { data: fallbackQuestions } = await fallbackQ;
+        if (fallbackQuestions && fallbackQuestions.length > 0) {
+          const shuffled = shuffleArray(fallbackQuestions).slice(0, question_count);
+          questions = shuffled.map(q => ({
+            question: q.question_text,
+            options: q.options,
+            correct_answer: extractAnswerLetter(q.correct_answer),
+            explanation: q.explanation,
+            difficulty: q.difficulty,
+            topic: q.topic
+          }));
+        }
       }
-    }
 
-    // Final fallback: random questions from same category
-    if (!questions || questions.length === 0) {
-      let randomQ = supabase
-        .from('exam_questions')
-        .select('question_text, options, correct_answer, explanation, difficulty, topic')
-        .not('correct_answer', 'is', null)
-        .limit(question_count);
+      // Broader fallback: random from all questions
+      if (!questions || questions.length === 0) {
+        let randomQ = supabase
+          .from('exam_questions')
+          .select('question_text, options, correct_answer, explanation, difficulty, topic')
+          .not('correct_answer', 'is', null)
+          .order('id')
+          .limit(question_count * 5);
 
-      if (category) randomQ = randomQ.eq('exam_category', category);
+        if (category) randomQ = randomQ.eq('exam_category', category);
 
-      const { data: randomQuestions } = await randomQ;
-      if (randomQuestions && randomQuestions.length > 0) {
-        questions = randomQuestions.map(q => ({
-          question: q.question_text,
-          options: q.options,
-          correct_answer: extractAnswerLetter(q.correct_answer),
-          explanation: q.explanation,
-          difficulty: q.difficulty,
-          topic: q.topic
-        }));
+        const { data: randomQuestions } = await randomQ;
+        if (randomQuestions && randomQuestions.length > 0) {
+          const shuffled = shuffleArray(randomQuestions).slice(0, question_count);
+          questions = shuffled.map(q => ({
+            question: q.question_text,
+            options: q.options,
+            correct_answer: extractAnswerLetter(q.correct_answer),
+            explanation: q.explanation,
+            difficulty: q.difficulty,
+            topic: q.topic
+          }));
+        }
       }
     }
 

@@ -108,11 +108,8 @@ export default function Layout({ children, title }) {
       )}>
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-gray-100">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-700 rounded-lg flex items-center justify-center">
-              <span className="text-gold-400 font-bold text-sm">QS</span>
-            </div>
-            <span className="font-display text-lg font-bold text-primary-800">QSToolkit</span>
+          <Link href="/dashboard">
+            <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-11 w-auto max-w-[150px]" />
           </Link>
         </div>
 

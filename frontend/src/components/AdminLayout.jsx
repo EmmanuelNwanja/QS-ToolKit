@@ -71,14 +71,8 @@ export default function AdminLayout({ children }) {
       ].join(' ')}>
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-gray-200">
-          <Link href="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-700 rounded-lg flex items-center justify-center">
-              <span className="text-gold-400 font-bold text-sm">QS</span>
-            </div>
-            <div className="leading-none">
-              <p className="font-bold text-gray-800 text-sm">QSToolkit</p>
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Admin</p>
-            </div>
+          <Link href="/admin">
+            <img src="/qs-toolkit-logo.png" alt="QSToolkit Admin" className="h-11 w-auto max-w-[150px]" />
           </Link>
         </div>
 

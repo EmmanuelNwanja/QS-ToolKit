@@ -16,8 +16,7 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const timerRef = useRef(null);
 
-  const handleSubmitRef = useRef(handleSubmit);
-  handleSubmitRef.current = handleSubmit;
+  const handleSubmitRef = useRef(null);
 
   // Timer countdown
   useEffect(() => {
@@ -86,6 +85,9 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
       setShowSubmitConfirm(false);
     }
   }, [answers, questions, examId, timeLimit, timeRemaining, submitting, submitted, onComplete]);
+
+  // Keep ref in sync with latest handleSubmit (timer uses ref to avoid stale closure)
+  useEffect(() => { handleSubmitRef.current = handleSubmit; });
 
   const question = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;

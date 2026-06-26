@@ -171,10 +171,7 @@ export default function PricingPage() {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-primary-900/80 backdrop-blur-md border-b border-white/5">
           <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-gold-500 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                <span className="text-primary-900 font-bold text-sm">QS</span>
-              </div>
-              <span className="font-display text-lg font-bold text-white">QSToolkit</span>
+              <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-12 sm:h-14 w-auto max-w-[160px] sm:max-w-[180px]" />
             </Link>
             <div className="flex items-center gap-3">
               <Link href="/" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
