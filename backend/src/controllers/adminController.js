@@ -1459,16 +1459,29 @@ exports.getExamPrepStats = async (req, res, next) => {
     const questionBankByCategory = Object.entries(qCatCounts)
       .map(([category, count]) => ({ category, count }));
 
-    // University stats
+    // University stats — join through exam_definitions → exam_universities
     const { data: uniAttempts } = await supabase
       .from('exam_attempts')
-      .select('percentage, exam:exam_definitions(university_id, university)')
+      .select('user_id, percentage, exam:exam_definitions(university_id)')
       .eq('status', 'completed');
+
+    // Batch-fetch university names
+    const uniIds = [...new Set((uniAttempts || []).map(a => a.exam?.university_id).filter(Boolean))];
+    let uniNameMap = {};
+    if (uniIds.length > 0) {
+      const { data: unis } = await supabase
+        .from('exam_universities')
+        .select('id, name')
+        .in('id', uniIds);
+      (unis || []).forEach(u => { uniNameMap[u.id] = u.name; });
+    }
 
     const uniStats = {};
     (uniAttempts || []).forEach(a => {
-      const name = a.exam?.university || 'Unknown';
+      const uniId = a.exam?.university_id;
+      const name = (uniId && uniNameMap[uniId]) || 'Unknown';
       if (!uniStats[name]) uniStats[name] = { name, students: new Set(), attempts: 0, totalScore: 0 };
+      uniStats[name].students.add(a.user_id);
       uniStats[name].attempts++;
       uniStats[name].totalScore += (a.percentage || 0);
     });

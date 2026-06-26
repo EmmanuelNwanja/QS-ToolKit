@@ -20,6 +20,17 @@ const EXAM_PREP_BILLING_AMOUNTS = {
   annual: EXAM_PREP_ANNUAL_AMOUNT,
 };
 
+function extractAnswerLetter(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val).trim();
+  if (!s) return '';
+  if (/^[A-F]$/i.test(s)) return s.toUpperCase();
+  const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i) || s.match(/option\s+([A-F])/i);
+  if (match) return match[1].toUpperCase();
+  const first = s.charAt(0).toUpperCase();
+  return /^[A-F]$/.test(first) ? first : '';
+}
+
 const EXAM_PREP_BILLING_NGN = {
   weekly: 2000,
   monthly: 7600,
@@ -102,9 +113,11 @@ exports.getStatus = async (req, res, next) => {
 
     return res.json(success('Exam prep status', {
       active: hasAccess,
+      subscription_status: sub?.status || null,
       subscription: sub || null,
       trials_used: (trials || []).length,
-      trials: trials || []
+      trials: trials || [],
+      free_trial_available: (trials || []).length === 0
     }));
   } catch (err) { next(err); }
 };
@@ -459,7 +472,7 @@ exports.submitExam = async (req, res, next) => {
     const { data: attempt } = await attemptQuery
       .order('started_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!attempt) {
       return res.status(404).json(error('No in-progress attempt found for this exam'));
@@ -580,6 +593,157 @@ exports.submitExam = async (req, res, next) => {
       detailed_results: detailedResults
     }));
   } catch (err) { next(err); }
+};
+
+// ─── AI Question Explanation ──────────────────────────────────
+
+exports.explainQuestion = async (req, res, _next) => {
+  try {
+    const { question_text, correct_answer, user_answer } = req.body;
+
+    const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner. A student got this exam question wrong. Provide a clear, detailed explanation.
+
+QUESTION: ${question_text}
+CORRECT ANSWER: ${correct_answer}
+${user_answer ? `STUDENT'S ANSWER: ${user_answer}` : ''}
+
+INSTRUCTIONS:
+1. Explain WHY the correct answer is correct, with specific Nigerian QS context (SMM7, NRM2, local standards).
+2. If the student gave a wrong answer, explain why it is incorrect.
+3. Use Naira amounts, local materials, and Nigerian standards where relevant.
+4. Keep the explanation concise but thorough — aim for 2-4 paragraphs.
+5. Do NOT include any prefixes like "Explanation:" or numbering.
+
+Return ONLY the explanation text.`;
+
+    const { callAI } = require('../services/aiService');
+    const explanation = await callAI(prompt, { temperature: 0.4 });
+
+    return res.json(success('Explanation', {
+      explanation: explanation || 'No explanation available at this time.'
+    }));
+  } catch (err) {
+    logger.warn('AI explanation generation failed', { error: err.message });
+    return res.json(success('Explanation', {
+      explanation: 'AI explanation is temporarily unavailable. Please try the "Ask Dr. Q" feature for follow-up questions.'
+    }));
+  }
+};
+
+// ─── Personalized Practice Exam ────────────────────────────────
+// Analyzes weak areas from past attempts and generates targeted practice
+
+exports.generatePracticeExam = async (req, res, _next) => {
+  try {
+    const { category, question_count = 10 } = req.body;
+
+    // 1. Analyze past attempts for weak topics
+    let attemptQuery = supabase
+      .from('exam_attempts')
+      .select('detailed_results, exam_category')
+      .eq('user_id', req.user.id)
+      .eq('status', 'completed')
+      .order('submitted_at', { ascending: false })
+      .limit(20);
+
+    if (category) attemptQuery = attemptQuery.eq('exam_category', category);
+
+    const { data: attempts } = await attemptQuery;
+    if (!attempts || attempts.length === 0) {
+      return res.status(400).json(error('Complete at least one exam first to enable personalized practice'));
+    }
+
+    // Aggregate topic performance across all attempts
+    const topicStats = {};
+    for (const attempt of attempts) {
+      for (const r of (attempt.detailed_results || [])) {
+        const topic = r.topic || 'general';
+        if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 };
+        topicStats[topic].total++;
+        if (r.is_correct) topicStats[topic].correct++;
+      }
+    }
+
+    // Sort by weakness (lowest accuracy first)
+    const weakTopics = Object.entries(topicStats)
+      .map(([topic, s]) => ({ topic, accuracy: s.total > 0 ? s.correct / s.total : 0, total: s.total }))
+      .sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)
+      .slice(0, 8)
+      .map(t => t.topic);
+
+    // 2. Use AI to generate targeted questions
+    const { callAI, buildUserContext } = require('../services/aiService');
+    const userContext = await buildUserContext(req.user.id);
+
+    const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner. Generate a personalized practice exam targeting the student's weak areas.
+
+USER CONTEXT:
+${userContext}
+
+WEAK TOPICS (ranked by lowest accuracy):
+${weakTopics.map((t, i) => `${i + 1}. ${t} (${Math.round((topicStats[t]?.accuracy || 0) * 100)}% accuracy across ${topicStats[t]?.total || 0} questions)`).join('\n')}
+
+INSTRUCTIONS:
+1. Generate ${Math.min(question_count, 20)} multiple-choice questions.
+2. PRIORITIZE weak topics: at least 70% of questions should target the weakest 3-5 topics.
+3. Mix difficulties: include easy, medium, and hard questions.
+4. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards.
+5. Each question tests practical knowledge, not just theory.
+6. Do NOT prefix questions with numbers.
+7. The question field must contain ONLY the question text.
+
+OUTPUT: Valid JSON array with ${Math.min(question_count, 20)} objects:
+{
+  "question": "clear question text",
+  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
+  "correct_answer": "B",
+  "explanation": "brief explanation",
+  "difficulty": "easy|medium|hard",
+  "topic": "specific topic"
+}
+
+The correct_answer must be a SINGLE LETTER (A-D). Return ONLY the JSON array.`;
+
+    let questions;
+    try {
+      const raw = await callAI(prompt, { temperature: 0.8 });
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          questions = parsed.map(q => ({
+            ...q,
+            question: (q.question || '').replace(/^\d+\.\s*/, '').trim(),
+            correct_answer: extractAnswerLetter(q.correct_answer)
+          }));
+        }
+      }
+    } catch (aiErr) {
+      logger.warn('AI practice exam generation failed', { error: aiErr.message });
+    }
+
+    if (!questions || questions.length === 0) {
+      return res.status(500).json(error('Failed to generate practice exam. Please try again.'));
+    }
+
+    return res.json(success('Practice exam generated', {
+      questions: questions.map((q, idx) => ({
+        index: idx,
+        question: q.question,
+        options: q.options,
+        topic: q.topic,
+        difficulty: q.difficulty
+      })),
+      weak_topics: weakTopics.slice(0, 5),
+      total_questions: questions.length,
+      // Store correct answers for scoring (hidden from user during exam)
+      _answers: questions.map(q => ({
+        question_index: questions.indexOf(q),
+        correct_answer: q.correct_answer,
+        explanation: q.explanation,
+        topic: q.topic
+      }))
+    }));
+  } catch (err) { _next(err); }
 };
 
 // ─── Attempts ──────────────────────────────────────────────────

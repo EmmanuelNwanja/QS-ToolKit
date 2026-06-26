@@ -37,6 +37,21 @@ router.post('/exams/:id/submit', [
   body('answers').isArray().withMessage('answers must be an array'),
   validate
 ], ctrl.submitExam);
+router.post('/exams/:id/explain', [
+  param('id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid exam ID required'),
+  body('question_text').trim().notEmpty().withMessage('question_text is required'),
+  body('correct_answer').trim().notEmpty().withMessage('correct_answer is required'),
+  body('user_answer').optional().isString(),
+  validate
+], ctrl.explainQuestion);
+
+// ── Personalized Practice ──────────────────────────────────────
+router.post('/practice/generate', [
+  body('category').optional().isString(),
+  body('difficulty').optional().isIn(['easy', 'medium', 'hard']),
+  body('question_count').optional().isInt({ min: 5, max: 20 }).withMessage('question_count must be 5-20'),
+  validate
+], ctrl.generatePracticeExam);
 
 // ── Attempts ───────────────────────────────────────────────────
 router.get('/attempts', ctrl.getAttempts);

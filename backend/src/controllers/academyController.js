@@ -321,7 +321,12 @@ exports.startAdmission = async (req, res, next) => {
     }
 
     // Use AI to generate 7 QS-domain questions — deeply personalized
+    const { buildUserContext } = require('../services/aiService');
+    const userContext = await buildUserContext(req.user.id);
     const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating a personalized admission assessment.
+
+USER CONTEXT:
+${userContext}
 
 STUDENT PROFILE:
 - Strengths: ${strengths.length ? strengths.join(', ') : 'Not yet assessed'}
@@ -935,6 +940,9 @@ exports.createContest = async (req, res, next) => {
     }
 
     try {
+      const qCount = parseInt(question_count) || 10;
+      const contestStatus = scheduled_at ? 'scheduled' : 'pending';
+
       const { data: contest, error: insertErr } = await supabase
         .from('academy_contests')
         .insert({
@@ -943,13 +951,13 @@ exports.createContest = async (req, res, next) => {
           description: description || '',
           topic: topic || contestTitle,
           contest_type,
-          question_count: parseInt(question_count) || 10,
+          question_count: qCount,
           time_limit_seconds: parseInt(time_limit_seconds) || 600,
           difficulty: difficulty || 'medium',
           scheduled_at: scheduled_at || null,
           duration_minutes: parseInt(duration_minutes) || 30,
           max_participants: max_participants ? parseInt(max_participants) : null,
-          status: scheduled_at ? 'scheduled' : 'pending',
+          status: contestStatus,
           created_at: new Date().toISOString()
         })
         .select()
@@ -958,6 +966,30 @@ exports.createContest = async (req, res, next) => {
       if (insertErr) {
         logger.error('Database error during contest creation:', insertErr);
         throw insertErr;
+      }
+
+      // Auto-join the creator as a participant
+      await supabase.from('academy_contest_participants').insert({
+        contest_id: contest.id,
+        user_id: req.user.id,
+        joined_at: new Date().toISOString()
+      });
+
+      // Generate questions synchronously for immediate contests
+      // Contest only activates once questions are ready (no race condition)
+      if (contestStatus !== 'scheduled') {
+        try {
+          const questions = await generateContestQuestions(contest.id, contestTitle, qCount, difficulty || 'medium');
+          if (questions && questions.length > 0) {
+            await supabase
+              .from('academy_contests')
+              .update({ status: 'active' })
+              .eq('id', contest.id);
+          }
+        } catch (err) {
+          logger.error('Contest question generation failed:', { contest_id: contest.id, error: err.message });
+          // Contest stays 'pending' — creator can retry or it will be cleaned up
+        }
       }
 
       // Handle duel opponent invitation
@@ -971,7 +1003,6 @@ exports.createContest = async (req, res, next) => {
           .maybeSingle();
 
         if (opponentUser) {
-          // Create invitation record (using contest participants with pending status)
           await supabase.from('academy_contest_participants').insert({
             contest_id: contest.id,
             user_id: opponentUser.id,
@@ -1030,7 +1061,34 @@ exports.getContestById = async (req, res, next) => {
 
     if (err || !contest) return res.status(404).json(error('Contest not found'));
 
-    return res.json(success('Contest', { contest }));
+    // Fetch questions (without correct answers for non-creators)
+    const isCreator = contest.creator_id === req.user.id;
+    const { data: questions } = await supabase
+      .from('academy_contest_questions')
+      .select(isCreator
+        ? 'id, question_text, question_type, options, correct_answer, explanation, difficulty, sort_order'
+        : 'id, question_text, question_type, options, difficulty, sort_order')
+      .eq('contest_id', id)
+      .order('sort_order');
+
+    // Check if current user has joined and/or submitted
+    const myParticipant = (contest.participants || []).find(p => p.user_id === req.user.id);
+    const { data: mySubmission } = await supabase
+      .from('academy_contest_submissions')
+      .select('id, total_points, submitted_at')
+      .eq('contest_id', id)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
+    return res.json(success('Contest', {
+      contest: {
+        ...contest,
+        questions: questions || [],
+        joined: !!myParticipant,
+        submitted: !!mySubmission,
+        my_submission: mySubmission || null
+      }
+    }));
   } catch (err) { next(err); }
 };
 
@@ -1052,6 +1110,10 @@ exports.joinContest = async (req, res, next) => {
 
     if (contest.status === 'scheduled') {
       return res.status(400).json(error('This contest has not started yet'));
+    }
+
+    if (contest.status === 'pending') {
+      return res.status(400).json(error('Contest questions are being prepared. Please try again shortly.'));
     }
 
     // Check max participants
@@ -1111,6 +1173,10 @@ exports.submitContest = async (req, res, next) => {
       .single();
 
     if (!contest) return res.status(404).json(error('Contest not found'));
+
+    if (contest.status === 'pending') {
+      return res.status(400).json(error('Contest questions are still being prepared. Please try again shortly.'));
+    }
 
     // Verify participation
     const { data: participant } = await supabase
@@ -1305,13 +1371,13 @@ exports.getAnalytics = async (req, res, next) => {
     // Enrollment stats
     const { data: enrollments } = await supabase
       .from('academy_enrollments')
-      .select('id, enrolled_at, pathway:academy_pathways(title)')
+      .select('id, enrolled_at, pathway:academy_pathways(id, title, module_count)')
       .eq('user_id', req.user.id);
 
     // Module progress
     const { data: moduleProgress } = await supabase
       .from('academy_module_progress')
-      .select('module_id, completed, completed_at')
+      .select('module_id, pathway_id, completed, completed_at')
       .eq('user_id', req.user.id);
 
     // Admission test
@@ -1357,13 +1423,19 @@ exports.getAnalytics = async (req, res, next) => {
       }
     }
 
-    // Pathway progress for current level
-    const { data: pathwayProgress } = await supabase
-      .from('academy_pathway_progress')
-      .select('current_level, pathway:academy_pathways(slug)')
-      .eq('user_id', req.user.id);
-
-    const currentLevel = (pathwayProgress || []).reduce((max, p) => Math.max(max, p.current_level || 1), 1);
+    // Compute current level from enrollments + module progress (not deprecated pathway_progress)
+    // For each enrolled pathway, count completed modules and derive level from completion percentage
+    let currentLevel = 1;
+    for (const enrollment of (enrollments || [])) {
+      const pathwayId = enrollment.pathway?.id;
+      if (!pathwayId) continue;
+      const totalMods = enrollment.pathway?.module_count || 10;
+      const completedCount = (moduleProgress || []).filter(m => m.completed && m.pathway_id === pathwayId).length;
+      const pct = totalMods > 0 ? (completedCount / totalMods) * 100 : 0;
+      // Levels are 1-5, each 20% increment
+      const level = Math.min(5, Math.floor(pct / 20) + 1);
+      if (level > currentLevel) currentLevel = level;
+    }
 
     // Compute recommended pathway from latest admission test
     let recommended_pathway = null;
@@ -1431,6 +1503,95 @@ function extractAnswerLetter(val) {
   // Last resort: first character if it's A-F
   const first = s.charAt(0).toUpperCase();
   return /^[A-F]$/.test(first) ? first : '';
+}
+
+// ─── Contest Question Generation ──────────────────────────────
+
+async function generateContestQuestions(contestId, topic, count, difficulty) {
+  const { callAI } = require('../services/aiService');
+
+  const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating quiz questions for a Knowledge Arena contest.
+
+TOPIC: ${topic}
+NUMBER OF QUESTIONS: ${count}
+DIFFICULTY: ${difficulty}
+
+INSTRUCTIONS:
+1. Generate exactly ${count} UNIQUE, challenging multiple-choice questions about "${topic}".
+2. Questions should be diverse and cover different aspects of the topic.
+3. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI, BOQ Institute).
+4. Mix difficulty levels within the ${difficulty} range.
+5. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1." — questions will be numbered automatically.
+6. IMPORTANT: The question field must contain ONLY the question text, not including any option letters or numbers.
+
+OUTPUT: Valid JSON array with exactly ${count} objects. Each object must have:
+{
+  "question_text": "clear, specific question text WITHOUT any numbering prefix",
+  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
+  "correct_answer": "B",
+  "explanation": "brief explanation of correct answer",
+  "difficulty": "easy|medium|hard"
+}
+
+The correct_answer must be a SINGLE LETTER (A, B, C, or D) matching the correct option.
+Return ONLY the JSON array. No text outside the array.`;
+
+  try {
+    const raw = await callAI(prompt, { temperature: 0.8 });
+    if (!raw) throw new Error('No AI response');
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length !== count) {
+      throw new Error(`Expected ${count} questions, got ${parsed?.length || 0}`);
+    }
+
+    const questions = parsed.map((q, idx) => ({
+      contest_id: contestId,
+      question_text: (q.question_text || q.question || '').replace(/^\d+\.\s*/, '').trim(),
+      question_type: 'mcq',
+      options: q.options || [],
+      correct_answer: extractAnswerLetter(q.correct_answer),
+      explanation: q.explanation || '',
+      difficulty: q.difficulty || difficulty,
+      sort_order: idx
+    }));
+
+    const { error: insertErr } = await supabase
+      .from('academy_contest_questions')
+      .insert(questions);
+
+    if (insertErr) throw insertErr;
+
+    logger.info('Contest questions generated', { contest_id: contestId, count: questions.length });
+    return questions;
+  } catch (aiErr) {
+    logger.warn('AI contest question generation failed, using fallback', { error: aiErr.message });
+
+    // Fallback: generate simple topic-based questions
+    const fallbackQuestions = Array.from({ length: count }, (_, idx) => ({
+      contest_id: contestId,
+      question_text: `In the context of "${topic}", which of the following is most relevant to Nigerian QS practice?`,
+      question_type: 'mcq',
+      options: [
+        'A. SMM7 measurement standards',
+        'B. NRM2 cost planning rules',
+        'C. Nigerian BOQ preparation guidelines',
+        'D. All of the above'
+      ],
+      correct_answer: 'D',
+      explanation: `All listed standards and guidelines are relevant to ${topic} in Nigerian QS practice.`,
+      difficulty: difficulty,
+      sort_order: idx
+    }));
+
+    const { error: insertErr } = await supabase
+      .from('academy_contest_questions')
+      .insert(fallbackQuestions);
+
+    if (insertErr) throw insertErr;
+
+    return fallbackQuestions;
+  }
 }
 
 // ─── Fallback Questions ────────────────────────────────────────

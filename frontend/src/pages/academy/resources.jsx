@@ -5,6 +5,7 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import MarkdownRenderer from '../../components/MarkdownRenderer';
 import { academyAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const RESOURCE_TYPES = [
   { value: '', label: 'All Types' },
@@ -81,8 +82,11 @@ export default function ResourcesPage() {
         if (filters.type) params.type = filters.type;
         const res = await academyAPI.getResources(params);
         setResources(res.data.resources || []);
-      } catch {}
-      finally { setLoading(false); }
+      } catch {
+        toast.error('Failed to load resources');
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [filters]);
@@ -93,6 +97,7 @@ export default function ResourcesPage() {
       const res = await academyAPI.getResource(id);
       setSelectedResource(res.data.resource);
     } catch {
+      toast.error('Failed to load resource');
       setDetailLoading(false);
     }
   };

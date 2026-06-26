@@ -86,14 +86,16 @@ export default function ExamDetailPage() {
       try {
         const res = await examAPI.getStatus();
         setStatus(res.data);
-      } catch {} finally {
+      } catch {
+        // Silent fail for status check — non-critical
+      } finally {
         setLoading(false);
       }
     }
     if (slug) load();
   }, [slug]);
 
-  const hasSub = status?.subscription_status === 'active';
+  const hasSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
   const canStart = hasSub || hasFreeTrial;
 

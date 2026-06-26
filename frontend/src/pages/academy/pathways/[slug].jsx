@@ -38,7 +38,9 @@ export default function PathwayDetailPage() {
           const progressList = progRes.value.data.progress || [];
           setProgress(progressList.find((e) => e.pathway?.slug === slug) || null);
         }
-      } catch {}
+      } catch {
+        toast.error('Failed to load pathway details');
+      }
       finally { setLoading(false); }
     }
     load();

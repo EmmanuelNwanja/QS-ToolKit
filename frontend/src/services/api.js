@@ -325,6 +325,8 @@ export const examAPI = {
   getPastQuestions:    (params)               => api.get('/exam-prep/past-questions', { params }),
   globalSearch:       (params)                => api.get('/exam-prep/search', { params }),
   logSearch:          (data)                  => api.post('/exam-prep/search/log', data),
+  explainQuestion:    (id, data)              => api.post(`/exam-prep/exams/${id}/explain`, data),
+  generatePractice:   (data)                  => api.post('/exam-prep/practice/generate', data),
 };
 
 // ─── Utilities ─────────────────────────────────────────────────

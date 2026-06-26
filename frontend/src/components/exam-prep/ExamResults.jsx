@@ -164,6 +164,7 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
       {showExplanation && (
         <ExplanationModal
           question={showExplanation}
+          examId={attempt?.exam_id}
           onClose={() => setShowExplanation(null)}
         />
       )}

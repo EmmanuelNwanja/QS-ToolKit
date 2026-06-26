@@ -47,7 +47,9 @@ export default function ArenaPage() {
     try {
       const res = await academyAPI.getContests({ tab });
       setContests(res.data.contests || []);
-    } catch {}
+    } catch {
+      toast.error('Failed to load contests');
+    }
     finally { setLoading(false); }
   };
 
@@ -57,7 +59,7 @@ export default function ArenaPage() {
   }, [tab]);
 
   useEffect(() => {
-    academyAPI.getTokens().then((r) => setTokens(r.data)).catch(() => {});
+    academyAPI.getTokens().then((r) => setTokens(r.data)).catch(() => toast.error('Failed to load token balance'));
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));

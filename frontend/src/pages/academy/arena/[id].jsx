@@ -40,7 +40,9 @@ export default function ContestPage() {
             setStarted(true);
           }
         }
-      } catch {}
+      } catch {
+        toast.error('Failed to load contest');
+      }
       finally { setLoading(false); }
     }
     load();

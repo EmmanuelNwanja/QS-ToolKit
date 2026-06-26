@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { academyAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -20,7 +21,9 @@ export default function AnalyticsPage() {
       try {
         const res = await academyAPI.getAnalytics();
         setAnalytics(res.data);
-      } catch {}
+      } catch {
+        toast.error('Failed to load analytics');
+      }
       finally { setLoading(false); }
     }
     load();

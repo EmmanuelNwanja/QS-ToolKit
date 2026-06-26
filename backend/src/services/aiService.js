@@ -1264,3 +1264,4 @@ exports.healthCheck = async () => {
 // Expose raw Gemini for advanced use
 exports.callGemini = callGemini;
 exports.callAI = callAI;
+exports.buildUserContext = buildUserContext;

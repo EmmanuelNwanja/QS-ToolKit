@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { academyAPI } from '../../../services/api';
+import toast from 'react-hot-toast';
 
 const PATHWAYS = [
   { slug: 'technical-qs-practice', title: 'Technical QS Practice', focus: 'Consultancy', icon: '📐', levels: 5, color: 'border-l-blue-500' },
@@ -40,7 +41,9 @@ export default function PathwaysPage() {
       try {
         const res = await academyAPI.getProgress();
         setEnrollments(res.data.progress || []);
-      } catch {}
+      } catch {
+        toast.error('Failed to load pathway progress');
+      }
       finally { setLoading(false); }
     }
     load();

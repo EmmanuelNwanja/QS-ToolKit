@@ -363,7 +363,20 @@ exports.getPaymentStats = async () => {
  */
 async function activateAcademySubscription(userId, adminUserId, submissionId) {
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  // Read billing cycle from the payment submission
+  let billingCycle = 'weekly';
+  if (submissionId) {
+    const { data: submission } = await supabase
+      .from('direct_payment_submissions')
+      .select('billing_interval')
+      .eq('id', submissionId)
+      .maybeSingle();
+    if (submission?.billing_interval) billingCycle = submission.billing_interval;
+  }
+
+  const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+  const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
 
   const { data: existing } = await supabase
     .from('academy_subscriptions')
@@ -375,7 +388,7 @@ async function activateAcademySubscription(userId, adminUserId, submissionId) {
 
   let finalExpiresAt = expiresAt;
   if (existing && new Date(existing.expires_at) > now) {
-    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + durationMs * 24 * 60 * 60 * 1000);
   }
 
   if (existing) {
@@ -389,6 +402,7 @@ async function activateAcademySubscription(userId, adminUserId, submissionId) {
       .insert({
         user_id: userId,
         status: 'active',
+        billing_cycle: billingCycle,
         started_at: now.toISOString(),
         expires_at: finalExpiresAt.toISOString(),
         created_at: now.toISOString(),
@@ -397,9 +411,9 @@ async function activateAcademySubscription(userId, adminUserId, submissionId) {
 
   await subscriptionManagementService.logSubscriptionChange(userId, {
     action: 'academy_subscription_activated',
-    planTo: 'academy_weekly',
+    planTo: `academy_${billingCycle}`,
     details: {
-      billingInterval: 'weekly',
+      billingInterval: billingCycle,
       expiresAt: finalExpiresAt.toISOString(),
       submissionId,
     },
@@ -407,7 +421,7 @@ async function activateAcademySubscription(userId, adminUserId, submissionId) {
   });
 
   return {
-    subscription: { plan_name: 'academy_weekly', status: 'active' },
+    subscription: { plan_name: `academy_${billingCycle}`, status: 'active' },
     expiresAt: finalExpiresAt.toISOString(),
   };
 }
@@ -417,7 +431,20 @@ async function activateAcademySubscription(userId, adminUserId, submissionId) {
  */
 async function activateExamPrepSubscription(userId, adminUserId, submissionId) {
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  // Read billing cycle from the payment submission
+  let billingCycle = 'weekly';
+  if (submissionId) {
+    const { data: submission } = await supabase
+      .from('direct_payment_submissions')
+      .select('billing_interval')
+      .eq('id', submissionId)
+      .maybeSingle();
+    if (submission?.billing_interval) billingCycle = submission.billing_interval;
+  }
+
+  const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+  const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
 
   const { data: existing } = await supabase
     .from('exam_prep_subscriptions')
@@ -429,7 +456,7 @@ async function activateExamPrepSubscription(userId, adminUserId, submissionId) {
 
   let finalExpiresAt = expiresAt;
   if (existing && new Date(existing.expires_at) > now) {
-    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+    finalExpiresAt = new Date(new Date(existing.expires_at).getTime() + durationMs * 24 * 60 * 60 * 1000);
   }
 
   if (existing) {
@@ -443,6 +470,7 @@ async function activateExamPrepSubscription(userId, adminUserId, submissionId) {
       .insert({
         user_id: userId,
         status: 'active',
+        billing_cycle: billingCycle,
         started_at: now.toISOString(),
         expires_at: finalExpiresAt.toISOString(),
         created_at: now.toISOString(),
@@ -451,9 +479,9 @@ async function activateExamPrepSubscription(userId, adminUserId, submissionId) {
 
   await subscriptionManagementService.logSubscriptionChange(userId, {
     action: 'exam_prep_subscription_activated',
-    planTo: 'exam_prep_weekly',
+    planTo: `exam_prep_${billingCycle}`,
     details: {
-      billingInterval: 'weekly',
+      billingInterval: billingCycle,
       expiresAt: finalExpiresAt.toISOString(),
       submissionId,
     },

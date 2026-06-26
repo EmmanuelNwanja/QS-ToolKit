@@ -36,9 +36,9 @@ export default function ExamPrepDashboard() {
 
           const total = list.length;
           const avgScore = total > 0
-            ? Math.round(list.reduce((sum, a) => sum + (a.score || 0), 0) / total)
+            ? Math.round(list.reduce((sum, a) => sum + (a.percentage || a.score || 0), 0) / total)
             : 0;
-          const passed = list.filter(a => a.passed).length;
+          const passed = list.filter(a => (a.percentage || a.score || 0) >= 50).length;
           const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
           setStats({ taken: total, avgScore, passRate });
         }
@@ -51,9 +51,9 @@ export default function ExamPrepDashboard() {
     load();
   }, []);
 
-  const hasActiveSub = status?.subscription_status === 'active';
+  const hasActiveSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
-  const subExpired = status?.subscription_status === 'expired';
+  const subExpired = status?.subscription?.status === 'expired' || status?.subscription_status === 'expired';
 
   return (
     <ProtectedRoute>
@@ -145,7 +145,7 @@ export default function ExamPrepDashboard() {
               <Link href="/exam-prep/students" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
                 <div className="text-3xl mb-3">🎓</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Student Exams</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">University past questions from 10 Nigerian universities. Browse by course and year.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">University past questions from 25 Nigerian universities. Browse by course and year.</p>
                 <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
                   Browse Universities <span>&rarr;</span>
                 </div>
@@ -191,15 +191,15 @@ export default function ExamPrepDashboard() {
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-700">{a.exam_name || 'Exam'}</p>
-                      <p className="text-xs text-gray-500">{formatDate(a.completed_at || a.created_at)}</p>
+                      <p className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-700">{a.exam?.exam_name || 'Exam'}</p>
+                      <p className="text-xs text-gray-500">{formatDate(a.submitted_at || a.started_at)}</p>
                     </div>
                     <div className="flex items-center gap-3 ml-3">
-                      <span className={`text-sm font-bold ${a.passed ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {a.score}%
+                      <span className={`text-sm font-bold ${(a.percentage || a.score || 0) >= 50 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {a.percentage || a.score || 0}%
                       </span>
-                      <span className={`badge ${a.passed ? 'badge-green' : 'badge-red'}`}>
-                        {a.passed ? 'Pass' : 'Fail'}
+                      <span className={`badge ${(a.percentage || a.score || 0) >= 50 ? 'badge-green' : 'badge-red'}`}>
+                        {(a.percentage || a.score || 0) >= 50 ? 'Pass' : 'Fail'}
                       </span>
                     </div>
                   </Link>

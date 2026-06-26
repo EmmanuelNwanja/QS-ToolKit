@@ -672,6 +672,85 @@ exports.webhook = async (req, res, next) => {
     const { event, data } = req.body;
     if (event === 'charge.success') {
       const meta = data.metadata || {};
+
+      // Handle academy subscription payments
+      if (meta.product_type === 'academy_subscription' && meta.user_id) {
+        if (await hasBillingTransactionReference(data.reference)) return res.sendStatus(200);
+        const billingCycle = meta.billing_cycle || 'weekly';
+        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
+
+        // Expire any existing active subscription
+        await supabase
+          .from('academy_subscriptions')
+          .update({ status: 'expired' })
+          .eq('user_id', meta.user_id)
+          .eq('status', 'active');
+
+        await supabase
+          .from('academy_subscriptions')
+          .insert({
+            user_id: meta.user_id,
+            status: 'active',
+            billing_cycle: billingCycle,
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+            paystack_reference: data.reference,
+            amount_paid: (data.amount || 0) / 100,
+            created_at: now.toISOString(),
+          });
+
+        await recordBillingTransactionOnce({
+          userId: meta.user_id,
+          amount: (data.amount || 0) / 100,
+          currency: data.currency || 'NGN',
+          reference: data.reference,
+          description: `Academy subscription (${billingCycle})`,
+          metadata: { product_type: 'academy_subscription', billing_cycle: billingCycle }
+        });
+        return res.sendStatus(200);
+      }
+
+      // Handle exam prep subscription payments
+      if (meta.product_type === 'exam_prep_subscription' && meta.user_id) {
+        if (await hasBillingTransactionReference(data.reference)) return res.sendStatus(200);
+        const billingCycle = meta.billing_cycle || 'weekly';
+        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
+
+        // Expire any existing active subscription
+        await supabase
+          .from('exam_prep_subscriptions')
+          .update({ status: 'expired' })
+          .eq('user_id', meta.user_id)
+          .eq('status', 'active');
+
+        await supabase
+          .from('exam_prep_subscriptions')
+          .insert({
+            user_id: meta.user_id,
+            status: 'active',
+            billing_cycle: billingCycle,
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+            paystack_reference: data.reference,
+            amount_paid: (data.amount || 0) / 100,
+            created_at: now.toISOString(),
+          });
+
+        await recordBillingTransactionOnce({
+          userId: meta.user_id,
+          amount: (data.amount || 0) / 100,
+          currency: data.currency || 'NGN',
+          reference: data.reference,
+          description: `Exam prep subscription (${billingCycle})`,
+          metadata: { product_type: 'exam_prep_subscription', billing_cycle: billingCycle }
+        });
+        return res.sendStatus(200);
+      }
+
       if (!meta.is_philanthropist && meta.user_id && meta.plan_id) {
         if (await hasBillingTransactionReference(data.reference)) {
           await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data });

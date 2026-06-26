@@ -61,9 +61,10 @@ export default function ResultsPage() {
   const filtered = useMemo(() => {
     if (filter === 'all') return attempts;
     return attempts.filter(a => {
-      if (filter === 'nigerian') return a.category === 'nigerian' || a.exam_type === 'professional_nigerian';
-      if (filter === 'international') return a.category === 'international' || a.exam_type === 'professional_international';
-      if (filter === 'university') return a.category === 'university' || a.exam_type === 'university';
+      const cat = a.exam?.category || '';
+      if (filter === 'nigerian') return cat === 'nigerian_professional';
+      if (filter === 'international') return cat === 'international';
+      if (filter === 'university') return cat === 'university';
       return true;
     });
   }, [attempts, filter]);
@@ -80,14 +81,16 @@ export default function ResultsPage() {
       }));
   }, [attempts]);
 
-  // Weakness areas
+  // Weakness areas — derive from detailed_results in attempts
   const weaknessAreas = useMemo(() => {
     const topicScores = {};
     attempts.forEach(a => {
-      (a.weak_topics || []).forEach(t => {
-        if (!topicScores[t]) topicScores[t] = { topic: t, count: 0 };
-        topicScores[t].count++;
-      });
+      // detailed_results may not be in list view; compute from score only
+      if (a.score !== undefined && a.score < 50) {
+        const topic = a.exam?.exam_name || 'General';
+        if (!topicScores[topic]) topicScores[topic] = { topic, count: 0 };
+        topicScores[topic].count++;
+      }
     });
     return Object.values(topicScores)
       .sort((a, b) => b.count - a.count)
@@ -222,21 +225,20 @@ export default function ResultsPage() {
                 ) : filtered.map(a => (
                   <tr key={a.id} className="cursor-pointer" onClick={() => loadAttempt(a.id)}>
                     <td>
-                      <p className="font-medium text-gray-900">{a.exam_name || 'Exam'}</p>
-                      <p className="text-xs text-gray-500">{a.exam_body || ''}</p>
+                      <p className="font-medium text-gray-900">{a.exam?.exam_name || 'Exam'}</p>
                     </td>
-                    <td className="text-gray-500">{formatDate(a.completed_at || a.created_at)}</td>
+                    <td className="text-gray-500">{formatDate(a.submitted_at || a.started_at)}</td>
                     <td>
-                      <span className={`font-bold ${a.passed ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {a.score}%
+                      <span className={`font-bold ${(a.percentage || a.score || 0) >= 50 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {a.percentage || a.score || 0}%
                       </span>
                     </td>
                     <td>
-                      <span className={`badge ${a.passed ? 'badge-green' : 'badge-red'}`}>
-                        {a.passed ? 'Pass' : 'Fail'}
+                      <span className={`badge ${(a.percentage || a.score || 0) >= 50 ? 'badge-green' : 'badge-red'}`}>
+                        {(a.percentage || a.score || 0) >= 50 ? 'Pass' : 'Fail'}
                       </span>
                     </td>
-                    <td className="text-gray-500">{a.time_taken ? `${a.time_taken} min` : '—'}</td>
+                    <td className="text-gray-500">{a.time_spent_seconds ? `${Math.round(a.time_spent_seconds / 60)} min` : '—'}</td>
                     <td>
                       <button className="text-xs text-primary-600 hover:underline">View Details</button>
                     </td>

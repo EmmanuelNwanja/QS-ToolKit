@@ -36,7 +36,9 @@ export default function AcademyDashboard() {
         if (statusRes.status === 'fulfilled') setStatus(statusRes.value.data);
         if (analyticsRes.status === 'fulfilled') setAnalytics(analyticsRes.value.data);
         if (progressRes.status === 'fulfilled') setPathwayProgress(progressRes.value.data.progress || []);
-      } catch {}
+      } catch {
+        toast.error('Failed to load academy data');
+      }
       finally { setLoading(false); }
     }
     load();

@@ -484,6 +484,7 @@ exports.grantAcademySubscription = async (req, res, next) => {
       .insert({
         user_id: userId,
         status: 'active',
+        billing_cycle: 'admin_grant',
         started_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         created_at: now.toISOString(),
@@ -696,6 +697,7 @@ exports.grantExamPrepSubscription = async (req, res, next) => {
       .insert({
         user_id: userId,
         status: 'active',
+        billing_cycle: 'admin_grant',
         started_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         created_at: now.toISOString(),

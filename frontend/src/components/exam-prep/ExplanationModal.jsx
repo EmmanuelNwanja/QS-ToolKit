@@ -1,18 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MarkdownRenderer from '../MarkdownRenderer';
+import { examAPI } from '../../services/api';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-export default function ExplanationModal({ question, onClose }) {
+export default function ExplanationModal({ question, examId, onClose }) {
   const [drQInput, setDrQInput] = useState('');
   const [showDrQ, setShowDrQ] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState('');
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+
+  const fetchExplanation = useCallback(async () => {
+    if (!examId || !question?.question_text) return;
+    setLoadingExplanation(true);
+    try {
+      const res = await examAPI.explainQuestion(examId, {
+        question_text: question.question_text || question.question,
+        correct_answer: String(question.correct_answer ?? question.correct_option ?? ''),
+        user_answer: question.user_answer !== undefined ? String(question.user_answer) : undefined,
+      });
+      setAiExplanation(res.data?.explanation || '');
+    } catch {
+      // Fall back to Ask Dr. Q prompt
+    } finally {
+      setLoadingExplanation(false);
+    }
+  }, [examId, question]);
+
+  useEffect(() => {
+    const hasStoredExplanation = question?.explanation || question?.ai_explanation;
+    if (!hasStoredExplanation && examId) {
+      fetchExplanation();
+    }
+  }, [question, examId, fetchExplanation]);
 
   if (!question) return null;
 
   const correctAnswer = question.correct_answer ?? question.correct_option;
   const userAnswer = question.user_answer ?? question.selected_option;
-  const explanation = question.explanation || question.ai_explanation || '';
+  const storedExplanation = question.explanation || question.ai_explanation || '';
+  const explanation = storedExplanation || aiExplanation;
 
   const handleAskDrQ = () => {
     if (!drQInput.trim()) return;
@@ -97,10 +125,20 @@ export default function ExplanationModal({ question, onClose }) {
                   <MarkdownRenderer content={explanation} />
                 </div>
               </div>
+            ) : loadingExplanation ? (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm">Dr. Q is generating an explanation...</span>
+                </div>
+              </div>
             ) : (
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                 <p className="text-sm text-blue-700">
-                  <strong>💡 Tip:</strong> Click &quot;Ask Dr. Q&quot; below to get a detailed AI-powered explanation for this question.
+                  <strong>Tip:</strong> Click &quot;Ask Dr. Q&quot; below to get a detailed AI-powered explanation for this question.
                 </p>
               </div>
             )}
@@ -132,7 +170,7 @@ export default function ExplanationModal({ question, onClose }) {
                   onClick={() => setShowDrQ(true)}
                   className="btn-gold text-sm w-full"
                 >
-                  🤖 Ask Dr. Q for More Clarification
+                  Ask Dr. Q for More Clarification
                 </button>
               ) : (
                 <motion.div

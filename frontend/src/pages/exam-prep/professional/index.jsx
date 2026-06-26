@@ -115,7 +115,7 @@ export default function ProfessionalExamsPage() {
     load();
   }, [activeTab]);
 
-  const hasSub = status?.subscription_status === 'active';
+  const hasSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
   // Merge DB exams with hardcoded data, preferring DB data with slugs
   const hardcodedExams = activeTab === 'nigerian' ? NIGERIAN_EXAMS : INTERNATIONAL_EXAMS;
