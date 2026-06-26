@@ -613,7 +613,10 @@ exports.generatePracticeExam = async (req, res, _next) => {
   try {
     const { category, question_count = 10 } = req.body;
 
-    // 1. Analyze past attempts for weak topics
+    // 1. Analyze past attempts for weak topics (optional — works without history)
+    let weakTopics = [];
+    let topicStats = {};
+
     let attemptQuery = supabase
       .from('exam_attempts')
       .select('detailed_results, exam_category')
@@ -625,38 +628,39 @@ exports.generatePracticeExam = async (req, res, _next) => {
     if (category) attemptQuery = attemptQuery.eq('exam_category', category);
 
     const { data: attempts } = await attemptQuery;
-    if (!attempts || attempts.length === 0) {
-      return res.status(400).json(error('Complete at least one exam first to enable personalized practice'));
-    }
-
-    // Aggregate topic performance across all attempts
-    const topicStats = {};
-    for (const attempt of attempts) {
-      for (const r of (attempt.detailed_results || [])) {
-        const topic = r.topic || 'general';
-        if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 };
-        topicStats[topic].total++;
-        if (r.is_correct) topicStats[topic].correct++;
+    if (attempts && attempts.length > 0) {
+      for (const attempt of attempts) {
+        for (const r of (attempt.detailed_results || [])) {
+          const topic = r.topic || 'general';
+          if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 };
+          topicStats[topic].total++;
+          if (r.is_correct) topicStats[topic].correct++;
+        }
       }
-    }
 
-    // Sort by weakness (lowest accuracy first)
-    const weakTopics = Object.entries(topicStats)
-      .map(([topic, s]) => ({ topic, accuracy: s.total > 0 ? s.correct / s.total : 0, total: s.total }))
-      .sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)
-      .slice(0, 8)
-      .map(t => t.topic);
+      weakTopics = Object.entries(topicStats)
+        .map(([topic, s]) => ({ topic, accuracy: s.total > 0 ? s.correct / s.total : 0, total: s.total }))
+        .sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)
+        .slice(0, 8)
+        .map(t => t.topic);
+    }
 
     // 2. Use AI to generate targeted questions
     const { callAI, buildUserContext, SYSTEM_PROMPTS } = require('../services/aiService');
     const userContext = await buildUserContext(req.user.id);
 
-    const personalizedContext = `USER CONTEXT:\n${userContext}
+    const hasWeakTopics = weakTopics.length > 0;
+    const personalizedContext = hasWeakTopics
+      ? `USER CONTEXT:\n${userContext}
 
 WEAK TOPICS (ranked by lowest accuracy):
 ${weakTopics.map((t, i) => `${i + 1}. ${t} (${Math.round((topicStats[t]?.accuracy || 0) * 100)}% accuracy across ${topicStats[t]?.total || 0} questions)`).join('\n')}
 
-Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must target the weakest 3-5 topics.`;
+Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must target the weakest 3-5 topics.`
+      : `USER CONTEXT:\n${userContext}
+
+Generate exactly ${Math.min(question_count, 20)} MCQ questions for a Nigerian QS practice exam.
+Mix difficulty: easy, medium, and hard. Cover diverse topics.`;
 
     const prompt = `${SYSTEM_PROMPTS.admissionTest || 'Generate MCQ questions for a Nigerian QS practice exam. Return JSON array.'}\n\n${personalizedContext}`;
 

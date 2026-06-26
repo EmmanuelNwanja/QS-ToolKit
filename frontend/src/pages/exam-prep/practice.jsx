@@ -330,8 +330,7 @@ export default function PracticeExamPage() {
               </div>
               <h2 className="font-display text-xl font-bold text-primary-800 mb-2">Personalized Practice Exam</h2>
               <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                Dr. Q will analyze your past exam performance and generate a practice exam targeting your weak areas.
-                Complete at least one exam first for personalized questions.
+                Dr. Q will analyze your past exam performance and generate targeted questions. If you have past exams, weak areas will be prioritized.
               </p>
               <button onClick={generate} className="btn-primary text-base px-8 py-3">
                 Generate Practice Exam
@@ -352,7 +351,7 @@ export default function PracticeExamPage() {
                 </motion.span>
               </div>
               <h2 className="font-display text-xl font-bold text-primary-800 mb-2">Generating Your Practice Exam</h2>
-              <p className="text-sm text-gray-500 mb-6">Dr. Q is analyzing your weak areas and creating targeted questions...</p>
+              <p className="text-sm text-gray-500 mb-6">Dr. Q is preparing your targeted questions...</p>
               <div className="flex justify-center gap-1">
                 {[0, 1, 2].map((i) => (
                   <motion.div
