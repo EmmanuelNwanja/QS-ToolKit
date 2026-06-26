@@ -72,7 +72,7 @@ export default function AdminLayout({ children }) {
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-gray-200">
           <Link href="/admin">
-            <img src="/qs-toolkit-logo.png" alt="QSToolkit Admin" className="h-11 w-auto max-w-[150px]" />
+            <img src="/qs-toolkit-logo.png" alt="QSToolkit Admin" className="h-13 w-auto max-w-[190px]" />
           </Link>
         </div>
 

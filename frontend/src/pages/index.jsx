@@ -324,7 +324,7 @@ export default function LandingPage() {
         >
           <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 group">
-              <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-12 sm:h-14 w-auto max-w-[160px] sm:max-w-[180px]" />
+              <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-14 sm:h-16 w-auto max-w-[200px] sm:max-w-[220px]" />
             </Link>
             <div className="flex items-center gap-3">
               {!installed && installPrompt && (
@@ -566,7 +566,7 @@ export default function LandingPage() {
                     </div>
                     {/* Hub */}
                     <div className="bg-gold-500/10 border border-gold-500/20 rounded-xl px-8 py-4 text-center w-full">
-                      <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-10 w-auto mx-auto" />
+                      <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-12 w-auto mx-auto" />
                       <div className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Engine · Database · Export</div>
                     </div>
                     {/* Arrows */}
@@ -925,7 +925,7 @@ export default function LandingPage() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-10 w-auto" />
+                  <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-12 w-auto" />
                 </div>
                 <p className="text-sm text-white/30">
                   Quantity Surveying Toolkit for Nigerian professionals.
