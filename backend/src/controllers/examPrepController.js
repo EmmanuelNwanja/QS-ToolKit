@@ -31,6 +31,91 @@ function extractAnswerLetter(val) {
   return /^[A-F]$/.test(first) ? first : '';
 }
 
+function stripJsonFences(raw) {
+  if (!raw) return '';
+  let s = raw.trim();
+  // Remove markdown code fences: ```json ... ``` or ``` ... ```
+  s = s.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+  return s.trim();
+}
+
+// Shared question lookup with fallback strategies (used by getExamQuestions and submitExam)
+async function findExamQuestions(exam, fields = 'id, question_text, options, difficulty, topic, marks') {
+  // Primary: match by exam_id
+  let { data: questions } = await supabase
+    .from('exam_questions')
+    .select(fields)
+    .eq('exam_id', exam.id);
+
+  if (questions && questions.length > 0) return questions;
+
+  // Resolve university name and course code
+  let uniName = null;
+  let courseCode = null;
+
+  if (exam.university_id) {
+    const { data: uni } = await supabase
+      .from('exam_universities')
+      .select('name')
+      .eq('id', exam.university_id)
+      .maybeSingle();
+    uniName = uni?.name;
+  }
+  if (exam.course_id) {
+    const { data: course } = await supabase
+      .from('exam_courses')
+      .select('code')
+      .eq('id', exam.course_id)
+      .maybeSingle();
+    courseCode = course?.code;
+  }
+
+  // Strategy 1: university + course_code + year
+  if (uniName || courseCode) {
+    let q = supabase.from('exam_questions').select(fields);
+    if (uniName) q = q.or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
+    if (courseCode) q = q.or(`course_code.ilike.%${courseCode}%,course_code.ilike.%${courseCode.replace(/\s+/g, '')}%`);
+    if (exam.year) q = q.eq('year', exam.year);
+    const { data } = await q;
+    if (data && data.length > 0) return data;
+  }
+
+  // Strategy 2: university + course_code (no year)
+  if (uniName && courseCode) {
+    let q = supabase.from('exam_questions').select(fields)
+      .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`)
+      .or(`course_code.ilike.%${courseCode}%,course_code.ilike.%${courseCode.replace(/\s+/g, '')}%`);
+    const { data } = await q;
+    if (data && data.length > 0) return data;
+  }
+
+  // Strategy 3: exam_name ILIKE (professional exams)
+  if (exam.exam_name) {
+    let q = supabase.from('exam_questions').select(fields)
+      .ilike('exam_name', `%${exam.exam_name}%`);
+    if (exam.category) q = q.eq('exam_category', exam.category);
+    const { data } = await q;
+    if (data && data.length > 0) return data;
+  }
+
+  // Strategy 4: university name only
+  if (uniName) {
+    let q = supabase.from('exam_questions').select(fields)
+      .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
+    if (exam.year) q = q.eq('year', exam.year);
+    const { data } = await q;
+    if (data && data.length > 0) return data;
+  }
+
+  // Strategy 5: category only (professional exams without university)
+  if (exam.category && !uniName) {
+    const { data } = await supabase.from('exam_questions').select(fields).eq('exam_category', exam.category);
+    if (data && data.length > 0) return data;
+  }
+
+  return [];
+}
+
 const EXAM_PREP_BILLING_NGN = {
   weekly: 2000,
   monthly: 7600,
@@ -248,117 +333,9 @@ exports.getExamQuestions = async (req, res, next) => {
       return res.status(403).json(error('Subscription required. Free trial already used for this exam.', { code: 'SUBSCRIPTION_REQUIRED' }));
     }
 
-    // Fetch questions — match by exam_id first (use resolved UUID), fallback to metadata
-    let { data: questions, error: err } = await supabase
-      .from('exam_questions')
-      .select('id, question_text, options, difficulty, topic, marks')
-      .eq('exam_id', exam.id);
-
-    // If no questions linked by exam_id, match by metadata (university, course, year)
-    // Reset err so later strategies can succeed even if earlier ones errored
-    err = null;
-    if (!questions || questions.length === 0) {
-      // Get university name and course code from the exam definition
-      let uniName = null;
-      let courseCode = null;
-
-      if (exam.university_id) {
-        const { data: uni } = await supabase
-          .from('exam_universities')
-          .select('name, short_name')
-          .eq('id', exam.university_id)
-          .maybeSingle();
-        uniName = uni?.name;
-      }
-
-      if (exam.course_id) {
-        const { data: course } = await supabase
-          .from('exam_courses')
-          .select('code')
-          .eq('id', exam.course_id)
-          .maybeSingle();
-        courseCode = course?.code;
-      }
-
-      // Strategy 1: Try exact match (university + course_code + year)
-      let metaQuery = supabase
-        .from('exam_questions')
-        .select('id, question_text, options, difficulty, topic, marks')
-        .eq('is_active', true);
-
-      if (uniName) {
-        metaQuery = metaQuery.or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
-      }
-      if (courseCode) {
-        metaQuery = metaQuery.eq('course_code', courseCode);
-      }
-      if (exam.year) {
-        metaQuery = metaQuery.eq('year', exam.year);
-      }
-
-      const metaResult = await metaQuery;
-      questions = metaResult.data;
-      err = metaResult.error;
-
-      // Clear err if this strategy returned no results (don't let empty-result errors block later strategies)
-      if (!questions || questions.length === 0) err = null;
-
-      // Strategy 2: If no year match, try without year constraint
-      if ((!questions || questions.length === 0) && exam.year && uniName && courseCode) {
-        let fallbackQuery = supabase
-          .from('exam_questions')
-          .select('id, question_text, options, difficulty, topic, marks')
-          .eq('is_active', true)
-          .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`)
-          .eq('course_code', courseCode);
-
-        const fallbackResult = await fallbackQuery;
-        questions = fallbackResult.data;
-        err = fallbackResult.error;
-        if (!questions || questions.length === 0) err = null;
-      }
-
-      // Strategy 3: If still no match, try matching by exam_name (for professional exams)
-      if ((!questions || questions.length === 0) && exam.exam_name) {
-        let nameQuery = supabase
-          .from('exam_questions')
-          .select('id, question_text, options, difficulty, topic, marks')
-          .eq('is_active', true)
-          .ilike('exam_name', `%${exam.exam_name}%`);
-
-        if (exam.category) {
-          nameQuery = nameQuery.eq('exam_category', exam.category);
-        }
-
-        const nameResult = await nameQuery;
-        if (nameResult.data && nameResult.data.length > 0) {
-          questions = nameResult.data;
-          err = nameResult.error;
-        }
-      }
-
-      // Strategy 4: Last resort — match by university name only (ignore course_code)
-      // Returns related questions from the same university when no exact course match exists
-      if ((!questions || questions.length === 0) && uniName) {
-        let uniOnlyQuery = supabase
-          .from('exam_questions')
-          .select('id, question_text, options, difficulty, topic, marks')
-          .eq('is_active', true)
-          .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
-
-        if (exam.year) {
-          uniOnlyQuery = uniOnlyQuery.eq('year', exam.year);
-        }
-
-        const uniOnlyResult = await uniOnlyQuery;
-        if (uniOnlyResult.data && uniOnlyResult.data.length > 0) {
-          questions = uniOnlyResult.data;
-          err = uniOnlyResult.error;
-        }
-      }
-    }
-
-    if (err) throw err;
+    // Fetch questions — match by exam_id first, fallback to metadata strategies
+    const fields = 'id, question_text, options, difficulty, topic, marks';
+    let questions = await findExamQuestions(exam, fields);
 
     if (!questions || questions.length === 0) {
       return res.status(404).json(error('No questions available for this exam yet. Questions may be being added.', { 
@@ -435,6 +412,7 @@ exports.startExam = async (req, res, next) => {
     if (insertErr) throw insertErr;
 
     return res.json(success('Exam attempt started', {
+      exam_id: exam.id,
       attempt_id: attempt.id,
       exam_name: exam.exam_name,
       is_trial: isTrial,
@@ -481,11 +459,9 @@ exports.submitExam = async (req, res, next) => {
     // Get passing_score from exam definition (already resolved)
     const passingScore = exam.passing_score || 50;
 
-    // Get questions — use resolved exam.id (UUID), not the raw id param which could be a slug
-    const { data: questions } = await supabase
-      .from('exam_questions')
-      .select('id, correct_answer, explanation, difficulty, topic, marks')
-      .eq('exam_id', exam.id);
+    // Get questions — use shared helper with fallback strategies
+    const submitFields = 'id, correct_answer, explanation, difficulty, topic, marks';
+    const questions = await findExamQuestions(exam, submitFields);
 
     if (!questions || questions.length === 0) {
       return res.status(400).json(error('No questions found for this exam'));
@@ -688,7 +664,7 @@ Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must ta
     try {
       const raw = await callAI(prompt, { temperature: 0.8 });
       if (raw) {
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(stripJsonFences(raw));
         if (Array.isArray(parsed) && parsed.length > 0) {
           questions = parsed.map(q => ({
             ...q,
@@ -698,7 +674,52 @@ Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must ta
         }
       }
     } catch (aiErr) {
-      logger.warn('AI practice exam generation failed', { error: aiErr.message });
+      logger.warn('AI practice exam generation failed, falling back to DB', { error: aiErr.message });
+    }
+
+    // Fallback: pick questions from past exams matching weak topics
+    if (!questions || questions.length === 0) {
+      let fallbackQ = supabase
+        .from('exam_questions')
+        .select('question_text, options, correct_answer, explanation, difficulty, topic')
+        .in('topic', weakTopics.slice(0, 5))
+        .not('correct_answer', 'is', null)
+        .limit(question_count);
+
+      const { data: fallbackQuestions } = await fallbackQ;
+      if (fallbackQuestions && fallbackQuestions.length > 0) {
+        questions = fallbackQuestions.map(q => ({
+          question: q.question_text,
+          options: q.options,
+          correct_answer: extractAnswerLetter(q.correct_answer),
+          explanation: q.explanation,
+          difficulty: q.difficulty,
+          topic: q.topic
+        }));
+      }
+    }
+
+    // Final fallback: random questions from same category
+    if (!questions || questions.length === 0) {
+      let randomQ = supabase
+        .from('exam_questions')
+        .select('question_text, options, correct_answer, explanation, difficulty, topic')
+        .not('correct_answer', 'is', null)
+        .limit(question_count);
+
+      if (category) randomQ = randomQ.eq('exam_category', category);
+
+      const { data: randomQuestions } = await randomQ;
+      if (randomQuestions && randomQuestions.length > 0) {
+        questions = randomQuestions.map(q => ({
+          question: q.question_text,
+          options: q.options,
+          correct_answer: extractAnswerLetter(q.correct_answer),
+          explanation: q.explanation,
+          difficulty: q.difficulty,
+          topic: q.topic
+        }));
+      }
     }
 
     if (!questions || questions.length === 0) {

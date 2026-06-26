@@ -1,22 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
+import ExamInterface from '../../../components/exam-prep/ExamInterface';
+import ExamResults from '../../../components/exam-prep/ExamResults';
 import { examAPI } from '../../../services/api';
 import toast from 'react-hot-toast';
 
 export default function ExamDetailPage() {
   const router = useRouter();
-  const { slug } = router.query;
+  const { slug, examId, active } = router.query;
   const [status, setStatus] = useState(null);
   const [examInfo, setExamInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [starting, setStarting] = useState(false);
 
+  // Exam-in-progress state
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [examResult, setExamResult] = useState(null);
+
+  const isActive = active === '1' || active === 1;
+
+  // Load exam info
   useEffect(() => {
     async function load() {
       try {
@@ -39,6 +49,30 @@ export default function ExamDetailPage() {
     if (slug) load();
   }, [slug]);
 
+  // When active=1, fetch questions
+  useEffect(() => {
+    if (!isActive || !examId) return;
+    async function loadQuestions() {
+      setQuestionsLoading(true);
+      try {
+        const res = await examAPI.getExamQuestions(examId);
+        const qs = res.data.questions || [];
+        if (qs.length === 0) {
+          toast.error('No questions available for this exam yet.');
+          router.replace(`/exam-prep/professional/${slug}`);
+          return;
+        }
+        setQuestions(qs);
+      } catch (err) {
+        toast.error(err.response?.data?.error || 'Failed to load questions');
+        router.replace(`/exam-prep/professional/${slug}`);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    }
+    loadQuestions();
+  }, [isActive, examId, slug, router]);
+
   const hasSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
   const canStart = hasSub || hasFreeTrial;
@@ -55,13 +89,11 @@ export default function ExamDetailPage() {
     setStarting(true);
     try {
       const res = await examAPI.startExam(slug);
-      const examId = res.data.exam_id || res.data.id;
-      // If we got an exam_id from the API, use it for questions
-      if (examId) {
-        router.push(`/exam-prep/professional/${slug}?examId=${examId}&active=1`);
+      const id = res.data.exam_id;
+      if (id) {
+        router.push(`/exam-prep/professional/${slug}?examId=${id}&active=1`);
       } else {
-        // Fallback: use slug as ID for questions
-        router.push(`/exam-prep/professional/${slug}?active=1`);
+        toast.error('Failed to start exam — no exam ID returned');
       }
       setShowConfirm(false);
     } catch (err) {
@@ -71,6 +103,74 @@ export default function ExamDetailPage() {
     }
   };
 
+  const handleExamComplete = useCallback((result) => {
+    setExamResult(result);
+  }, []);
+
+  // Exam in progress — show ExamInterface
+  if (isActive && questions.length > 0 && !examResult) {
+    return (
+      <ProtectedRoute>
+        <Head><title>Exam in Progress — QSToolkit</title></Head>
+        <ExamInterface
+          examId={examId}
+          questions={questions}
+          timeLimit={examInfo?.time_limit_minutes || 60}
+          onComplete={handleExamComplete}
+        />
+      </ProtectedRoute>
+    );
+  }
+
+  // Exam completed — show results
+  if (examResult) {
+    return (
+      <ProtectedRoute>
+        <Head><title>Exam Results — QSToolkit</title></Head>
+        <Layout title="Exam Results">
+          <div className="max-w-3xl space-y-6">
+            <Link href="/exam-prep/professional" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
+              &larr; Back to Professional Exams
+            </Link>
+            <ExamResults attempt={examResult} />
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => { setExamResult(null); setQuestions([]); router.replace(`/exam-prep/professional/${slug}`); }} className="btn-primary text-sm px-6 py-2.5">
+                Back to Exam Info
+              </button>
+              <Link href="/exam-prep/results" className="btn-secondary text-sm px-6 py-2.5">
+                View All Results
+              </Link>
+            </div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    );
+  }
+
+  // Loading questions
+  if (isActive && questionsLoading) {
+    return (
+      <ProtectedRoute>
+        <Head><title>Loading Exam — QSToolkit</title></Head>
+        <Layout title="Loading Exam...">
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <motion.span
+                className="text-4xl"
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              >
+                🧠
+              </motion.span>
+            </div>
+            <p className="text-sm text-gray-500">Loading exam questions...</p>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    );
+  }
+
+  // Detail view
   if (!examInfo && !loading) {
     return (
       <ProtectedRoute>
@@ -104,7 +204,6 @@ export default function ExamDetailPage() {
             </div>
           ) : examInfo && (
             <>
-              {/* Exam header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -125,7 +224,6 @@ export default function ExamDetailPage() {
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed mb-6">{examInfo?.description}</p>
 
-                {/* Format details */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   {[
                     { label: 'Format', value: examInfo?.format || 'MCQ', icon: '📝' },
@@ -141,7 +239,6 @@ export default function ExamDetailPage() {
                   ))}
                 </div>
 
-                {/* Topics */}
                 {examInfo?.topics?.length > 0 && (
                   <div className="mb-6">
                     <h3 className="font-display font-bold text-primary-800 text-sm mb-3">Topics Covered</h3>
@@ -155,7 +252,6 @@ export default function ExamDetailPage() {
                   </div>
                 )}
 
-                {/* Start button */}
                 <div className="flex items-center gap-4">
                   <button onClick={handleStart} className="btn-primary text-base px-8 py-3">
                     {hasSub ? 'Start Exam' : hasFreeTrial ? 'Start Free Trial Exam' : 'Subscribe to Start'}
@@ -168,7 +264,6 @@ export default function ExamDetailPage() {
                 </div>
               </motion.div>
 
-              {/* Subscription note */}
               {!hasSub && hasFreeTrial && (
                 <div className="p-4 bg-gold-50 border border-gold-200 rounded-xl text-sm text-gold-800">
                   <strong>🎁 Free Trial:</strong> This will use your 1 free exam attempt. No subscription required.
@@ -182,7 +277,6 @@ export default function ExamDetailPage() {
             </>
           )}
 
-          {/* Confirmation modal */}
           <AnimatePresence>
             {showConfirm && (
               <motion.div

@@ -340,9 +340,11 @@ Topics to draw from: Nigerian QS standards, SMM7, NRM2, building measurement, co
     let questions;
     try {
       const { callAI } = require('../services/aiService');
-      const raw = await callAI(prompt, { temperature: 0.8 });
-      if (raw) {
-        const parsed = JSON.parse(raw);
+        const raw = await callAI(prompt, { temperature: 0.8 });
+        if (raw) {
+          let clean = raw.trim();
+          clean = clean.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+          const parsed = JSON.parse(clean.trim());
         if (Array.isArray(parsed) && parsed.length === 7) {
           // Sanitize questions: strip leading numbers from question text
           questions = parsed.map(q => ({
