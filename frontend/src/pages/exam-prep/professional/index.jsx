@@ -7,24 +7,6 @@ import ProtectedRoute from '../../../components/ProtectedRoute';
 import { examAPI } from '../../../services/api';
 import toast from 'react-hot-toast';
 
-const NIGERIAN_EXAMS = [
-  { slug: 'qsrbn-registration', name: 'QSRBN Registration Prep', body: 'QSRBN', format: '50 MCQs', time: '90 min', difficulty: 'Intermediate', passMark: 60 },
-  { slug: 'niqs-probation', name: 'NIQS Probation Exam', body: 'NIQS', format: '40 MCQs + 10 Short Answers', time: '120 min', difficulty: 'Intermediate', passMark: 50 },
-  { slug: 'niqs-intermediate', name: 'NIQS Intermediate Exam', body: 'NIQS', format: '30 MCQs + 5 Long Questions', time: '180 min', difficulty: 'Advanced', passMark: 55 },
-  { slug: 'niqs-gde', name: 'NIQS GDE - Graduateship', body: 'NIQS', format: '6 Papers', time: '120 min each', difficulty: 'Advanced', passMark: 50 },
-  { slug: 'niqs-tpc', name: 'NIQS TPC - Test of Professional Competence', body: 'NIQS', format: '4 Papers', time: '180 min each', difficulty: 'Expert', passMark: 50 },
-  { slug: 'niqs-pci', name: 'NIQS PCI Prep', body: 'NIQS', format: 'Mock Interview Format', time: '60 min', difficulty: 'Expert', passMark: 0 },
-  { slug: 'job-interview', name: 'Job Interview Prep', body: 'General', format: '30 MCQs + 10 Scenarios', time: '90 min', difficulty: 'All Levels', passMark: 60 }
-];
-
-const INTERNATIONAL_EXAMS = [
-  { slug: 'rics-apc', name: 'RICS APC - QS & Construction', body: 'RICS', format: '50 MCQs per Competency', time: '60 min each', difficulty: 'Advanced', passMark: 70 },
-  { slug: 'ciob-chartered', name: 'CIOB Chartered Membership', body: 'CIOB', format: '40 MCQs + Case Studies', time: '120 min', difficulty: 'Advanced', passMark: 65 },
-  { slug: 'pmp-certification', name: 'PMP Certification', body: 'PMI', format: '180 MCQs across 3 Sections', time: '230 min', difficulty: 'Expert', passMark: 60 },
-  { slug: 'prince2-foundation', name: 'PRINCE2 Foundation', body: 'Axelos', format: '75 MCQs', time: '60 min', difficulty: 'Intermediate', passMark: 55 },
-  { slug: 'prince2-practitioner', name: 'PRINCE2 Practitioner', body: 'Axelos', format: 'Objective Testing', time: '150 min', difficulty: 'Advanced', passMark: 55 }
-];
-
 const DIFFICULTY_COLORS = {
   'All Levels': 'badge-gray',
   'Intermediate': 'badge-blue',
@@ -39,6 +21,7 @@ const cardAnim = {
 
 function ExamCard({ exam, index, hasSub, hasFreeTrial }) {
   const canStart = hasSub || hasFreeTrial;
+  const slug = exam.slug || exam.exam_name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
   return (
     <motion.div
@@ -48,34 +31,44 @@ function ExamCard({ exam, index, hasSub, hasFreeTrial }) {
       transition={{ delay: index * 0.05 }}
     >
       <Link
-        href={canStart ? `/exam-prep/professional/${exam.slug}` : '/subscription'}
+        href={canStart ? `/exam-prep/professional/${slug}` : '/subscription'}
         className="card hover:shadow-card-md hover:border-primary-200 transition-all group block"
       >
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{exam.body}</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{exam.body || exam.category}</p>
             <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 text-sm leading-tight">
-              {exam.name}
+              {exam.exam_name}
             </h3>
           </div>
           <span className={`badge ${DIFFICULTY_COLORS[exam.difficulty] || 'badge-gray'} flex-shrink-0`}>
-            {exam.difficulty}
+            {exam.difficulty || 'Intermediate'}
           </span>
         </div>
 
         <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="w-4 text-center">📝</span>
-            <span>{exam.format}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="w-4 text-center">⏱️</span>
-            <span>{exam.time}</span>
-          </div>
-          {exam.passMark > 0 && (
+          {exam.format && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="w-4 text-center">📝</span>
+              <span>{exam.format}</span>
+            </div>
+          )}
+          {exam.time_limit_minutes && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="w-4 text-center">⏱️</span>
+              <span>{exam.time_limit_minutes} min</span>
+            </div>
+          )}
+          {exam.passing_score > 0 && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span className="w-4 text-center">🎯</span>
-              <span>Pass mark: {exam.passMark}%</span>
+              <span>Pass mark: {exam.passing_score}%</span>
+            </div>
+          )}
+          {exam.total_questions > 0 && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="w-4 text-center">❓</span>
+              <span>{exam.total_questions} questions</span>
             </div>
           )}
         </div>
@@ -117,12 +110,6 @@ export default function ProfessionalExamsPage() {
 
   const hasSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;
-  // Merge DB exams with hardcoded data, preferring DB data with slugs
-  const hardcodedExams = activeTab === 'nigerian' ? NIGERIAN_EXAMS : INTERNATIONAL_EXAMS;
-  const exams = hardcodedExams.map(e => {
-    const dbExam = dbExams.find(d => d.slug === e.slug);
-    return dbExam ? { ...e, id: dbExam.id, total_questions: dbExam.total_questions } : e;
-  });
 
   return (
     <ProtectedRoute>
@@ -138,8 +125,8 @@ export default function ProfessionalExamsPage() {
           {/* Tabs */}
           <div className="flex gap-2 border-b border-gray-200 pb-px">
             {[
-              { id: 'nigerian', label: '🇳🇬 Nigerian Exams', count: NIGERIAN_EXAMS.length },
-              { id: 'international', label: '🌍 International Exams', count: INTERNATIONAL_EXAMS.length }
+              { id: 'nigerian', label: '🇳🇬 Nigerian Exams' },
+              { id: 'international', label: '🌍 International Exams' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -151,9 +138,6 @@ export default function ProfessionalExamsPage() {
                 }`}
               >
                 {tab.label}
-                <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                  {tab.count}
-                </span>
               </button>
             ))}
           </div>
@@ -168,15 +152,22 @@ export default function ProfessionalExamsPage() {
               transition={{ duration: 0.2 }}
               className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {exams.map((exam, i) => (
-                <ExamCard
-                  key={exam.slug}
-                  exam={exam}
-                  index={i}
-                  hasSub={hasSub}
-                  hasFreeTrial={hasFreeTrial}
-                />
-              ))}
+              {dbExams.length === 0 ? (
+                <div className="col-span-full text-center py-10 text-gray-400">
+                  <p className="text-3xl mb-2">📋</p>
+                  <p className="text-sm">No exams available yet</p>
+                </div>
+              ) : (
+                dbExams.map((exam, i) => (
+                  <ExamCard
+                    key={exam.id || exam.slug}
+                    exam={exam}
+                    index={i}
+                    hasSub={hasSub}
+                    hasFreeTrial={hasFreeTrial}
+                  />
+                ))
+              )}
             </motion.div>
           </AnimatePresence>
 

@@ -672,37 +672,17 @@ exports.generatePracticeExam = async (req, res, _next) => {
       .map(t => t.topic);
 
     // 2. Use AI to generate targeted questions
-    const { callAI, buildUserContext } = require('../services/aiService');
+    const { callAI, buildUserContext, SYSTEM_PROMPTS } = require('../services/aiService');
     const userContext = await buildUserContext(req.user.id);
 
-    const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner. Generate a personalized practice exam targeting the student's weak areas.
-
-USER CONTEXT:
-${userContext}
+    const personalizedContext = `USER CONTEXT:\n${userContext}
 
 WEAK TOPICS (ranked by lowest accuracy):
 ${weakTopics.map((t, i) => `${i + 1}. ${t} (${Math.round((topicStats[t]?.accuracy || 0) * 100)}% accuracy across ${topicStats[t]?.total || 0} questions)`).join('\n')}
 
-INSTRUCTIONS:
-1. Generate ${Math.min(question_count, 20)} multiple-choice questions.
-2. PRIORITIZE weak topics: at least 70% of questions should target the weakest 3-5 topics.
-3. Mix difficulties: include easy, medium, and hard questions.
-4. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards.
-5. Each question tests practical knowledge, not just theory.
-6. Do NOT prefix questions with numbers.
-7. The question field must contain ONLY the question text.
+Generate exactly ${Math.min(question_count, 20)} questions. At least 70% must target the weakest 3-5 topics.`;
 
-OUTPUT: Valid JSON array with ${Math.min(question_count, 20)} objects:
-{
-  "question": "clear question text",
-  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
-  "correct_answer": "B",
-  "explanation": "brief explanation",
-  "difficulty": "easy|medium|hard",
-  "topic": "specific topic"
-}
-
-The correct_answer must be a SINGLE LETTER (A-D). Return ONLY the JSON array.`;
+    const prompt = `${SYSTEM_PROMPTS.admissionTest || 'Generate MCQ questions for a Nigerian QS practice exam. Return JSON array.'}\n\n${personalizedContext}`;
 
     let questions;
     try {

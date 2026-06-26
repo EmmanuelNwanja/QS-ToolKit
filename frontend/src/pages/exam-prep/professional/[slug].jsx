@@ -8,86 +8,30 @@ import ProtectedRoute from '../../../components/ProtectedRoute';
 import { examAPI } from '../../../services/api';
 import toast from 'react-hot-toast';
 
-const EXAM_DATA = {
-  'qsrbn-registration': {
-    name: 'QSRBN Registration Prep', body: 'QSRBN', format: '50 MCQs', time: 90, passMark: 60, difficulty: 'Intermediate',
-    description: 'Prepare for the Quantity Surveyors Registration Board of Nigeria (QSRBN) registration examination. Covers Nigerian construction law, measurement standards, and professional practice.',
-    topics: ['Construction Law & Regulations', 'Standard Method of Measurement (SMM7)', 'BOQ Preparation', 'Professional Ethics', 'Nigerian Building Code', 'Contract Administration']
-  },
-  'niqs-probation': {
-    name: 'NIQS Probation Exam', body: 'NIQS', format: '40 MCQs + 10 Short Answers', time: 120, passMark: 50, difficulty: 'Intermediate',
-    description: 'The NIQS probation examination tests foundational knowledge required for Nigerian Quantity Surveyors. Covers measurement, estimation, and professional practice.',
-    topics: ['Elementary Measurement', 'BOQ Production', 'Cost Estimation', 'Building Technology', 'Construction Materials', 'Professional Practice']
-  },
-  'niqs-intermediate': {
-    name: 'NIQS Intermediate Exam', body: 'NIQS', format: '30 MCQs + 5 Long Questions', time: 180, passMark: 55, difficulty: 'Advanced',
-    description: 'Intermediate-level examination covering advanced measurement techniques, cost planning, and project management principles for aspiring NIQS members.',
-    topics: ['Advanced Measurement', 'Cost Planning & Control', 'Value Engineering', 'Project Management', 'Construction Economics', 'Contractual Procedures']
-  },
-  'niqs-gde': {
-    name: 'NIQS GDE - Graduateship', body: 'NIQS', format: '6 Papers', time: 120, passMark: 50, difficulty: 'Advanced',
-    description: 'The NIQS Graduateship Diploma Examination consists of 6 papers covering the full breadth of Quantity Surveying knowledge.',
-    topics: ['Measurement & Quantification', 'Construction Technology', 'Professional Practice', 'Construction Economics', 'Contract Administration', 'Project Management']
-  },
-  'niqs-tpc': {
-    name: 'NIQS TPC - Test of Professional Competence', body: 'NIQS', format: '4 Papers', time: 180, passMark: 50, difficulty: 'Expert',
-    description: 'The Test of Professional Competence is the final examination for NIQS Fellowship. Covers real-world case studies and professional scenarios.',
-    topics: ['Case Study Analysis', 'Professional Ethics', 'Dispute Resolution', 'Construction Management', 'Cost consultancy', 'Client Advisory']
-  },
-  'niqs-pci': {
-    name: 'NIQS PCI Prep', body: 'NIQS', format: 'Mock Interview Format', time: 60, passMark: 0, difficulty: 'Expert',
-    description: 'Practice for the NIQS Professional Competence Interview with mock scenarios, role-plays, and professional judgment questions.',
-    topics: ['Professional Interview Technique', 'Case Study Presentation', 'Ethical Scenarios', 'Client Communication', 'Team Leadership']
-  },
-  'job-interview': {
-    name: 'Job Interview Prep', body: 'General', format: '30 MCQs + 10 Scenarios', time: 90, passMark: 60, difficulty: 'All Levels',
-    description: 'Prepare for Quantity Surveying job interviews with scenario-based questions, technical MCQs, and situational judgment tests.',
-    topics: ['Technical Knowledge', 'Situational Judgment', 'CV & Portfolio', 'Salary Negotiation', 'Industry Knowledge', 'Soft Skills']
-  },
-  'rics-apc': {
-    name: 'RICS APC - QS & Construction', body: 'RICS', format: '50 MCQs per Competency', time: 60, passMark: 70, difficulty: 'Advanced',
-    description: 'Royal Institution of Chartered Surveyors Assessment of Professional Competence. Covers all competency areas for QS pathway candidates.',
-    topics: ['Client Care', 'People & Communication', 'Construction Technology', 'Contract Practice', 'Financial Control', 'Professional Judgment']
-  },
-  'ciob-chartered': {
-    name: 'CIOB Chartered Membership', body: 'CIOB', format: '40 MCQs + Case Studies', time: 120, passMark: 65, difficulty: 'Advanced',
-    description: 'Chartered Institute of Building membership examination covering construction management, building technology, and professional practice.',
-    topics: ['Construction Management', 'Building Technology', 'Health & Safety', 'Sustainability', 'Leadership', 'Contract Administration']
-  },
-  'pmp-certification': {
-    name: 'PMP Certification', body: 'PMI', format: '180 MCQs across 3 Sections', time: 230, passMark: 60, difficulty: 'Expert',
-    description: 'Project Management Professional certification exam covering predictive, agile, and hybrid project management approaches.',
-    topics: ['People', 'Process', 'Business Environment', 'Agile Methodologies', 'Risk Management', 'Stakeholder Engagement']
-  },
-  'prince2-foundation': {
-    name: 'PRINCE2 Foundation', body: 'Axelos', format: '75 MCQs', time: 60, passMark: 55, difficulty: 'Intermediate',
-    description: 'PRINCE2 Foundation certification covering the principles, themes, and processes of the PRINCE2 project management methodology.',
-    topics: ['Principles', 'Themes', 'Processes', 'Project Environment', 'Tailoring', 'Roles & Responsibilities']
-  },
-  'prince2-practitioner': {
-    name: 'PRINCE2 Practitioner', body: 'Axelos', format: 'Objective Testing', time: 150, passMark: 55, difficulty: 'Advanced',
-    description: 'PRINCE2 Practitioner certification demonstrating ability to apply and tailor the PRINCE2 methodology to real-world projects.',
-    topics: ['Application of Principles', 'Tailoring Themes', 'Adapting Processes', 'Project Scenarios', 'Lesson Application', 'Commercial Management']
-  }
-};
-
 export default function ExamDetailPage() {
   const router = useRouter();
   const { slug } = router.query;
   const [status, setStatus] = useState(null);
+  const [examInfo, setExamInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [starting, setStarting] = useState(false);
 
-  const examInfo = EXAM_DATA[slug] || null;
-
   useEffect(() => {
     async function load() {
       try {
-        const res = await examAPI.getStatus();
-        setStatus(res.data);
+        const [statusRes, examsRes] = await Promise.allSettled([
+          examAPI.getStatus(),
+          examAPI.getExams({})
+        ]);
+        if (statusRes.status === 'fulfilled') setStatus(statusRes.value.data);
+        if (examsRes.status === 'fulfilled') {
+          const exams = examsRes.value.data?.exams || [];
+          const found = exams.find(e => e.slug === slug);
+          setExamInfo(found || null);
+        }
       } catch {
-        // Silent fail for status check — non-critical
+        // Silent fail
       } finally {
         setLoading(false);
       }
@@ -144,8 +88,8 @@ export default function ExamDetailPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{examInfo?.name || 'Exam'} — QSToolkit</title></Head>
-      <Layout title={examInfo?.name || 'Loading...'}>
+      <Head><title>{examInfo?.exam_name || 'Exam'} — QSToolkit</title></Head>
+      <Layout title={examInfo?.exam_name || 'Loading...'}>
         <div className="max-w-3xl space-y-6">
 
           <Link href="/exam-prep/professional" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
@@ -168,26 +112,26 @@ export default function ExamDetailPage() {
               >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{examInfo.body}</p>
-                    <h1 className="font-display text-2xl font-bold text-primary-800">{examInfo.name}</h1>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{examInfo?.body || examInfo?.category}</p>
+                    <h1 className="font-display text-2xl font-bold text-primary-800">{examInfo?.exam_name}</h1>
                   </div>
                   <span className={`badge ${
-                    examInfo.difficulty === 'Expert' ? 'badge-red' :
-                    examInfo.difficulty === 'Advanced' ? 'badge-amber' :
-                    examInfo.difficulty === 'Intermediate' ? 'badge-blue' : 'badge-gray'
+                    examInfo?.difficulty === 'Expert' ? 'badge-red' :
+                    examInfo?.difficulty === 'Advanced' ? 'badge-amber' :
+                    examInfo?.difficulty === 'Intermediate' ? 'badge-blue' : 'badge-gray'
                   }`}>
-                    {examInfo.difficulty}
+                    {examInfo?.difficulty || 'Intermediate'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-6">{examInfo.description}</p>
+                <p className="text-sm text-gray-600 leading-relaxed mb-6">{examInfo?.description}</p>
 
                 {/* Format details */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   {[
-                    { label: 'Format', value: examInfo.format, icon: '📝' },
-                    { label: 'Duration', value: `${examInfo.time} min`, icon: '⏱️' },
-                    { label: 'Pass Mark', value: examInfo.passMark > 0 ? `${examInfo.passMark}%` : '—', icon: '🎯' },
-                    { label: 'Body', value: examInfo.body, icon: '🏛️' }
+                    { label: 'Format', value: examInfo?.format || 'MCQ', icon: '📝' },
+                    { label: 'Duration', value: `${examInfo?.time_limit_minutes || 60} min`, icon: '⏱️' },
+                    { label: 'Pass Mark', value: examInfo?.passing_score > 0 ? `${examInfo.passing_score}%` : '—', icon: '🎯' },
+                    { label: 'Body', value: examInfo?.body || examInfo?.category, icon: '🏛️' }
                   ].map(d => (
                     <div key={d.label} className="bg-gray-50 rounded-lg p-3 text-center">
                       <span className="text-lg">{d.icon}</span>
@@ -198,16 +142,18 @@ export default function ExamDetailPage() {
                 </div>
 
                 {/* Topics */}
-                <div className="mb-6">
-                  <h3 className="font-display font-bold text-primary-800 text-sm mb-3">Topics Covered</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {examInfo.topics.map(t => (
-                      <span key={t} className="px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-xs font-medium">
-                        {t}
-                      </span>
-                    ))}
+                {examInfo?.topics?.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-display font-bold text-primary-800 text-sm mb-3">Topics Covered</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {examInfo.topics.map(t => (
+                        <span key={t} className="px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-xs font-medium">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Start button */}
                 <div className="flex items-center gap-4">
@@ -256,8 +202,8 @@ export default function ExamDetailPage() {
                   <h3 className="font-display text-xl font-bold text-primary-800 mb-2">Start Exam?</h3>
                   <p className="text-sm text-gray-600 mb-6">
                     {hasSub
-                      ? `You are about to start the ${examInfo?.name}. Your timer will begin immediately.`
-                      : `This will use your 1 free exam attempt for the ${examInfo?.name}. You have no more free trials remaining after this.`
+                      ? `You are about to start the ${examInfo?.exam_name}. Your timer will begin immediately.`
+                      : `This will use your 1 free exam attempt for the ${examInfo?.exam_name}. You have no more free trials remaining after this.`
                     }
                   </p>
                   <div className="flex gap-3 justify-end">

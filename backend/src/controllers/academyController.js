@@ -321,55 +321,20 @@ exports.startAdmission = async (req, res, next) => {
     }
 
     // Use AI to generate 7 QS-domain questions — deeply personalized
-    const { buildUserContext } = require('../services/aiService');
+    const { buildUserContext, SYSTEM_PROMPTS } = require('../services/aiService');
     const userContext = await buildUserContext(req.user.id);
-    const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating a personalized admission assessment.
 
-USER CONTEXT:
-${userContext}
+    const personalizedContext = `USER CONTEXT:\n${userContext}
 
 STUDENT PROFILE:
 - Strengths: ${strengths.length ? strengths.join(', ') : 'Not yet assessed'}
 - Weaknesses: ${weaknesses.length ? weaknesses.join(', ') : 'Not yet assessed'}
 ${previousTopics.length ? `\nTOPICS ALREADY COVERED IN PREVIOUS ATTEMPTS (AVOID REPEATING THESE):\n${previousTopics.join(', ')}` : ''}
 
-INSTRUCTIONS:
-1. Generate 7 UNIQUE, challenging multiple-choice questions for a Quantity Surveying admission test.
-2. PRIORITIZE the student's WEAKNESS areas — at least 5 questions should target their weaknesses.
-3. Include 1-2 questions in their STRENGTH areas to verify depth.
-4. Each question must be DIFFERENT from previously attempted topics listed above.
-5. Questions should test practical knowledge, not just theory.
-6. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI, BOQ Institute).
-7. Mix difficulty: 2 easy, 3 medium, 2 hard.
-8. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1." — questions will be numbered automatically by the system.
-9. IMPORTANT: The question field must contain ONLY the question text, not including any option letters or numbers.
+Generate exactly 7 questions. PRIORITIZE weakness areas (at least 5 of 7). Include 1-2 strength verification questions.
+Topics to draw from: Nigerian QS standards, SMM7, NRM2, building measurement, cost estimation, BOQ preparation, construction materials, contracts & procurement, claims & variation, valuation, construction law, project management.`;
 
-TOPICS TO DRAW FROM (pick diverse ones):
-- Nigerian QS standards & practice
-- SMM7 (Standard Method of Measurement)
-- NRM2 (New Rules of Measurement)
-- Building measurement & takeoff
-- Cost estimation & pricing
-- BOQ preparation & analysis
-- Construction materials & rates
-- Contracts & procurement
-- Claims & variation management
-- Valuation & payment certification
-- Construction law (FIDIC, JCT equivalents in Nigeria)
-- Project management & cost control
-
-OUTPUT: Valid JSON array with exactly 7 objects. Each object must have:
-{
-  "question": "clear, specific question text WITHOUT any numbering prefix",
-  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
-  "correct_answer": "B",
-  "explanation": "brief explanation of correct answer",
-  "difficulty": "easy|medium|hard",
-  "topic": "specific topic area"
-}
-
-The correct_answer must be a SINGLE LETTER (A, B, C, or D) matching the correct option.
-Return ONLY the JSON array. No text outside the array.`;
+    const prompt = `${SYSTEM_PROMPTS.admissionTest || 'Generate 7 MCQ questions for a Nigerian QS admission test. Return JSON array.'}\n\n${personalizedContext}`;
 
     // Try AI generation, fall back to curated questions
     let questions;

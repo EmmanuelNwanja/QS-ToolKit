@@ -129,7 +129,7 @@ export default function ExamPrepDashboard() {
           </div>
 
           {/* Quick access cards */}
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
             <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.1 }}>
               <Link href="/exam-prep/professional" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
                 <div className="text-3xl mb-3">🏗️</div>
@@ -153,6 +153,17 @@ export default function ExamPrepDashboard() {
             </motion.div>
 
             <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
+              <Link href="/exam-prep/practice" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
+                <div className="text-3xl mb-3">🎯</div>
+                <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Practice Exam</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">AI-powered personalized practice targeting your weak areas.</p>
+                <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
+                  Start Practice <span>&rarr;</span>
+                </div>
+              </Link>
+            </motion.div>
+
+            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
               <Link href="/exam-prep/results" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
                 <div className="text-3xl mb-3">📊</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">My Results</h3>
