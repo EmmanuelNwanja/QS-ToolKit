@@ -41,14 +41,6 @@ function stripJsonFences(raw) {
 
 // Shared question lookup with fallback strategies (used by getExamQuestions and submitExam)
 async function findExamQuestions(exam, fields = 'id, question_text, options, difficulty, topic, marks') {
-  // Primary: match by exam_id
-  let { data: questions } = await supabase
-    .from('exam_questions')
-    .select(fields)
-    .eq('exam_id', exam.id);
-
-  if (questions && questions.length > 0) return questions;
-
   // Resolve university name and course code
   let uniName = null;
   let courseCode = null;
@@ -70,47 +62,64 @@ async function findExamQuestions(exam, fields = 'id, question_text, options, dif
     courseCode = course?.code;
   }
 
-  // Strategy 1: university + course_code + year
-  if (uniName || courseCode) {
+  // Determine lookup strategy based on exam type
+  const isStudentExam = !!(uniName || courseCode);
+  const isProfessionalExam = !isStudentExam && !!(exam.exam_name);
+
+  if (isStudentExam) {
+    // Student past questions: match by university + course_code + year
     let q = supabase.from('exam_questions').select(fields);
-    if (uniName) q = q.or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
-    if (courseCode) q = q.or(`course_code.ilike.%${courseCode}%,course_code.ilike.%${courseCode.replace(/\s+/g, '')}%`);
+    if (uniName) q = q.ilike('university', `%${uniName.replace(/,/g, '')}%`);
+    if (courseCode) q = q.ilike('course_code', `%${courseCode}%`);
     if (exam.year) q = q.eq('year', exam.year);
     const { data } = await q;
     if (data && data.length > 0) return data;
+
+    // Fallback: no year filter
+    if (uniName && courseCode) {
+      let q2 = supabase.from('exam_questions').select(fields);
+      q2 = q2.ilike('university', `%${uniName.replace(/,/g, '')}%`);
+      q2 = q2.ilike('course_code', `%${courseCode}%`);
+      const { data: d2 } = await q2;
+      if (d2 && d2.length > 0) return d2;
+    }
+
+    // Fallback: university only
+    if (uniName) {
+      let q3 = supabase.from('exam_questions').select(fields);
+      q3 = q3.ilike('university', `%${uniName.replace(/,/g, '')}%`);
+      if (exam.year) q3 = q3.eq('year', exam.year);
+      const { data: d3 } = await q3;
+      if (d3 && d3.length > 0) return d3;
+    }
+
+    return [];
   }
 
-  // Strategy 2: university + course_code (no year)
-  if (uniName && courseCode) {
-    let q = supabase.from('exam_questions').select(fields)
-      .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`)
-      .or(`course_code.ilike.%${courseCode}%,course_code.ilike.%${courseCode.replace(/\s+/g, '')}%`);
-    const { data } = await q;
-    if (data && data.length > 0) return data;
-  }
+  if (isProfessionalExam) {
+    // Professional exams: merge exam_id matches (explicit FK) with exam_name matches (seed data)
+    const [{ data: byExamId }, { data: byExamName }] = await Promise.all([
+      supabase.from('exam_questions').select(fields).eq('exam_id', exam.id),
+      supabase.from('exam_questions').select(fields)
+        .ilike('exam_name', `%${exam.exam_name}%`)
+        .eq('exam_category', exam.category)
+    ]);
 
-  // Strategy 3: exam_name ILIKE (professional exams)
-  if (exam.exam_name) {
-    let q = supabase.from('exam_questions').select(fields)
-      .ilike('exam_name', `%${exam.exam_name}%`);
-    if (exam.category) q = q.eq('exam_category', exam.category);
-    const { data } = await q;
-    if (data && data.length > 0) return data;
-  }
+    const idQuestions = byExamId || [];
+    const nameQuestions = byExamName || [];
 
-  // Strategy 4: university name only
-  if (uniName) {
-    let q = supabase.from('exam_questions').select(fields)
-      .or(`university.ilike.%${uniName.replace(/,/g, '')}%,university.ilike.%${uniName}%`);
-    if (exam.year) q = q.eq('year', exam.year);
-    const { data } = await q;
-    if (data && data.length > 0) return data;
-  }
+    if (idQuestions.length === 0 && nameQuestions.length === 0) return [];
 
-  // Strategy 5: category only (professional exams without university)
-  if (exam.category && !uniName) {
-    const { data } = await supabase.from('exam_questions').select(fields).eq('exam_category', exam.category);
-    if (data && data.length > 0) return data;
+    // Merge: start with exam_id results, add unique exam_name results
+    const seenTexts = new Set(idQuestions.map(q => q.question_text));
+    const merged = [...idQuestions];
+    for (const q of nameQuestions) {
+      if (!seenTexts.has(q.question_text)) {
+        merged.push(q);
+        seenTexts.add(q.question_text);
+      }
+    }
+    return merged;
   }
 
   return [];

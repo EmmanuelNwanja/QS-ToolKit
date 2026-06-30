@@ -165,15 +165,16 @@ export default function PathwayDetailPage() {
           <div className="space-y-4">
             <h2 className="font-display text-lg font-bold text-primary-800">Pathway Levels</h2>
             {(pathway.levels || []).map((level, i) => {
-              const isCurrent = progress && progress.current_level === level.level_number;
-              const isCompleted = progress && progress.current_level > level.level_number;
-              const isLocked = progress && progress.current_level < level.level_number - 1;
-              const levelModules = levels[level.level_number] || [];
+              const lvlNum = level.level;
+              const isCurrent = progress && progress.current_level === lvlNum;
+              const isCompleted = progress && progress.current_level > lvlNum;
+              const isLocked = progress && progress.current_level < lvlNum - 1;
+              const levelModules = levels[lvlNum] || levels[String(lvlNum)] || [];
               const levelCompleted = levelModules.filter(m => m.completed).length;
 
               return (
                 <LevelAccordion
-                  key={level.level_number}
+                  key={level.level}
                   level={level}
                   levelModules={levelModules}
                   isCurrent={isCurrent}
@@ -236,7 +237,7 @@ function LevelAccordion({
           isCurrent ? 'bg-gold-100 text-gold-700' :
           'bg-gray-100 text-gray-500'
         }`}>
-          {isCompleted ? '✓' : level.level_number}
+          {isCompleted ? '✓' : level.level}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">

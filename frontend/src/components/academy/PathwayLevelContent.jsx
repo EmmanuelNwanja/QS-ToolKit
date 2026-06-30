@@ -19,7 +19,7 @@ export default function PathwayLevelContent({
   const [projectSubmission, setProjectSubmission] = useState(null);
   const [activeTab, setActiveTab] = useState('learn');
 
-  const levelModules = modules.filter(m => m.level === level.level_number);
+  const levelModules = modules.filter(m => m.level === level.level);
   const completedCount = levelModules.filter(m => m.completed).length;
   const progress = levelModules.length > 0 ? Math.round((completedCount / levelModules.length) * 100) : 0;
 

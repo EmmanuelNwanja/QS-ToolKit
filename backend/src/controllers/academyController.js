@@ -581,7 +581,18 @@ exports.getPathways = async (req, res, next) => {
       .order('sort_order');
 
     if (err) throw err;
-    return res.json(success('Pathways', { pathways: pathways || [] }));
+
+    // Enrich with actual module counts from academy_modules
+    const enriched = await Promise.all((pathways || []).map(async (p) => {
+      const { count } = await supabase
+        .from('academy_modules')
+        .select('id', { count: 'exact', head: true })
+        .eq('pathway_slug', p.slug)
+        .eq('is_published', true);
+      return { ...p, module_count: count || 0 };
+    }));
+
+    return res.json(success('Pathways', { pathways: enriched }));
   } catch (err) { next(err); }
 };
 
@@ -704,7 +715,7 @@ exports.getPathwayProgress = async (req, res, next) => {
   try {
     const { data: enrollments, error: err } = await supabase
       .from('academy_enrollments')
-      .select('id, enrolled_at, pathway:academy_pathways(id, title, slug, module_count)')
+      .select('id, enrolled_at, pathway:academy_pathways(id, title, slug)')
       .eq('user_id', req.user.id)
       .order('enrolled_at', { ascending: false });
 
@@ -712,22 +723,32 @@ exports.getPathwayProgress = async (req, res, next) => {
 
     // Get progress for each enrollment
     const progressData = await Promise.all((enrollments || []).map(async (enrollment) => {
+      const pathwayId = enrollment.pathway?.id;
+      const pathwaySlug = enrollment.pathway?.slug;
+
+      // Count modules from academy_modules (authoritative source)
+      const { count: totalModules } = await supabase
+        .from('academy_modules')
+        .select('id', { count: 'exact', head: true })
+        .eq('pathway_slug', pathwaySlug)
+        .eq('is_published', true);
+
       const { data: progress } = await supabase
         .from('academy_module_progress')
         .select('module_id, completed')
         .eq('user_id', req.user.id)
-        .eq('pathway_id', enrollment.pathway?.id);
+        .eq('pathway_id', pathwayId);
 
       const completedCount = (progress || []).filter(p => p.completed).length;
-      const totalModules = enrollment.pathway?.module_count || 0;
+      const total = totalModules || 0;
 
       return {
         enrollment_id: enrollment.id,
-        pathway: enrollment.pathway,
+        pathway: { ...enrollment.pathway, module_count: total },
         enrolled_at: enrollment.enrolled_at,
         completed_modules: completedCount,
-        total_modules: totalModules,
-        progress_percent: totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0
+        total_modules: total,
+        progress_percent: total > 0 ? Math.round((completedCount / total) * 100) : 0
       };
     }));
 
