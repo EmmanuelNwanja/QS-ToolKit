@@ -612,6 +612,7 @@ Return ONLY the explanation text.`;
 exports.generatePracticeExam = async (req, res, _next) => {
   try {
     const { category, question_count = 10 } = req.body;
+    const count = Math.min(Math.max(parseInt(question_count) || 10, 5), 200);
 
     // 1. Analyze past attempts for weak topics (optional — works without history)
     let weakTopics = [];
@@ -669,7 +670,7 @@ Prioritize these weak topics but ALSO include questions from other areas for var
 
 ${topicInstruction}${seenTopicsSection}
 
-Generate exactly ${Math.min(question_count, 20)} questions.
+Generate exactly ${count} questions.
 EVERY question must be from a DIFFERENT topic. No two questions from the same sub-topic.
 Mix difficulty: 30% easy, 50% medium, 20% hard.`;
 
@@ -702,11 +703,11 @@ Mix difficulty: 30% easy, 50% medium, 20% hard.`;
           .in('topic', weakTopics.slice(0, 5))
           .not('correct_answer', 'is', null)
           .order('id') // deterministic order for offset
-          .limit(question_count * 3); // fetch more for randomization
+          .limit(count * 3); // fetch more for randomization
 
         const { data: fallbackQuestions } = await fallbackQ;
         if (fallbackQuestions && fallbackQuestions.length > 0) {
-          const shuffled = shuffleArray(fallbackQuestions).slice(0, question_count);
+          const shuffled = shuffleArray(fallbackQuestions).slice(0, count);
           questions = shuffled.map(q => ({
             question: q.question_text,
             options: q.options,
@@ -725,13 +726,13 @@ Mix difficulty: 30% easy, 50% medium, 20% hard.`;
           .select('question_text, options, correct_answer, explanation, difficulty, topic')
           .not('correct_answer', 'is', null)
           .order('id')
-          .limit(question_count * 5);
+          .limit(count * 5);
 
         if (category) randomQ = randomQ.eq('exam_category', category);
 
         const { data: randomQuestions } = await randomQ;
         if (randomQuestions && randomQuestions.length > 0) {
-          const shuffled = shuffleArray(randomQuestions).slice(0, question_count);
+          const shuffled = shuffleArray(randomQuestions).slice(0, count);
           questions = shuffled.map(q => ({
             question: q.question_text,
             options: q.options,
@@ -758,6 +759,7 @@ Mix difficulty: 30% easy, 50% medium, 20% hard.`;
       })),
       weak_topics: weakTopics.slice(0, 5),
       total_questions: questions.length,
+      requested_count: count,
       // Store correct answers for scoring (hidden from user during exam)
       _answers: questions.map(q => ({
         question_index: questions.indexOf(q),

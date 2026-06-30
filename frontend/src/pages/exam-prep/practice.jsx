@@ -280,11 +280,12 @@ export default function PracticeExamPage() {
   const [answersMeta, setAnswersMeta] = useState([]);
   const [result, setResult] = useState(null);
   const [weakTopics, setWeakTopics] = useState([]);
+  const [questionCount, setQuestionCount] = useState(10);
 
   const generate = useCallback(async () => {
     setPhase('generating');
     try {
-      const res = await examAPI.generatePractice({ question_count: 10 });
+      const res = await examAPI.generatePractice({ question_count: questionCount });
       const data = res.data;
       setQuestions(data.questions || []);
       setAnswersMeta(data._answers || []);
@@ -294,7 +295,7 @@ export default function PracticeExamPage() {
       toast.error(err.response?.data?.error || 'Failed to generate practice exam');
       setPhase('idle');
     }
-  }, []);
+  }, [questionCount]);
 
   const handleComplete = (r) => {
     setResult(r);
@@ -332,6 +333,18 @@ export default function PracticeExamPage() {
               <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
                 Dr. Q will analyze your past exam performance and generate targeted questions. If you have past exams, weak areas will be prioritized.
               </p>
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <label className="text-sm text-gray-600">Questions:</label>
+                <select
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Number(e.target.value))}
+                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  {[10, 20, 30, 40, 50, 60].map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
               <button onClick={generate} className="btn-primary text-base px-8 py-3">
                 Generate Practice Exam
               </button>

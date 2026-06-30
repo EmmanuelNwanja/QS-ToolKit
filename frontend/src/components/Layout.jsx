@@ -109,7 +109,7 @@ export default function Layout({ children, title }) {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-gray-100">
           <Link href="/dashboard">
-            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-13 w-auto max-w-[190px]" />
+            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-[51px] w-auto max-w-[190px]" />
           </Link>
         </div>
 

@@ -49,7 +49,7 @@ router.post('/exams/:id/explain', [
 router.post('/practice/generate', [
   body('category').optional().isString(),
   body('difficulty').optional().isIn(['easy', 'medium', 'hard']),
-  body('question_count').optional().isInt({ min: 5, max: 20 }).withMessage('question_count must be 5-20'),
+  body('question_count').optional().isInt({ min: 5, max: 200 }).withMessage('question_count must be 5-200'),
   validate
 ], ctrl.generatePracticeExam);
 
