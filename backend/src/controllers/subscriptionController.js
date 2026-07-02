@@ -196,6 +196,18 @@ exports.getCountries = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── Get payment gateway status ────────────────────────────────
+exports.getGatewayStatus = async (req, res, next) => {
+  try {
+    const paystackConfigured = !!process.env.PAYSTACK_SECRET_KEY;
+    const flutterwaveConfigured = !!process.env.FLUTTERWAVE_SECRET_KEY;
+    return res.json(success('Gateway status', {
+      paystack: { configured: paystackConfigured, label: 'Paystack' },
+      flutterwave: { configured: flutterwaveConfigured, label: 'Flutterwave' }
+    }));
+  } catch (err) { next(err); }
+};
+
 // ── Validate promo code ───────────────────────────────────────
 exports.validatePromo = async (req, res, next) => {
   try {

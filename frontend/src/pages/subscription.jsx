@@ -33,6 +33,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading]     = useState(true);
   const [paying, setPaying]       = useState('');
   const [billing, setBilling]     = useState('monthly');
+  const [gatewayStatus, setGatewayStatus] = useState({ paystack: { configured: false }, flutterwave: { configured: false } });
 
   const [promoInputs, setPromoInputs]   = useState({});
   const [promoResults, setPromoResults] = useState({});
@@ -76,8 +77,9 @@ export default function SubscriptionPage() {
   useEffect(() => {
     Promise.allSettled([
       subscriptionAPI.getPlans(),
-      subscriptionAPI.getMy()
-    ]).then(([p, s]) => {
+      subscriptionAPI.getMy(),
+      subscriptionAPI.getGatewayStatus()
+    ]).then(([p, s, g]) => {
       if (p.status === 'fulfilled') {
         const rawPlans = p.value.data.plans || [];
         const seen = new Set();
@@ -85,6 +87,7 @@ export default function SubscriptionPage() {
         setPlans(unique);
       }
       if (s.status === 'fulfilled') setMySub(s.value.data);
+      if (g.status === 'fulfilled') setGatewayStatus(g.value.data);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -550,13 +553,10 @@ export default function SubscriptionPage() {
           </div>
 
           <div className="card bg-blue-50 border-blue-100">
-            <h3 className="font-semibold text-blue-800 mb-2">Secure Nigerian Payment</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">Secure Payment</h3>
             <p className="text-sm text-blue-700">
-              Pay via Direct Bank Transfer (active) or Paystack (coming soon). All prices in Nigerian Naira.
-              Annual plans save 10% vs monthly billing. Subscriptions auto-renew. Cancel anytime from your profile settings.
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              Promo discounts apply to the first successful charge. Recurring renewals continue at the mapped Paystack plan price for your selected billing cycle.
+              Pay via Card, Bank Transfer, USSD, or Mobile Money through Paystack and Flutterwave.
+              Cancel anytime from your profile settings.
             </p>
           </div>
 
@@ -580,9 +580,48 @@ export default function SubscriptionPage() {
                   <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Choose Payment Method</h2>
                   <p className="text-sm text-slate-500 mb-6">Select how you&rsquo;d like to pay for the <span className="font-semibold capitalize">{pendingPlan}</span> plan.</p>
                   <div className="space-y-3">
+                    {(gatewayStatus.paystack.configured || gatewayStatus.flutterwave.configured) ? (
+                      <button
+                        onClick={() => handleSubscribe(plans.find(p => p.name === pendingPlan))}
+                        disabled={!!paying}
+                        className="w-full flex items-start gap-4 border-2 border-slate-200 hover:border-primary-700 rounded-xl p-4 text-left transition-all group"
+                      >
+                        <span className="mt-0.5 w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100">
+                          <svg className="text-blue-600" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-800">Pay with Card / Bank</span>
+                            <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Instant</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {gatewayStatus.paystack.configured && gatewayStatus.flutterwave.configured
+                              ? 'Pay via Paystack or Flutterwave — card, bank transfer, USSD, or mobile money.'
+                              : gatewayStatus.paystack.configured
+                                ? 'Pay via Paystack — card, bank transfer, or USSD.'
+                                : 'Pay via Flutterwave — card, bank transfer, USSD, or mobile money.'}
+                            {' '}Instant activation.
+                          </p>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="w-full flex items-start gap-4 border-2 border-slate-200 rounded-xl p-4 opacity-60">
+                        <span className="mt-0.5 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="text-slate-400" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-500">Card / Bank Payment</span>
+                            <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">Coming Soon</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">Online payment is not yet available. Use Direct Bank Transfer below.</p>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => setPaymentMethod('bank_transfer')}
-                      className="w-full flex items-start gap-4 border-2 border-slate-200 hover:border-primary-700 rounded-xl p-4 text-left transition-all group"
+                      className="w-full flex items-start gap-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl p-4 text-left transition-all group"
                     >
                       <span className="mt-0.5 w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100">
                         <svg className="text-emerald-600" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
@@ -590,25 +629,9 @@ export default function SubscriptionPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-slate-800">Direct Bank Transfer</span>
-                          <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">Recommended</span>
+                          <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">Manual</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">Transfer directly to our bank account and upload your receipt. Plan activates within 24 hours of admin review.</p>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => router.push('/payment-coming-soon')}
-                      className="w-full flex items-start gap-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl p-4 text-left transition-all group opacity-75 cursor-pointer"
-                    >
-                      <span className="mt-0.5 w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <svg className="text-blue-400" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-600">Paystack</span>
-                          <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">Coming Soon</span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5">Online card and USSD payment via Paystack. Currently unavailable — use Direct Bank Transfer.</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Transfer to our bank account and upload receipt. Activates within 24 hours of admin review.</p>
                       </div>
                     </button>
                   </div>

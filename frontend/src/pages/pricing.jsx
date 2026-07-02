@@ -195,7 +195,7 @@ export default function PricingPage() {
                 {
                   '@type': 'Question',
                   name: 'What payment methods do you accept?',
-                  acceptedAnswer: { '@type': 'Answer', text: 'We accept bank transfers and Paystack payments (cards, bank transfer, USSD). Direct bank transfers are verified manually within 24 hours.' },
+                  acceptedAnswer: { '@type': 'Answer', text: 'We accept cards, bank transfers, USSD, and mobile money via Paystack and Flutterwave. Direct bank transfers are verified within 24 hours.' },
                 },
                 {
                   '@type': 'Question',

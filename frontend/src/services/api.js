@@ -169,6 +169,7 @@ export const leaderboardAPI = {
 export const subscriptionAPI = {
   getPlans:             ()                         => api.get('/subscriptions/plans'),
   getMy:                ()                         => api.get('/subscriptions/my'),
+  getGatewayStatus:     ()                         => api.get('/subscriptions/gateway-status'),
   initiate:             (plan, billing, promoCode) => api.post('/subscriptions/initiate', { plan_name: plan, billing_cycle: billing, promo_code: promoCode }),
   verify:               (ref)                      => api.get(`/subscriptions/verify?reference=${ref}`),
   validatePromo:        (code, plan_name)          => api.post('/subscriptions/validate-promo', { code, plan_name }),
