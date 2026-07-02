@@ -67,7 +67,7 @@ async function findExamQuestions(exam, fields = 'id, question_text, options, dif
   const isProfessionalExam = !isStudentExam && !!(exam.exam_name);
 
   if (isStudentExam) {
-    // Student past questions: match by university + course_code + year
+    // Strategy 1: university + course_code + year (exact match)
     let q = supabase.from('exam_questions').select(fields);
     if (uniName) q = q.ilike('university', `%${uniName.replace(/,/g, '')}%`);
     if (courseCode) q = q.ilike('course_code', `%${courseCode}%`);
@@ -75,22 +75,47 @@ async function findExamQuestions(exam, fields = 'id, question_text, options, dif
     const { data } = await q;
     if (data && data.length > 0) return data;
 
-    // Fallback: no year filter
-    if (uniName && courseCode) {
+    // Strategy 2: exam_name ILIKE (exam def name matches question exam_name)
+    if (exam.exam_name) {
+      let q1b = supabase.from('exam_questions').select(fields);
+      q1b = q1b.ilike('exam_name', `%${exam.exam_name.replace(/\s*—\s*\d{4}$/, '').trim()}%`);
+      const { data: d1b } = await q1b;
+      if (d1b && d1b.length > 0) return d1b;
+    }
+
+    // Strategy 3: university + year (without course_code — course_code may mismatch)
+    if (uniName && exam.year) {
       let q2 = supabase.from('exam_questions').select(fields);
       q2 = q2.ilike('university', `%${uniName.replace(/,/g, '')}%`);
-      q2 = q2.ilike('course_code', `%${courseCode}%`);
+      q2 = q2.eq('year', exam.year);
       const { data: d2 } = await q2;
       if (d2 && d2.length > 0) return d2;
     }
 
-    // Fallback: university only
-    if (uniName) {
+    // Strategy 4: university + course_code (no year)
+    if (uniName && courseCode) {
       let q3 = supabase.from('exam_questions').select(fields);
       q3 = q3.ilike('university', `%${uniName.replace(/,/g, '')}%`);
-      if (exam.year) q3 = q3.eq('year', exam.year);
+      q3 = q3.ilike('course_code', `%${courseCode}%`);
       const { data: d3 } = await q3;
       if (d3 && d3.length > 0) return d3;
+    }
+
+    // Strategy 5: university only + year
+    if (uniName) {
+      let q4 = supabase.from('exam_questions').select(fields);
+      q4 = q4.ilike('university', `%${uniName.replace(/,/g, '')}%`);
+      if (exam.year) q4 = q4.eq('year', exam.year);
+      const { data: d4 } = await q4;
+      if (d4 && d4.length > 0) return d4;
+    }
+
+    // Strategy 6: university only (any year)
+    if (uniName) {
+      let q5 = supabase.from('exam_questions').select(fields);
+      q5 = q5.ilike('university', `%${uniName.replace(/,/g, '')}%`);
+      const { data: d5 } = await q5;
+      if (d5 && d5.length > 0) return d5;
     }
 
     return [];
@@ -183,6 +208,70 @@ function shuffleArray(arr) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+// ─── AI Question Generation ────────────────────────────────────
+
+async function generateExamQuestions(exam, count) {
+  const { callAI } = require('../services/aiService');
+  const { buildUserContext } = require('../services/aiService');
+
+  const examContext = exam.category === 'nigerian_professional'
+    ? `Professional Nigerian QS exam: ${exam.exam_name}. Covers measurement standards (SMM7, NRM2), BOQ preparation, construction law, and professional practice.`
+    : `University past question exam: ${exam.exam_name} (${exam.year || ''}). University: ${exam.university_id || 'Nigerian university'}. Course: ${exam.course_id || 'QS course'}.`;
+
+  const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating exam questions.
+
+EXAM CONTEXT: ${examContext}
+NUMBER OF QUESTIONS: ${count}
+
+INSTRUCTIONS:
+1. Generate exactly ${count} UNIQUE, accurate multiple-choice questions.
+2. Questions should be factually correct and exam-appropriate.
+3. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI).
+4. Mix difficulty: ~40% easy, ~40% medium, ~20% hard.
+5. Each question must have exactly 4 options (A, B, C, D).
+6. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1."
+7. IMPORTANT: The question_text must contain ONLY the question text, no option letters.
+
+OUTPUT: Valid JSON array with exactly ${count} objects:
+[
+  {
+    "question_text": "clear question text WITHOUT numbering",
+    "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
+    "correct_answer": "B",
+    "explanation": "brief explanation",
+    "difficulty": "easy|medium|hard",
+    "topic": "topic category"
+  }
+]
+
+The correct_answer must be a SINGLE LETTER (A, B, C, or D).
+Return ONLY the JSON array. No markdown, no text outside the array.`;
+
+  const raw = await callAI(prompt, { temperature: 0.7 });
+  if (!raw) throw new Error('No AI response');
+
+  let parsed;
+  try {
+    const cleaned = stripJsonFences(raw);
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error('Invalid AI response format');
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('AI returned empty or invalid array');
+  }
+
+  return parsed.slice(0, count).map(q => ({
+    question_text: (q.question_text || q.question || '').replace(/^\d+\.\s*/, '').trim(),
+    options: q.options || [],
+    correct_answer: extractAnswerLetter(q.correct_answer),
+    explanation: q.explanation || '',
+    difficulty: q.difficulty || 'medium',
+    topic: q.topic || exam.exam_name || 'General'
+  }));
 }
 
 // ─── Subscription Status ───────────────────────────────────────
@@ -345,6 +434,55 @@ exports.getExamQuestions = async (req, res, next) => {
     // Fetch questions — match by exam_id first, fallback to metadata strategies
     const fields = 'id, question_text, options, difficulty, topic, marks';
     let questions = await findExamQuestions(exam, fields);
+
+    const requestedCount = question_count ? parseInt(question_count) : (exam.total_questions || 50);
+
+    // AI-generate remaining questions if seed data is insufficient
+    if (!questions || questions.length < requestedCount) {
+      const needed = requestedCount - (questions?.length || 0);
+      if (needed > 0) {
+        try {
+          const aiQuestions = await generateExamQuestions(exam, needed);
+          if (aiQuestions && aiQuestions.length > 0) {
+            // Store AI-generated questions for future use
+            const insertRows = aiQuestions.map(q => ({
+              exam_id: exam.id,
+              exam_category: exam.category || 'university',
+              exam_name: exam.exam_name || exam.title || '',
+              topic: q.topic || exam.exam_name || 'General',
+              question_text: q.question_text,
+              question_type: 'mcq',
+              options: q.options,
+              correct_answer: q.correct_answer,
+              explanation: q.explanation || '',
+              difficulty: q.difficulty || 'medium',
+              is_active: true
+            }));
+
+            const { error: insertErr } = await supabase
+              .from('exam_questions')
+              .insert(insertRows);
+
+            if (!insertErr) {
+              // Re-fetch to get IDs and include in results
+              const freshQuestions = await findExamQuestions(exam, fields);
+              if (freshQuestions && freshQuestions.length > questions.length) {
+                questions = freshQuestions;
+              } else {
+                // Append AI questions with temp IDs
+                questions = [...(questions || []), ...aiQuestions.map((q, i) => ({
+                  id: `ai-${exam.id}-${Date.now()}-${i}`,
+                  ...q
+                }))];
+              }
+            }
+          }
+        } catch (aiErr) {
+          logger.warn('AI question generation failed for exam', { exam_id: exam.id, error: aiErr.message });
+          // Fall through with whatever seed questions we have
+        }
+      }
+    }
 
     if (!questions || questions.length === 0) {
       return res.status(404).json(error('No questions available for this exam yet. Questions may be being added.', { 
