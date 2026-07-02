@@ -14,7 +14,7 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
   const passed = attempt.passed;
   const totalQuestions = attempt.total_questions || attempt.questions?.length || 0;
   const correctCount = attempt.correct_count || Math.round((score / 100) * totalQuestions);
-  const timeTaken = attempt.time_taken || 0;
+  const timeTaken = attempt.time_spent_seconds || attempt.time_taken || 0;
   const timeMinutes = Math.floor(timeTaken / 60);
   const timeSeconds = timeTaken % 60;
 
@@ -66,12 +66,28 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
       <div className="card">
         <h3 className="font-display font-bold text-primary-800 mb-4">Question-by-Question Breakdown</h3>
 
-        {attempt.questions && attempt.questions.length > 0 ? (
+        {(attempt.detailed_results || attempt.questions) && (attempt.detailed_results || attempt.questions).length > 0 ? (
           <div className="space-y-4">
-            {attempt.questions.map((q, i) => {
+            {(attempt.detailed_results || attempt.questions).map((q, i) => {
               const userAnswer = q.user_answer ?? q.selected_option;
               const correctAnswer = q.correct_answer ?? q.correct_option;
-              const isCorrect = userAnswer === correctAnswer;
+              const isCorrect = q.is_correct !== undefined ? q.is_correct : userAnswer === correctAnswer;
+              const questionType = q.question_type || 'mcq';
+
+              // Normalize answers to letter index (0=A, 1=B, etc.) for option highlighting
+              const toLetterIdx = (val) => {
+                if (val === null || val === undefined) return -1;
+                const s = String(val).trim();
+                if (!s) return -1;
+                if (/^[A-F]$/i.test(s)) return s.toUpperCase().charCodeAt(0) - 65;
+                const idx = parseInt(s, 10);
+                if (!isNaN(idx) && idx >= 0 && idx < 6) return idx;
+                const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i);
+                if (match) return match[1].toUpperCase().charCodeAt(0) - 65;
+                return -1;
+              };
+              const userIdx = toLetterIdx(userAnswer);
+              const correctIdx = toLetterIdx(correctAnswer);
 
               return (
                 <motion.div
@@ -97,26 +113,50 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
                     </p>
                   </div>
 
-                  {/* Options */}
+                  {/* Options or text answer */}
                   <div className="ml-9 space-y-1.5 mb-3">
-                    {(q.options || []).map((opt, idx) => {
-                      const isUserAnswer = userAnswer === idx;
-                      const isCorrectOpt = correctAnswer === idx;
-                      let optClass = 'bg-white border-gray-200';
-                      if (isCorrectOpt) optClass = 'bg-emerald-100 border-emerald-300 text-emerald-800';
-                      else if (isUserAnswer && !isCorrect) optClass = 'bg-red-100 border-red-300 text-red-800';
-                      // Strip existing letter prefix to avoid double display
-                      const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
+                    {questionType === 'mcq' || questionType === 'true_false' || (q.options && q.options.length > 0) ? (
+                      (q.options || []).map((opt, idx) => {
+                        const isUserAnswer = userIdx === idx;
+                        const isCorrectOpt = correctIdx === idx;
+                        let optClass = 'bg-white border-gray-200';
+                        if (isCorrectOpt) optClass = 'bg-emerald-100 border-emerald-300 text-emerald-800';
+                        else if (isUserAnswer && !isCorrect) optClass = 'bg-red-100 border-red-300 text-red-800';
+                        const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
 
-                      return (
-                        <div key={idx} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${optClass}`}>
-                          <span className="font-bold flex-shrink-0">{OPTION_LETTERS[idx]}.</span>
-                          <span className="flex-1">{optionText}</span>
-                          {isCorrectOpt && <span className="text-emerald-600 font-bold">✓ Correct</span>}
-                          {isUserAnswer && !isCorrectOpt && <span className="text-red-600 font-bold">✗ Your answer</span>}
+                        return (
+                          <div key={idx} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${optClass}`}>
+                            <span className="font-bold flex-shrink-0">{OPTION_LETTERS[idx]}.</span>
+                            <span className="flex-1">{optionText}</span>
+                            {isCorrectOpt && <span className="text-emerald-600 font-bold">✓ Correct</span>}
+                            {isUserAnswer && !isCorrectOpt && <span className="text-red-600 font-bold">✗ Your answer</span>}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="space-y-2">
+                        <div className={`p-3 rounded-lg border text-xs ${!isCorrect ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                          <p className="font-bold text-gray-500 mb-1">Your answer:</p>
+                          <p className={!isCorrect ? 'text-red-700' : 'text-emerald-800'}>{userAnswer || '(no answer)'}</p>
+                          {!isCorrect && <span className="text-red-600 font-bold">✗</span>}
                         </div>
-                      );
-                    })}
+                        {!isCorrect && q.correct_answer && (
+                          <div className="p-3 rounded-lg border text-xs bg-emerald-50 border-emerald-200">
+                            <p className="font-bold text-emerald-600 mb-1">Model answer:</p>
+                            <p className="text-emerald-800">{q.correct_answer}</p>
+                          </div>
+                        )}
+                        {q.ai_feedback && (
+                          <div className="p-3 rounded-lg border text-xs bg-blue-50 border-blue-200">
+                            <p className="font-bold text-blue-600 mb-1">AI Assessment:</p>
+                            <p className="text-blue-800">{q.ai_feedback}</p>
+                            {q.marks_earned !== undefined && (
+                              <p className="text-blue-600 mt-1 font-medium">Score: {q.marks_earned}/{q.marks_possible}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -127,17 +167,19 @@ export default function ExamResults({ attempt, onBack: _onBack }) {
                     >
                       📖 View Explanation
                     </button>
-                    <button
-                      onClick={() => {
-                        const event = new CustomEvent('qst-ai-ask', {
-                          detail: `Explain why the correct answer to this question is "${q.options?.[correctAnswer]}" and not "${q.options?.[userAnswer]}": ${q.question_text || q.question}`
-                        });
-                        window.dispatchEvent(event);
-                      }}
-                      className="text-xs text-gold-600 hover:underline font-medium"
-                    >
-                      🤖 Ask Dr. Q
-                    </button>
+                    {questionType === 'mcq' && (
+                      <button
+                        onClick={() => {
+                          const event = new CustomEvent('qst-ai-ask', {
+                            detail: `Explain why the correct answer to this question is "${q.options?.[correctIdx]}" and not "${q.options?.[userIdx]}": ${q.question_text || q.question}`
+                          });
+                          window.dispatchEvent(event);
+                        }}
+                        className="text-xs text-gold-600 hover:underline font-medium"
+                      >
+                        🤖 Ask Dr. Q
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               );

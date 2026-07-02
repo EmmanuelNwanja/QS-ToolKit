@@ -212,44 +212,89 @@ function shuffleArray(arr) {
 
 // ─── AI Question Generation ────────────────────────────────────
 
-async function generateExamQuestions(exam, count) {
+async function generateExamQuestions(exam, count, existingTexts = []) {
   const { callAI } = require('../services/aiService');
-  const { buildUserContext } = require('../services/aiService');
 
   const examContext = exam.category === 'nigerian_professional'
     ? `Professional Nigerian QS exam: ${exam.exam_name}. Covers measurement standards (SMM7, NRM2), BOQ preparation, construction law, and professional practice.`
     : `University past question exam: ${exam.exam_name} (${exam.year || ''}). University: ${exam.university_id || 'Nigerian university'}. Course: ${exam.course_id || 'QS course'}.`;
 
+  const avoidSection = existingTexts.length > 0
+    ? `\nAVOID THESE EXISTING QUESTIONS (do NOT generate similar or identical):\n${existingTexts.slice(0, 50).map((t, i) => `${i + 1}. ${t}`).join('\n')}\n`
+    : '';
+
+  // Determine mix based on exam format
+  const format = (exam.format || '').toLowerCase();
+  let mcqCount = count;
+  let otherCount = 0;
+  let typeInstructions = '';
+
+  if (format.includes('short answer') || format.includes('long question')) {
+    // Mix MCQs with text-based questions
+    mcqCount = Math.round(count * 0.6);
+    otherCount = count - mcqCount;
+    typeInstructions = `
+MIX OF QUESTION TYPES: ${mcqCount} MCQs + ${otherCount} text-based questions.
+For text-based questions, use question_type "short_answer" or "long_answer" with "correct_answer" being a brief model answer.
+Include "sample_answer" for text-based questions.`;
+  } else if (format.includes('mock interview')) {
+    mcqCount = Math.round(count * 0.3);
+    otherCount = count - mcqCount;
+    typeInstructions = `
+MIX OF QUESTION TYPES: ${mcqCount} MCQs + ${otherCount} mock interview questions.
+For mock interview questions, use question_type "mock_interview" with scenario-based prompts.
+Include "scoring_rubric" explaining how to evaluate the response.`;
+  } else {
+    typeInstructions = `
+Generate all questions as MCQs with 4 options (A, B, C, D).`;
+  }
+
   const prompt = `You are Dr. Q, an expert Nigerian Quantity Surveying examiner creating exam questions.
 
 EXAM CONTEXT: ${examContext}
 NUMBER OF QUESTIONS: ${count}
-
+${avoidSection}
 INSTRUCTIONS:
-1. Generate exactly ${count} UNIQUE, accurate multiple-choice questions.
-2. Questions should be factually correct and exam-appropriate.
+1. Generate exactly ${count} UNIQUE, accurate questions.
+2. Questions must be factually correct and exam-appropriate.
 3. Use Nigerian QS context: Naira amounts, local materials, Nigerian standards (SMM7, NRM2, NESI).
 4. Mix difficulty: ~40% easy, ~40% medium, ~20% hard.
-5. Each question must have exactly 4 options (A, B, C, D).
-6. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1."
-7. IMPORTANT: The question_text must contain ONLY the question text, no option letters.
+5. IMPORTANT: Do NOT prefix questions with numbers like "1." or "Q1."
+6. IMPORTANT: The question_text must contain ONLY the question text, no option letters.
+7. IMPORTANT: Every question must be distinctly different in topic, wording, and concept.
+8. VARY topics across: measurement, BOQ, contracts, valuation, cost planning, construction law, professional practice, project management, materials, and site practice.
+${typeInstructions}
 
-OUTPUT: Valid JSON array with exactly ${count} objects:
-[
-  {
-    "question_text": "clear question text WITHOUT numbering",
-    "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
-    "correct_answer": "B",
-    "explanation": "brief explanation",
-    "difficulty": "easy|medium|hard",
-    "topic": "topic category"
-  }
-]
+OUTPUT: Valid JSON array with exactly ${count} objects.
 
-The correct_answer must be a SINGLE LETTER (A, B, C, or D).
+For MCQ questions:
+{
+  "question_text": "clear question text WITHOUT numbering",
+  "question_type": "mcq",
+  "options": ["A. option1", "B. option2", "C. option3", "D. option4"],
+  "correct_answer": "B",
+  "explanation": "brief explanation",
+  "difficulty": "easy|medium|hard",
+  "topic": "topic category"
+}
+
+For text-based questions:
+{
+  "question_text": "clear question text WITHOUT numbering",
+  "question_type": "short_answer|long_answer|mock_interview",
+  "correct_answer": "model answer text",
+  "sample_answer": "detailed model answer",
+  "scoring_rubric": "how to score this answer",
+  "explanation": "brief explanation",
+  "difficulty": "easy|medium|hard",
+  "topic": "topic category",
+  "max_words": 200
+}
+
+The correct_answer for MCQ must be a SINGLE LETTER (A, B, C, or D).
 Return ONLY the JSON array. No markdown, no text outside the array.`;
 
-  const raw = await callAI(prompt, { temperature: 0.7 });
+  const raw = await callAI(prompt, { temperature: 0.8 });
   if (!raw) throw new Error('No AI response');
 
   let parsed;
@@ -264,14 +309,31 @@ Return ONLY the JSON array. No markdown, no text outside the array.`;
     throw new Error('AI returned empty or invalid array');
   }
 
-  return parsed.slice(0, count).map(q => ({
-    question_text: (q.question_text || q.question || '').replace(/^\d+\.\s*/, '').trim(),
-    options: q.options || [],
-    correct_answer: extractAnswerLetter(q.correct_answer),
-    explanation: q.explanation || '',
-    difficulty: q.difficulty || 'medium',
-    topic: q.topic || exam.exam_name || 'General'
-  }));
+  // Dedup: remove duplicates within the AI response itself
+  const seenTexts = new Set(existingTexts.map(t => t.toLowerCase().trim()));
+  const unique = [];
+  for (const q of parsed) {
+    const text = (q.question_text || q.question || '').replace(/^\d+\.\s*/, '').trim();
+    const key = text.toLowerCase();
+    if (!seenTexts.has(key) && text.length > 10) {
+      seenTexts.add(key);
+      const qType = q.question_type || 'mcq';
+      unique.push({
+        question_text: text,
+        question_type: qType,
+        options: q.options || [],
+        correct_answer: qType === 'mcq' ? extractAnswerLetter(q.correct_answer) : (q.correct_answer || ''),
+        sample_answer: q.sample_answer || null,
+        scoring_rubric: q.scoring_rubric || null,
+        max_words: q.max_words || null,
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'medium',
+        topic: q.topic || exam.exam_name || 'General'
+      });
+    }
+  }
+
+  return unique.slice(0, count);
 }
 
 // ─── Subscription Status ───────────────────────────────────────
@@ -442,7 +504,9 @@ exports.getExamQuestions = async (req, res, next) => {
       const needed = requestedCount - (questions?.length || 0);
       if (needed > 0) {
         try {
-          const aiQuestions = await generateExamQuestions(exam, needed);
+          // Pass existing question texts to avoid repetition
+          const existingTexts = (questions || []).map(q => q.question_text || '');
+          const aiQuestions = await generateExamQuestions(exam, needed, existingTexts);
           if (aiQuestions && aiQuestions.length > 0) {
             // Store AI-generated questions for future use
             const insertRows = aiQuestions.map(q => ({
@@ -451,9 +515,12 @@ exports.getExamQuestions = async (req, res, next) => {
               exam_name: exam.exam_name || exam.title || '',
               topic: q.topic || exam.exam_name || 'General',
               question_text: q.question_text,
-              question_type: 'mcq',
+              question_type: q.question_type || 'mcq',
               options: q.options,
               correct_answer: q.correct_answer,
+              sample_answer: q.sample_answer || null,
+              scoring_rubric: q.scoring_rubric || null,
+              max_words: q.max_words || null,
               explanation: q.explanation || '',
               difficulty: q.difficulty || 'medium',
               is_active: true
@@ -461,7 +528,7 @@ exports.getExamQuestions = async (req, res, next) => {
 
             const { error: insertErr } = await supabase
               .from('exam_questions')
-              .insert(insertRows);
+              .insert(insertRows, { onConflict: 'exam_id,question_text', ignoreDuplicates: true });
 
             if (!insertErr) {
               // Re-fetch to get IDs and include in results
@@ -607,7 +674,7 @@ exports.submitExam = async (req, res, next) => {
     const passingScore = exam.passing_score || 50;
 
     // Get questions — use shared helper with fallback strategies
-    const submitFields = 'id, correct_answer, explanation, difficulty, topic, marks';
+    const submitFields = 'id, question_text, options, correct_answer, explanation, difficulty, topic, marks, question_type';
     const questions = await findExamQuestions(exam, submitFields);
 
     if (!questions || questions.length === 0) {
@@ -629,28 +696,40 @@ exports.submitExam = async (req, res, next) => {
       if (val === null || val === undefined) return '';
       const s = String(val).trim();
       if (!s) return '';
-      // Already a single letter
       if (/^[A-F]$/i.test(s)) return s.toUpperCase();
-      // Numeric index (0→A, 1→B, etc.)
       const idx = parseInt(s, 10);
       if (!isNaN(idx) && idx >= 0 && idx < 6) return String.fromCharCode(65 + idx);
-      // Patterns: "B. option", "(B)", "[B]", "Option B"
       const match = s.match(/^\(?\[?\s*([A-F])\s*\)?\]?[.:\s)/]/i) || s.match(/option\s+([A-F])/i);
       if (match) return match[1].toUpperCase();
-      // Last resort: first character if A-F
       const first = s.charAt(0).toUpperCase();
       return /^[A-F]$/.test(first) ? first : '';
     };
 
+    // Helper: check if question type is MCQ-like (letter-based scoring)
+    const isMcqType = (type) => ['mcq', 'true_false'].includes(type);
+
+    // Collect text-based questions for batch AI assessment
+    const textAnswers = [];
+    const mcqAnswers = [];
+
     for (const ans of answers) {
       const q = questionMap[ans.question_id];
       if (!q) continue;
+      const qType = q.question_type || 'mcq';
+      const rawAnswer = ans.answer !== undefined ? ans.answer : ans.selected_option;
 
+      if (isMcqType(qType)) {
+        mcqAnswers.push({ ans, q, rawAnswer });
+      } else {
+        textAnswers.push({ ans, q, rawAnswer });
+      }
+    }
+
+    // Score MCQ answers (instant)
+    for (const { ans, q, rawAnswer } of mcqAnswers) {
       const questionMarks = q.marks || 1;
       totalMarks += questionMarks;
 
-      // Accept both `answer` and `selected_option` fields
-      const rawAnswer = ans.answer !== undefined ? ans.answer : ans.selected_option;
       const userLetter = toLetter(rawAnswer);
       const correctLetter = toLetter(q.correct_answer);
       const isCorrect = userLetter !== '' && correctLetter !== '' && userLetter === correctLetter;
@@ -662,6 +741,9 @@ exports.submitExam = async (req, res, next) => {
 
       detailedResults.push({
         question_id: ans.question_id,
+        question_text: q.question_text,
+        question_type: q.question_type || 'mcq',
+        options: q.options,
         user_answer: rawAnswer,
         correct_answer: q.correct_answer,
         is_correct: isCorrect,
@@ -671,6 +753,91 @@ exports.submitExam = async (req, res, next) => {
         difficulty: q.difficulty,
         topic: q.topic
       });
+    }
+
+    // Score text-based answers (batch AI assessment)
+    if (textAnswers.length > 0) {
+      try {
+        const { callAI } = require('../services/aiService');
+        // Process in batches of 5 to avoid token limits
+        for (let i = 0; i < textAnswers.length; i += 5) {
+          const batch = textAnswers.slice(i, i + 5);
+          const assessPrompts = batch.map(({ ans, q, rawAnswer }, idx) => {
+            const rubric = q.scoring_rubric || `Score 0-${q.marks || 1} based on correctness and completeness.`;
+            const sampleAnswer = q.sample_answer ? `\nSAMPLE ANSWER: ${q.sample_answer}` : '';
+            return `Q${idx + 1}: ${q.question_text}
+USER ANSWER: ${rawAnswer || '(no answer)'}
+CORRECT ANSWER: ${q.correct_answer}
+MARKS AVAILABLE: ${q.marks || 1}
+SCORING RUBRIC: ${rubric}${sampleAnswer}
+Return JSON: {"score": <0-${q.marks || 1}>, "feedback": "<brief feedback>"}`;
+          });
+
+          const assessPrompt = `You are Dr. Q, an expert Nigerian QS examiner. Assess these student answers.
+Return a JSON array with one object per question, each with "score" (number) and "feedback" (string).
+No markdown. Just the JSON array.
+
+${assessPrompts.join('\n\n')}`;
+
+          const raw = await callAI(assessPrompt, { temperature: 0.2 });
+          let assessments = [];
+          try {
+            assessments = JSON.parse(stripJsonFences(raw));
+            if (!Array.isArray(assessments)) assessments = [assessments];
+          } catch { /* AI parsing failed, score as 0 */ }
+
+          batch.forEach(({ ans, q, rawAnswer }, idx) => {
+            const questionMarks = q.marks || 1;
+            totalMarks += questionMarks;
+            const assessment = assessments[idx] || {};
+            const score = Math.min(Math.max(parseInt(assessment.score) || 0, 0), questionMarks);
+            const isCorrect = score >= questionMarks * 0.5;
+
+            if (isCorrect) {
+              earnedMarks += score;
+              correctCount++;
+            }
+
+            detailedResults.push({
+              question_id: ans.question_id,
+              question_text: q.question_text,
+              question_type: q.question_type,
+              options: q.options,
+              user_answer: rawAnswer,
+              correct_answer: q.correct_answer,
+              is_correct: isCorrect,
+              marks_earned: score,
+              marks_possible: questionMarks,
+              ai_feedback: assessment.feedback || '',
+              explanation: q.explanation,
+              difficulty: q.difficulty,
+              topic: q.topic
+            });
+          });
+        }
+      } catch (aiErr) {
+        logger.warn('AI assessment failed for text answers, scoring as 0', { error: aiErr.message });
+        // Fallback: score text answers as 0
+        for (const { ans, q, rawAnswer } of textAnswers) {
+          const questionMarks = q.marks || 1;
+          totalMarks += questionMarks;
+          detailedResults.push({
+            question_id: ans.question_id,
+            question_text: q.question_text,
+            question_type: q.question_type,
+            options: q.options,
+            user_answer: rawAnswer,
+            correct_answer: q.correct_answer,
+            is_correct: false,
+            marks_earned: 0,
+            marks_possible: questionMarks,
+            ai_feedback: 'AI assessment unavailable',
+            explanation: q.explanation,
+            difficulty: q.difficulty,
+            topic: q.topic
+          });
+        }
+      }
     }
 
     const percentage = totalMarks > 0 ? Math.round((earnedMarks / totalMarks) * 100) : 0;
@@ -797,10 +964,15 @@ exports.generatePracticeExam = async (req, res, _next) => {
     const { callAI, buildUserContext, SYSTEM_PROMPTS } = require('../services/aiService');
     const userContext = await buildUserContext(req.user.id);
 
-    // Collect previously seen topics from past attempts to avoid repetition
+    // Collect previously seen topics and question texts from past attempts to avoid repetition
     const seenTopics = [...new Set(attempts?.flatMap(a =>
       (a.detailed_results || []).map(r => r.topic).filter(Boolean)
     ) || [])];
+
+    const seenQuestionTexts = attempts?.flatMap(a =>
+      (a.detailed_results || []).map(r => r.question_text).filter(Boolean)
+    ) || [];
+    const uniqueSeenTexts = [...new Set(seenQuestionTexts)].slice(0, 30);
 
     const hasWeakTopics = weakTopics.length > 0;
     const topicInstruction = hasWeakTopics
@@ -813,9 +985,13 @@ Prioritize these weak topics but ALSO include questions from other areas for var
       ? `\nPREVIOUSLY SEEN TOPICS (avoid repeating these exact topics — pick FRESH ones):\n${seenTopics.join(', ')}`
       : '';
 
+    const seenTextsSection = uniqueSeenTexts.length > 0
+      ? `\nAVOID THESE EXACT QUESTIONS (do NOT generate similar or identical):\n${uniqueSeenTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n`
+      : '';
+
     const personalizedContext = `USER CONTEXT:\n${userContext}
 
-${topicInstruction}${seenTopicsSection}
+${topicInstruction}${seenTopicsSection}${seenTextsSection}
 
 Generate exactly ${count} questions.
 EVERY question must be from a DIFFERENT topic. No two questions from the same sub-topic.
@@ -829,11 +1005,18 @@ Mix difficulty: 30% easy, 50% medium, 20% hard.`;
       if (raw) {
         const parsed = JSON.parse(stripJsonFences(raw));
         if (Array.isArray(parsed) && parsed.length > 0) {
-          questions = parsed.map(q => ({
-            ...q,
-            question: (q.question || '').replace(/^\d+\.\s*/, '').trim(),
-            correct_answer: extractAnswerLetter(q.correct_answer)
-          }));
+          // Dedup: remove questions similar to previously seen ones
+          const seenSet = new Set(uniqueSeenTexts.map(t => t.toLowerCase().trim()));
+          questions = parsed
+            .filter(q => {
+              const text = (q.question || '').replace(/^\d+\.\s*/, '').trim().toLowerCase();
+              return text.length > 10 && !seenSet.has(text);
+            })
+            .map(q => ({
+              ...q,
+              question: (q.question || '').replace(/^\d+\.\s*/, '').trim(),
+              correct_answer: extractAnswerLetter(q.correct_answer)
+            }));
         }
       }
     } catch (aiErr) {
@@ -926,7 +1109,7 @@ exports.getAttempts = async (req, res, next) => {
 
     let query = supabase
       .from('exam_attempts')
-      .select('id, exam_id, score, percentage, earned_marks, total_marks, correct_count, total_questions, is_trial, status, started_at, submitted_at, exam:exam_definitions(exam_name, category)', { count: 'exact' })
+      .select('id, exam_id, score, percentage, earned_marks, total_marks, correct_count, total_questions, is_trial, status, time_spent_seconds, started_at, submitted_at, exam:exam_definitions(exam_name, category)', { count: 'exact' })
       .eq('user_id', req.user.id)
       .neq('status', 'in_progress');
 

@@ -41,8 +41,12 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
     return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleAnswer = (questionId, optionIndex) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  const handleAnswer = (questionId, value) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleTextAnswer = (questionId, text) => {
+    setAnswers(prev => ({ ...prev, [questionId]: text }));
   };
 
   const toggleFlag = (questionId) => {
@@ -57,7 +61,10 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
   const handleSubmit = useCallback(async (autoTimeout = false) => {
     if (submitting || submitted) return;
     if (!autoTimeout) {
-      const unanswered = questions.filter(q => answers[q.id] === undefined).length;
+      const unanswered = questions.filter(q => {
+        const val = answers[q.id];
+        return val === undefined || val === '' || val === null;
+      }).length;
       if (unanswered > 0) {
         setShowSubmitConfirm(true);
         return;
@@ -68,10 +75,15 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
     setSubmitting(true);
     try {
       const payload = {
-        answers: Object.entries(answers).map(([questionId, selectedOption]) => ({
-          question_id: questionId,
-          selected_option: selectedOption
-        })),
+        answers: Object.entries(answers).map(([questionId, value]) => {
+          const q = questions.find(qq => qq.id === questionId);
+          const qType = q?.question_type || 'mcq';
+          // MCQ: send as selected_option (index); text: send as answer (string)
+          if (qType === 'mcq' || qType === 'true_false' || (!qType && q?.options?.length)) {
+            return { question_id: questionId, selected_option: value };
+          }
+          return { question_id: questionId, answer: value };
+        }),
         time_taken: timeLimit * 60 - timeRemaining
       };
       const res = await examAPI.submitExam(examId, payload);
@@ -90,7 +102,7 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
   useEffect(() => { handleSubmitRef.current = handleSubmit; });
 
   const question = questions[currentIndex];
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.entries(answers).filter(([id, val]) => val !== undefined && val !== '' && val !== null).length;
   const isTimeLow = timeRemaining < 300;
 
   if (!question) return null;
@@ -138,6 +150,12 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
                   <span className="text-xs font-mono bg-primary-100 text-primary-700 px-2 py-0.5 rounded">
                     Q{currentIndex + 1}
                   </span>
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded capitalize">
+                    {(question.question_type || 'mcq').replace('_', ' ')}
+                  </span>
+                  {question.marks && (
+                    <span className="text-xs text-gray-400">[{question.marks} mark{question.marks > 1 ? 's' : ''}]</span>
+                  )}
                   {flagged.has(question.id) && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">🚩 Flagged</span>
                   )}
@@ -145,32 +163,73 @@ export default function ExamInterface({ examId, questions: initialQuestions, tim
                 <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{(question.question_text || question.question || '').replace(/^\d+\.\s*/, '')}</p>
               </div>
 
-              {/* Options */}
-              <div className="space-y-2">
-                {(question.options || []).map((opt, idx) => {
-                  const selected = answers[question.id] === idx;
-                  // Strip existing letter prefix to avoid double display
-                  const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleAnswer(question.id, idx)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-start gap-3 ${
-                        selected
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                        selected ? 'bg-primary-700 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {OPTION_LETTERS[idx]}
-                      </span>
-                      <span className="text-sm text-gray-800 leading-relaxed">{optionText}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Render input based on question type */}
+              {(question.question_type === 'mcq' || question.question_type === 'true_false') || (!question.question_type && question.options?.length > 0) ? (
+                /* MCQ / True-False: Option buttons */
+                <div className="space-y-2">
+                  {(question.options || []).map((opt, idx) => {
+                    const selected = answers[question.id] === idx;
+                    const optionText = opt?.replace(/^[A-F][.):\s]+\s*/i, '').trim() || opt;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleAnswer(question.id, idx)}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-start gap-3 ${
+                          selected
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                          selected ? 'bg-primary-700 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {OPTION_LETTERS[idx]}
+                        </span>
+                        <span className="text-sm text-gray-800 leading-relaxed">{optionText}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : question.question_type === 'short_answer' ? (
+                /* Short answer: single-line text input */
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={answers[question.id] || ''}
+                    onChange={e => handleTextAnswer(question.id, e.target.value)}
+                    placeholder="Type your answer..."
+                    className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none text-sm"
+                  />
+                  {question.max_words && (
+                    <p className="text-xs text-gray-400">Max {question.max_words} words</p>
+                  )}
+                </div>
+              ) : (
+                /* Long answer, essay, scenario, mock_interview: textarea */
+                <div className="space-y-3">
+                  <textarea
+                    value={answers[question.id] || ''}
+                    onChange={e => handleTextAnswer(question.id, e.target.value)}
+                    placeholder={
+                      question.question_type === 'mock_interview'
+                        ? 'Type your interview response...'
+                        : question.question_type === 'essay'
+                          ? 'Write your essay response...'
+                          : 'Type your detailed answer...'
+                    }
+                    rows={8}
+                    className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none text-sm resize-y"
+                  />
+                  <div className="flex items-center justify-between">
+                    {question.max_words && (
+                      <p className="text-xs text-gray-400">Max {question.max_words} words</p>
+                    )}
+                    <p className="text-xs text-gray-400">
+                      {(answers[question.id] || '').split(/\s+/).filter(Boolean).length} words
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Flag button */}
               <button
