@@ -23,7 +23,10 @@ const upload = multer({
 
 // Public
 router.get('/plans',           ctrl.getPlans);
+router.get('/prices',          ctrl.getPrices);
+router.get('/countries',       ctrl.getCountries);
 router.post('/webhook',        webhookLimiter, ctrl.webhook);
+router.post('/webhook/flutterwave', webhookLimiter, ctrl.flutterwaveWebhook);
 router.get('/bank-transfer/settings', paymentSettingsCtrl.getBankTransferSettings);
 
 // Protected

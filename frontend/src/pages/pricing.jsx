@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -28,10 +28,23 @@ const scaleIn = {
   }
 };
 
-const PLANS = [
+const COUNTRIES = [
+  { code: 'NG', name: 'Nigeria', currency: 'NGN', symbol: '₦' },
+  { code: 'GH', name: 'Ghana', currency: 'GHS', symbol: 'GH₵' },
+  { code: 'ZA', name: 'South Africa', currency: 'ZAR', symbol: 'R' },
+  { code: 'KE', name: 'Kenya', currency: 'KES', symbol: 'KSh' },
+  { code: 'UG', name: 'Uganda', currency: 'UGX', symbol: 'USh' },
+  { code: 'TZ', name: 'Tanzania', currency: 'TZS', symbol: 'TSh' },
+  { code: 'CI', name: "Côte d'Ivoire", currency: 'XOF', symbol: 'CFA' },
+  { code: 'US', name: 'United States', currency: 'USD', symbol: '$' },
+  { code: 'GB', name: 'United Kingdom', currency: 'GBP', symbol: '£' },
+];
+
+const DEFAULT_PLANS = [
   {
     name: 'Starter',
     price: '₦8,999',
+    amount: 8999,
     period: '/month',
     desc: 'For students and entry-level QSs getting started.',
     features: ['2 projects/month', '30 calculator uses', '2 BOQs', '2 invoices & quotes', 'PDF & Excel exports', '1 user, 1 device']
@@ -39,6 +52,7 @@ const PLANS = [
   {
     name: 'Pro',
     price: '₦23,999',
+    amount: 23999,
     period: '/month',
     desc: 'For practicing professionals who need more volume.',
     features: ['5 projects/month', '80 calculator uses', '5 BOQs', '5 invoices & quotes', 'PDF & Excel exports', '1 user, 2 devices', 'Priority support'],
@@ -47,6 +61,7 @@ const PLANS = [
   {
     name: 'Elite',
     price: '₦84,999',
+    amount: 84999,
     period: '/month',
     desc: 'For firms and teams managing multiple projects.',
     features: ['50 projects/month', '700 calculator uses', '50 BOQs', '50 invoices & quotes', 'PDF & Excel exports', '5 users, 15 devices', 'Team roles', 'Top priority support']
@@ -77,12 +92,39 @@ function SectionLabel({ text, light = false }) {
 
 export default function PricingPage() {
   const [billing, setBilling] = useState('monthly');
+  const [country, setCountry] = useState('NG');
+  const [plans, setPlans] = useState(DEFAULT_PLANS);
+  const [loading, setLoading] = useState(false);
+
+  const selectedCountry = COUNTRIES.find(c => c.code === country) || COUNTRIES[0];
+
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+    setLoading(true);
+    fetch(`${API_URL}/subscription/prices?country=${country}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'success' && d.data?.plans?.length) {
+          setPlans(d.data.plans.map(p => ({
+            name: p.plan_name,
+            price: `${d.data.symbol}${Number(p.price).toLocaleString()}`,
+            amount: p.price,
+            period: p.billing_cycle === 'annual' ? '/year' : '/month',
+            desc: DEFAULT_PLANS.find(dp => dp.name === p.plan_name)?.desc || '',
+            features: DEFAULT_PLANS.find(dp => dp.name === p.plan_name)?.features || [],
+            popular: p.plan_name === 'Pro'
+          })));
+        }
+      })
+      .catch(() => setPlans(DEFAULT_PLANS))
+      .finally(() => setLoading(false));
+  }, [country]);
 
   return (
     <>
       <Head>
         <title>Pricing — QSToolkit | Plans from ₦8,999/mo</title>
-        <meta name="description" content="Simple, transparent pricing for Nigerian quantity surveying professionals. Starter ₦8,999/mo, Pro ₦23,999/mo, Elite ₦84,999/mo. Free plan available." />
+        <meta name="description" content="Transparent pricing for quantity surveying professionals across 9 African countries. Plans from ₦8,999/mo in Nigeria, with local currency support via Paystack and Flutterwave." />
         <meta name="keywords" content="QSToolkit pricing, quantity surveying software cost, QS software Nigeria, BOQ software price, construction software pricing" />
         <link rel="canonical" href="https://qs.solnuv.com/pricing" />
         <meta property="og:title" content="Pricing — QSToolkit | Plans from ₦8,999/mo" />
@@ -210,7 +252,19 @@ export default function PricingPage() {
 
         {/* Toggle */}
         <section className="bg-white py-8 px-4 border-b border-gray-100">
-          <div className="max-w-5xl mx-auto flex justify-center">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* Country selector */}
+            <select
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+              className="bg-gray-100 rounded-full px-4 py-2 text-sm font-medium text-gray-700 border-0 outline-none cursor-pointer"
+            >
+              {COUNTRIES.map(c => (
+                <option key={c.code} value={c.code}>{c.name} ({c.currency})</option>
+              ))}
+            </select>
+
+            {/* Billing toggle */}
             <div className="inline-flex bg-gray-100 rounded-full p-1">
               <button
                 onClick={() => setBilling('monthly')}
@@ -246,9 +300,10 @@ export default function PricingPage() {
               variants={staggerContainer}
               className="grid md:grid-cols-3 gap-6"
             >
-              {PLANS.map((plan) => {
+              {plans.map((plan) => {
+                const yearlyMultiplier = billing === 'yearly' ? (plan.amount * 0.8 * 12) : null;
                 const price = billing === 'yearly'
-                  ? '₦' + Math.round(parseInt(plan.price.replace(/[^0-9]/g, '')) * 0.8 * 12).toLocaleString()
+                  ? `${selectedCountry.symbol}${Math.round(yearlyMultiplier).toLocaleString()}`
                   : plan.price;
                 const period = billing === 'yearly' ? '/year' : plan.period;
 
@@ -376,7 +431,7 @@ export default function PricingPage() {
               {[
                 { q: 'Can I switch plans anytime?', a: 'Yes. Upgrade instantly when you need more. Downgrade at your next billing cycle. No penalties.' },
                 { q: 'Is there a free trial?', a: 'You get limited access on signup to explore calculators and create a few documents. Upgrade when you are ready.' },
-                { q: 'What payment methods do you accept?', a: 'We accept all major Nigerian bank cards via Paystack. Secure, instant, and reliable.' },
+                { q: 'What payment methods do you accept?', a: 'We accept cards, bank transfers, and mobile money via Paystack and Flutterwave. Available across 9 African countries and globally in USD/GBP.' },
                 { q: 'Do you offer refunds?', a: 'We do not offer refunds for partial months. You can cancel anytime and keep access until the end of your billing period.' },
                 { q: 'What happens if I hit my monthly limit?', a: 'You will see a friendly prompt to upgrade. Your existing data stays accessible. Nothing is deleted.' }
               ].map((item, i) => (

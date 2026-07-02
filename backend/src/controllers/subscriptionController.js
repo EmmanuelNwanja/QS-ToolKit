@@ -5,6 +5,8 @@ const emailService = require('../services/emailService');
 const logger = require('../utils/logger');
 const paymentSubmissionService = require('../services/paymentSubmissionService');
 const subscriptionManagementService = require('../services/subscriptionManagementService');
+const { initializePayment } = require('../services/paymentGateway');
+const { getGatewayForCountry } = require('../services/flutterwaveService');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -68,6 +70,12 @@ function getPaystackPlanCode(plan, billingCycle) {
     : plan.paystack_plan_code;
   const normalized = String(code || '').trim();
   return normalized || null;
+}
+
+async function resolveSubscriptionPlanById(planId) {
+  if (!planId) return null;
+  const { data } = await supabase.from('subscription_plans').select('*').eq('id', planId).maybeSingle();
+  return data;
 }
 
 function resolveBillingCycleFromPlanCode(plan, planCode, fallback = 'monthly') {
@@ -155,6 +163,39 @@ exports.getPlans = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── Get prices for a country ──────────────────────────────────
+exports.getPrices = async (req, res, next) => {
+  try {
+    const { country = 'NG' } = req.query;
+    const gw = getGatewayForCountry(country);
+
+    const { data: prices } = await supabase
+      .from('currency_prices')
+      .select('*')
+      .eq('currency', gw.currency)
+      .eq('is_active', true);
+
+    return res.json(success('Prices', {
+      country,
+      currency: gw.currency,
+      gateway: gw.gateway,
+      symbol: { NGN: '₦', GHS: 'GH₵', ZAR: 'R', KES: 'KSh', UGX: 'USh', TZS: 'TSh', XOF: 'CFA', USD: '$', GBP: '£' }[gw.currency] || gw.currency,
+      plans: prices || []
+    }));
+  } catch (err) { next(err); }
+};
+
+// ── Get supported countries ───────────────────────────────────
+exports.getCountries = async (req, res, next) => {
+  try {
+    const { COUNTRY_GATEWAYS } = require('../services/flutterwaveService');
+    const countries = Object.entries(COUNTRY_GATEWAYS)
+      .filter(([code]) => code !== 'DEFAULT')
+      .map(([code, info]) => ({ code, ...info }));
+    return res.json(success('Supported countries', { countries }));
+  } catch (err) { next(err); }
+};
+
 // ── Validate promo code ───────────────────────────────────────
 exports.validatePromo = async (req, res, next) => {
   try {
@@ -195,7 +236,7 @@ exports.validatePromo = async (req, res, next) => {
 // ── Initiate payment (own subscription) ──────────────────────
 exports.initiate = async (req, res, next) => {
   try {
-    const { plan_name, billing_cycle = 'monthly', promo_code } = req.body;
+    const { plan_name, billing_cycle = 'monthly', promo_code, country } = req.body;
     if (!['monthly', 'annual'].includes(billing_cycle))
       return res.status(400).json(error('billing_cycle must be monthly or annual'));
 
@@ -204,18 +245,36 @@ exports.initiate = async (req, res, next) => {
       return res.status(400).json(error('Invalid plan for payment'));
 
     const { data: user } = await supabase
-      .from('users').select('email, name').eq('id', req.user.id).single();
+      .from('users').select('email, name, country').eq('id', req.user.id).single();
     if (!user?.email) {
       return res.status(400).json(error('User email is required to initiate payment'));
     }
 
-    const paystackPlanCode = getPaystackPlanCode(plan, billing_cycle);
-    if (!paystackPlanCode) {
-      return res.status(400).json(error(`Paystack plan code is not configured for the ${plan.name} ${billing_cycle} plan`));
+    const userCountry = country || user.country || 'NG';
+    const gw = getGatewayForCountry(userCountry);
+
+    // Get price in user's currency
+    let amountNGN;
+    const { data: localPrice } = await supabase
+      .from('currency_prices')
+      .select('amount_monthly, amount_annual')
+      .eq('plan_name', plan.name)
+      .eq('currency', gw.currency)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (localPrice) {
+      amountNGN = billing_cycle === 'annual' ? Number(localPrice.amount_annual) : Number(localPrice.amount_monthly);
+    } else {
+      // Fallback to NGN prices from plan table (used as base)
+      amountNGN = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
     }
 
-    const listPrice = roundMoney(billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly);
-    let basePrice = listPrice;
+    // For Paystack NG, use kobo. For others, use the local price directly.
+    const paystackPlanCode = gw.gateway === 'paystack' ? getPaystackPlanCode(plan, billing_cycle) : null;
+
+    let basePrice = amountNGN;
+    let listPrice = amountNGN;
     let discountApplied = 0;
     let promoId = null;
     let promoCodeValue = null;
@@ -240,10 +299,9 @@ exports.initiate = async (req, res, next) => {
     basePrice = Math.max(0, Number(basePrice) || 0);
     discountApplied = roundMoney(discountApplied);
     const discountedCharge = discountApplied > 0 && basePrice > 0;
-    const amountKobo = Math.round(basePrice * 100);
 
     // 100% promo discounts should activate directly without external payment.
-    if (amountKobo === 0) {
+    if (basePrice === 0 || (gw.gateway === 'paystack' && Math.round(basePrice * 100) === 0)) {
       const expiresAt = await activateSubscription(req.user.id, plan.id, billing_cycle);
 
       if (promoId) {
@@ -255,18 +313,17 @@ exports.initiate = async (req, res, next) => {
         amount: 0,
         grossAmount: listPrice,
         discountAmount: listPrice,
-        currency: 'NGN',
+        currency: gw.currency,
         reference: `PROMO-${promoId || 'FREE'}-${req.user.id}-${billing_cycle}`,
         description: `${plan.name} plan (${billing_cycle}) subscription via full promo`,
         planName: plan.name,
         billingCycle: billing_cycle,
         promoId,
-        paystackPlanCode,
+        gateway: gw.gateway,
         metadata: {
           plan_id: plan.id,
           plan_name: plan.name,
           billing_cycle,
-          paystack_plan_code: paystackPlanCode,
           promo_id: promoId,
           promo_code: promoCodeValue,
           gross_amount: listPrice,
@@ -290,18 +347,18 @@ exports.initiate = async (req, res, next) => {
       }));
     }
 
-    let paystackRes;
+    let paymentResult;
     try {
-      paystackRes = await initializePaystackTransaction({
+      paymentResult = await initializePayment({
         email: user.email,
-        amountKobo,
-        paystackPlanCode: discountedCharge ? null : paystackPlanCode,
+        amountNGN: basePrice,
+        country: userCountry,
         metadata: {
           user_id: req.user.id,
           plan_id: plan.id,
           plan_name: plan.name,
           billing_cycle,
-          paystack_plan_code: paystackPlanCode,
+          gateway: gw.gateway,
           promo_id: promoId,
           promo_code: promoCodeValue,
           discount_applied: discountApplied,
@@ -316,16 +373,23 @@ exports.initiate = async (req, res, next) => {
             { display_name: 'Billing', variable_name: 'billing', value: billing_cycle }
           ]
         },
-        callbackUrl: `${process.env.FRONTEND_URL}/subscription`
+        callbackUrl: `${process.env.FRONTEND_URL}/subscription`,
+        txPrefix: 'sub',
+        paystackPlanCode: discountedCharge ? null : paystackPlanCode
       });
-    } catch (paystackError) {
-      const providerMsg = paystackError?.response?.data?.message || paystackError.message;
+    } catch (payError) {
+      const providerMsg = payError?.response?.data?.message || payError?.response?.data?.msg || payError.message;
       return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
     }
 
+    // Update user's country/gateway preference
+    await supabase.from('users').update({ country: userCountry, preferred_gateway: gw.gateway }).eq('id', req.user.id);
+
     return res.json(success('Payment initiated', {
-      authorization_url: paystackRes.data.data.authorization_url,
-      reference: paystackRes.data.data.reference,
+      gateway: gw.gateway,
+      authorization_url: paymentResult.authorization_url,
+      reference: paymentResult.reference,
+      currency: gw.currency,
       amount: basePrice,
       list_price: listPrice,
       discount_applied: discountApplied,
@@ -838,6 +902,105 @@ exports.webhook = async (req, res, next) => {
     if (event === 'subscription.disable') {
       const email = data.customer?.email;
       if (email) await supabase.from('users').update({ subscription_status: 'inactive' }).eq('email', email);
+    }
+    return res.sendStatus(200);
+  } catch (err) { next(err); }
+};
+
+// ── Flutterwave webhook ────────────────────────────────────────
+exports.flutterwaveWebhook = async (req, res, next) => {
+  try {
+    const { verifyFlutterwaveSignature } = require('../services/paymentGateway');
+    const signature = req.headers['verif-hash'];
+    if (!verifyFlutterwaveSignature(req.body, signature))
+      return res.status(401).send('Invalid signature');
+
+    const { event, data } = req.body;
+    if (event === 'charge.completed' && data.status === 'successful') {
+      const meta = data.meta || {};
+      const txRef = data.tx_ref;
+      const flwTxId = data.id;
+
+      // Idempotency check
+      if (await hasBillingTransactionReference(txRef)) return res.sendStatus(200);
+
+      // Academy subscription
+      if (meta.product_type === 'academy_subscription' && meta.user_id) {
+        const billingCycle = meta.billing_cycle || 'weekly';
+        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
+
+        await supabase.from('academy_subscriptions').update({ status: 'expired' })
+          .eq('user_id', meta.user_id).eq('status', 'active');
+
+        await supabase.from('academy_subscriptions').insert({
+          user_id: meta.user_id, status: 'active', billing_cycle: billingCycle,
+          started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+          paystack_reference: txRef, gateway: 'flutterwave', gateway_tx_ref: txRef,
+          amount_paid: data.amount, currency: data.currency,
+          created_at: now.toISOString()
+        });
+
+        await recordBillingTransactionOnce({
+          userId: meta.user_id, amount: data.amount, currency: data.currency,
+          reference: txRef, description: `Academy subscription (${billingCycle}) via Flutterwave`,
+          gateway: 'flutterwave', metadata: { product_type: 'academy_subscription', billing_cycle: billingCycle, flw_tx_id: flwTxId }
+        });
+        return res.sendStatus(200);
+      }
+
+      // Exam prep subscription
+      if (meta.product_type === 'exam_prep_subscription' && meta.user_id) {
+        const billingCycle = meta.billing_cycle || 'weekly';
+        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
+
+        await supabase.from('exam_prep_subscriptions').update({ status: 'expired' })
+          .eq('user_id', meta.user_id).eq('status', 'active');
+
+        await supabase.from('exam_prep_subscriptions').insert({
+          user_id: meta.user_id, status: 'active', billing_cycle: billingCycle,
+          started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+          paystack_reference: txRef, gateway: 'flutterwave', gateway_tx_ref: txRef,
+          amount_paid: data.amount, currency: data.currency,
+          created_at: now.toISOString()
+        });
+
+        await recordBillingTransactionOnce({
+          userId: meta.user_id, amount: data.amount, currency: data.currency,
+          reference: txRef, description: `Exam prep subscription (${billingCycle}) via Flutterwave`,
+          gateway: 'flutterwave', metadata: { product_type: 'exam_prep_subscription', billing_cycle: billingCycle, flw_tx_id: flwTxId }
+        });
+        return res.sendStatus(200);
+      }
+
+      // Core platform subscription
+      if (meta.user_id && meta.plan_id) {
+        const billingCycle = meta.billing_cycle || 'monthly';
+        const plan = await resolveSubscriptionPlanById(meta.plan_id);
+
+        await activateSubscription(meta.user_id, meta.plan_id, billingCycle);
+        await recordBillingTransactionOnce({
+          userId: meta.user_id,
+          amount: data.amount,
+          currency: data.currency,
+          reference: txRef,
+          description: `${plan?.name || 'unknown'} plan (${billingCycle}) via Flutterwave`,
+          planName: plan?.name,
+          billingCycle,
+          gateway: 'flutterwave',
+          metadata: {
+            plan_id: meta.plan_id,
+            plan_name: plan?.name,
+            billing_cycle: billingCycle,
+            gateway: 'flutterwave',
+            flw_tx_id: flwTxId,
+            source: 'flutterwave_webhook'
+          }
+        });
+      }
     }
     return res.sendStatus(200);
   } catch (err) { next(err); }
