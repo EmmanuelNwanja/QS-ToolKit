@@ -23,8 +23,8 @@ export default function Document() {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="QSToolkit" />
 
-        {/* SEO — global fallback (per-page Head overrides these) */}
-        <meta name="description" content="QSToolkit — Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices, Project Tracking & AI-powered Dr. Q assistant for quantity surveyors." />
+        {/* SEO - global fallback (per-page Head overrides these) */}
+        <meta name="description" content="QSToolkit - Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices, Project Tracking & AI-powered Dr. Q assistant for quantity surveyors." />
         <meta name="keywords" content="quantity surveying, BOQ, bill of quantities, Nigeria, QS, construction, calculators, invoices, valuations, quotations, project tracking, Dr. Q, AI quantity surveying" />
         <meta name="author" content="Fudo Greentech Ltd." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -32,11 +32,11 @@ export default function Document() {
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="QSToolkit — Your Quantity Surveying Toolkit" />
+        <meta property="og:title" content="QSToolkit - Your Quantity Surveying Toolkit" />
         <meta property="og:description" content="Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices & Project Tracking. Start free." />
         <meta property="og:url" content={SITE_URL} />
         <meta property="og:image" content={`${SITE_URL}/og-image.svg`} />
-        <meta property="og:image:alt" content="QSToolkit — Nigeria's Quantity Surveying Platform" />
+        <meta property="og:image:alt" content="QSToolkit - Nigeria's Quantity Surveying Platform" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="QSToolkit" />
@@ -44,7 +44,7 @@ export default function Document() {
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="QSToolkit — Your Quantity Surveying Toolkit" />
+        <meta name="twitter:title" content="QSToolkit - Your Quantity Surveying Toolkit" />
         <meta name="twitter:description" content="Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices & Project Tracking." />
         <meta name="twitter:image" content={`${SITE_URL}/og-image.svg`} />
 

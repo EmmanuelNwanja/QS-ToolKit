@@ -74,18 +74,18 @@ export const PROJECT_TYPES = [
   'Other'
 ];
 
-// Calculator list config — 10+ calculators total
+// Calculator list config - 13 calculators total
 export const CALCULATORS = [
-  // ── Original 8 ──────────────────────────────────────────────────
+  // Original 8
   { id: 'concrete',         label: 'Concrete Volume',          icon: '🏗️', description: 'Slabs, columns, beams, footings',                category: 'Structural'   },
-  { id: 'masonry',          label: 'Blockwork & Masonry',      icon: '🧱', description: '6\", 9\" sandcrete blocks, mortar quantities',   category: 'Structural'   },
+  { id: 'masonry',          label: 'Blockwork & Masonry',      icon: '🧱', description: '6", 9" sandcrete blocks, mortar quantities',   category: 'Structural'   },
   { id: 'plastering',       label: 'Plastering & Rendering',   icon: '🖼️', description: 'Cement & sand for wall plaster',                 category: 'Finishes'     },
   { id: 'paint',            label: 'Paint Estimator',          icon: '🎨', description: 'Litres, tins (5L/4L/1L), primer coverage',       category: 'Finishes'     },
   { id: 'roofing',          label: 'Roofing Sheets',           icon: '🏠', description: 'Longspan aluminium sheet quantity',              category: 'Roof'         },
-  { id: 'steel',            label: 'Steel Reinforcement',      icon: '⚙️', description: 'Rebar weight 6mm–32mm (BS 4449)',                category: 'Structural'   },
+  { id: 'steel',            label: 'Steel Reinforcement',      icon: '⚙️', description: 'Rebar weight 6mm-32mm (BS 4449)',                category: 'Structural'   },
   { id: 'earthwork',        label: 'Earthwork & Excavation',   icon: '🚜', description: 'Cut volumes, bulking factors, truck loads',      category: 'Substructure' },
   { id: 'tiling',           label: 'Floor Tiling',             icon: '⬛', description: 'Tiles, boxes, grout bags',                      category: 'Finishes'     },
-  // ── New 5 ────────────────────────────────────────────────────────
+  // New 5
   { id: 'carpentry',        label: 'Carpentry & Roof Timbers', icon: '🪵', description: 'Wall plates, rafters, king posts, purlins, fascia', category: 'Roof'      },
   { id: 'formwork',         label: 'Formwork',                 icon: '📐', description: 'Soffits & sides: slabs, beams, columns, stairs', category: 'Structural'   },
   { id: 'roof-accessories', label: 'Roof Accessories',         icon: '🔩', description: 'Ridge capping, valley gutters, metal straps',    category: 'Roof'         },

@@ -263,16 +263,16 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>QSToolkit — Quantity Surveying Without the Software Headaches</title>
+        <title>QSToolkit - Quantity Surveying Without the Software Headaches</title>
         <meta name="description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator, project tracker & AI assistant. Free to start. Built for Nigerian construction standards." />
         <meta name="keywords" content="quantity surveying Nigeria, BOQ software, bill of quantities, QS calculators, construction invoices, project tracking, Nigerian QS professionals, quantity surveyor app" />
         <link rel="canonical" href="https://qs.solnuv.com" />
-        <meta property="og:title" content="QSToolkit — Quantity Surveying Without the Software Headaches" />
+        <meta property="og:title" content="QSToolkit - Quantity Surveying Without the Software Headaches" />
         <meta property="og:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker. Free to start." />
         <meta property="og:url" content="https://qs.solnuv.com" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="QSToolkit — Quantity Surveying Without the Software Headaches" />
+        <meta name="twitter:title" content="QSToolkit - Quantity Surveying Without the Software Headaches" />
         <meta name="twitter:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker." />
 
         {/* FAQ structured data */}

@@ -4,19 +4,18 @@ import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
 import AiChatWidget from './AiChatWidget';
+import GlobalSearch from './GlobalSearch';
 import { clsx } from 'clsx';
-
-const PARAMETRIC_FLAG = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PARAMETRIC_ENGINE_ENABLED === 'true';
 
 const NAV_ITEMS = [
   { href: '/dashboard',     icon: '📊', label: 'Dashboard' },
   { href: '/engine',        icon: '🤖', label: 'AI Engine' },
   { href: '/projects',      icon: '📁', label: 'Projects' },
   { href: '/calculators',   icon: '🧮', label: 'Calculators' },
-  { href: '/academy',       icon: '🎓', label: 'QS Academy' },
-  { href: '/exam-prep',     icon: '📝', label: 'Exam Prep' },
+  { href: '/academy',       icon: '🎓', label: 'QS Academy', comingSoon: true },
+  { href: '/exam-prep',     icon: '📝', label: 'Exam Prep', comingSoon: true },
   { href: '/qs-flow',       icon: '🚀', label: 'QS Flow' },
-  ...(PARAMETRIC_FLAG ? [{ href: '/parametric', icon: '🧠', label: 'Smart Parametric' }] : []),
+  { href: '/parametric',    icon: '🧠', label: 'Smart Parametric', comingSoon: true },
   { href: '/boq',           icon: '📋', label: 'Bill of Quantities' },
   { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes' },
   { href: '/feedback',      icon: '⭐', label: 'Client Feedback' },
@@ -101,7 +100,7 @@ export default function Layout({ children, title }) {
         />
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────────── */}
+      {/* Sidebar */}
       <aside className={clsx(
         'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -120,6 +119,24 @@ export default function Layout({ children, title }) {
             const allowedPlans = (item.plans || []).map(normalizePlan);
             const locked = item.plans && !allowedPlans.includes(currentPlan);
             const active = router.pathname.startsWith(item.href);
+            const comingSoon = item.comingSoon;
+
+            if (comingSoon) {
+              return (
+                <span
+                  key={item.href}
+                  className="nav-link opacity-50 cursor-not-allowed select-none"
+                  title="Coming soon"
+                >
+                  <span className="text-lg leading-none">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                  <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full uppercase">
+                    Soon
+                  </span>
+                </span>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
@@ -160,7 +177,7 @@ export default function Layout({ children, title }) {
         </div>
       </aside>
 
-      {/* ── Main content ──────────────────────────────────────── */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
@@ -179,13 +196,14 @@ export default function Layout({ children, title }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <GlobalSearch />
             {installPrompt && (
               <button
                 onClick={handleInstall}
                 className="hidden sm:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
                 title="Install QSToolkit as an app"
               >
-                ⬇ Install
+                Install
               </button>
             )}
             <NotificationBell />

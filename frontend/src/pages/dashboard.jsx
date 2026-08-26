@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-// import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
-import { projectAPI, leaderboardAPI, userAPI, academyAPI } from '../services/api';
+import { projectAPI, leaderboardAPI, userAPI } from '../services/api';
 import { formatNaira, formatCompact, CALCULATORS } from '../utils/helpers';
+
+const STAT_CONFIG = [
+  { key: 'total',     label: 'Total Projects',  color: 'bg-primary-600',  getValue: (s) => s?.total || 0 },
+  { key: 'active',    label: 'Active Projects',  color: 'bg-blue-500',     getValue: (s) => s?.active || 0 },
+  { key: 'completed', label: 'Completed',         color: 'bg-emerald-500',  getValue: (s) => s?.completed || 0 },
+  { key: 'value',     label: 'Total Value',       color: 'bg-gold-500',     getValue: (s) => formatCompact(s?.total_value || 0) },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -16,10 +22,8 @@ export default function DashboardPage() {
   const [rank, setRank]   = useState(null);
   const [usage, setUsage] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
-  const [pathwayProgress, setPathwayProgress] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Redirect admins to admin dashboard
   useEffect(() => {
     if (user && user.is_admin) {
       router.replace('/admin');
@@ -29,20 +33,16 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, projectsRes, rankRes, usageRes, academyRes] = await Promise.allSettled([
+        const [statsRes, projectsRes, rankRes, usageRes] = await Promise.allSettled([
           projectAPI.stats(),
           projectAPI.list({ limit: 5 }),
           leaderboardAPI.getMe(),
           userAPI.getUsage(),
-          academyAPI.getProgress().catch(() => null)
         ]);
         if (statsRes.status === 'fulfilled') setStats(statsRes.value.data.stats);
         if (projectsRes.status === 'fulfilled') setRecentProjects(projectsRes.value.data.projects || []);
         if (rankRes.status === 'fulfilled') setRank(rankRes.value.data.rank);
         if (usageRes.status === 'fulfilled') setUsage(usageRes.value.data);
-        if (academyRes.status === 'fulfilled' && academyRes.value?.data?.progress) {
-          setPathwayProgress(academyRes.value.data.progress);
-        }
       } catch {}
       finally { setLoading(false); }
     }
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Dashboard — QSToolkit</title></Head>
+      <Head><title>Dashboard | QSToolkit</title></Head>
       <Layout title="Dashboard">
         <div className="space-y-6 max-w-7xl">
 
@@ -63,7 +63,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-primary-300 text-sm">{greeting}</p>
               <h1 className="font-display text-2xl font-bold mt-1">
-                Welcome back, {user?.name?.split(' ')[0]} 👋
+                Welcome back, {user?.name?.split(' ')[0]}
               </h1>
               <p className="text-primary-200 text-sm mt-1 capitalize">
                 {user?.company_name || user?.university_name || 'QSToolkit Professional'} · {planName()} plan
@@ -73,25 +73,20 @@ export default function DashboardPage() {
               <div className="hidden md:flex flex-col items-center bg-white/10 rounded-xl px-6 py-4 text-center">
                 <span className="text-3xl font-bold font-display text-gold-400">#{rank.rank_by_rating}</span>
                 <span className="text-xs text-primary-200 mt-1">Leaderboard Rank</span>
-                <span className="text-sm text-white mt-0.5">⭐ {rank.avg_rating}/10</span>
+                <span className="text-sm text-white mt-0.5">{rank.avg_rating}/10</span>
               </div>
             )}
           </div>
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Projects',    value: stats?.total || 0,              icon: '📁', color: 'text-primary-700' },
-              { label: 'Active Projects',   value: stats?.active || 0,             icon: '🔄', color: 'text-blue-600' },
-              { label: 'Completed',         value: stats?.completed || 0,          icon: '✅', color: 'text-emerald-600' },
-              { label: 'Total Value',       value: formatCompact(stats?.total_value || 0), icon: '💰', color: 'text-gold-600' }
-            ].map(s => (
-              <div key={s.label} className="stat-card">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-2xl">{s.icon}</span>
+            {STAT_CONFIG.map(s => (
+              <div key={s.key} className="stat-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                  <span className="stat-label">{s.label}</span>
                 </div>
-                <p className={`stat-value ${s.color}`}>{loading ? '—' : s.value}</p>
-                <p className="stat-label">{s.label}</p>
+                <p className="stat-value">{loading ? '--' : s.getValue(stats)}</p>
               </div>
             ))}
           </div>
@@ -99,20 +94,20 @@ export default function DashboardPage() {
           {/* Usage meter */}
           {usage && (
             <div className="card">
-              <h2 className="section-title mb-4">📊 Monthly Usage</h2>
+              <h2 className="section-title mb-4">Monthly Usage</h2>
               <div className="grid md:grid-cols-2 gap-6">
                 {[
-                  { label: 'Calculator Uses', used: usage.calculator?.used_this_month, limit: usage.calculator?.limit, icon: '🧮' },
-                  { label: 'Projects Logged', used: usage.projects?.used,              limit: usage.projects?.limit,    icon: '📁' }
+                  { label: 'Calculator Uses', used: usage.calculator?.used_this_month, limit: usage.calculator?.limit },
+                  { label: 'Projects Logged', used: usage.projects?.used,              limit: usage.projects?.limit },
                 ].map(u => {
                   const pct = u.limit ? Math.min((u.used / u.limit) * 100, 100) : 0;
                   const unlimited = u.limit === null;
                   return (
                     <div key={u.label}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">{u.icon} {u.label}</span>
+                        <span className="text-sm font-medium text-gray-700">{u.label}</span>
                         <span className="text-sm text-gray-500">
-                          {u.used} / {unlimited ? '∞' : u.limit}
+                          {u.used} / {unlimited ? 'Unlimited' : u.limit}
                         </span>
                       </div>
                       {!unlimited && (
@@ -129,7 +124,7 @@ export default function DashboardPage() {
               </div>
               {!isProUser && (
                 <div className="mt-4 p-3 bg-gold-50 border border-gold-200 rounded-lg flex items-center justify-between">
-                  <p className="text-sm text-gold-800">⬆ Upgrade for more calculator uses, BOQs & invoices</p>
+                  <p className="text-sm text-gold-800">Upgrade for more calculator uses, BOQs & invoices</p>
                   <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5">Upgrade</Link>
                 </div>
               )}
@@ -140,8 +135,8 @@ export default function DashboardPage() {
             {/* Recent projects */}
             <div className="lg:col-span-3 card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">📁 Recent Projects</h2>
-                <Link href="/projects" className="text-sm text-primary-600 hover:underline">View all →</Link>
+                <h2 className="section-title">Recent Projects</h2>
+                <Link href="/projects" className="text-sm text-primary-600 hover:underline">View all</Link>
               </div>
               {loading ? (
                 <div className="space-y-3">
@@ -149,7 +144,6 @@ export default function DashboardPage() {
                 </div>
               ) : recentProjects.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
-                  <p className="text-3xl mb-2">📋</p>
                   <p className="text-sm">No projects yet</p>
                   <Link href="/projects/new" className="btn-primary text-sm mt-3 inline-flex">Add First Project</Link>
                 </div>
@@ -160,7 +154,7 @@ export default function DashboardPage() {
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-700">{p.title}</p>
-                        <p className="text-xs text-gray-500">{p.client_name || 'No client'} · {p.state || p.location || '—'}</p>
+                        <p className="text-xs text-gray-500">{p.client_name || 'No client'} · {p.state || p.location || '--'}</p>
                       </div>
                       <div className="flex items-center gap-3 ml-3">
                         <span className="text-xs font-medium text-gray-700">{formatNaira(p.estimated_value)}</span>
@@ -174,18 +168,16 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Right Sidebar: AI + Calculators */}
+            {/* Right Sidebar */}
             <div className="lg:col-span-2 space-y-4">
               {/* Dr. Q Assistant */}
               <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="section-title text-white">🤖 Dr. Q Assistant</h2>
-                </div>
+                <h2 className="section-title text-white mb-2">Dr. Q Assistant</h2>
                 <p className="text-sm text-primary-200 mb-4">
-                  Your AI Quantity Surveying expert. Ask about standards, calculations, or get help with BOQs.
+                  Ask about standards, calculations, or get help with BOQs.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {['How many blocks for 100m²?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
+                  {['How many blocks for 100m2?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
                     <button
                       key={q}
                       onClick={() => {
@@ -200,23 +192,27 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* AI Tools Quick Access */}
+              {/* Quick Tools */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Link href="/engine?tool=forecast" className="card hover:shadow-md transition-shadow border-l-4 border-l-purple-400 min-w-0">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl flex-shrink-0">🔮</span>
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-600 text-sm font-bold">$</span>
+                    </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-gray-900 text-sm truncate">Cost Forecasting</h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Predict overruns before they happen. Based on your project history.</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Predict overruns before they happen.</p>
                     </div>
                   </div>
                 </Link>
                 <Link href="/engine?tool=variance" className="card hover:shadow-md transition-shadow border-l-4 border-l-blue-400 min-w-0">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl flex-shrink-0">📊</span>
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-blue-600 text-sm font-bold">~</span>
+                    </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-gray-900 text-sm truncate">Variance Detection</h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Compare BOQ revisions and catch changes instantly.</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Compare BOQ revisions side-by-side.</p>
                     </div>
                   </div>
                 </Link>
@@ -225,8 +221,8 @@ export default function DashboardPage() {
               {/* Quick calculators */}
               <div className="card">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="section-title">🧮 Calculators</h2>
-                  <Link href="/calculators" className="text-sm text-primary-600 hover:underline">All →</Link>
+                  <h2 className="section-title">Calculators</h2>
+                  <Link href="/calculators" className="text-sm text-primary-600 hover:underline">All</Link>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {CALCULATORS.slice(0, 6).map(c => (
@@ -238,67 +234,9 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 <Link href="/calculators" className="btn-secondary w-full text-center mt-3 text-sm">
-                  View 10+ Calculators
+                  View All Calculators
                 </Link>
               </div>
-
-              {/* QS Academy */}
-              <Link href="/academy" className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <span className="text-xl">🎓</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">QS Academy</h3>
-                    <p className="text-xs text-gray-500">Learn & grow your career</p>
-                  </div>
-                </div>
-                {pathwayProgress.length > 0 ? (
-                  <div className="space-y-2">
-                    {pathwayProgress.slice(0, 2).map((p) => {
-                      const pct = p.progress_percent || 0;
-                      return (
-                        <div key={p.enrollment_id}>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600 truncate">{p.pathway?.title}</span>
-                            <span className="text-gray-400 ml-2 flex-shrink-0">{pct}%</span>
-                          </div>
-                          <div className="w-full bg-gray-100 rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full ${pct >= 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-primary-500' : 'bg-gold-500'}`}
-                              style={{ width: `${Math.min(pct, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">AI-powered learning pathways, knowledge arena & resource library.</p>
-                )}
-                <div className="mt-3 flex items-center gap-1 text-xs text-primary-700 font-medium">
-                  <span>{pathwayProgress.length > 0 ? 'Continue Learning' : 'Explore'}</span>
-                  <span>→</span>
-                </div>
-              </Link>
-
-              {/* Exam Prep */}
-              <Link href="/exam-prep" className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <span className="text-xl">📝</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">Exam Prep</h3>
-                    <p className="text-xs text-gray-500">Professional exam preparation</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
-                <div className="mt-3 flex items-center gap-1 text-xs text-primary-700 font-medium">
-                  <span>Start Preparing</span>
-                  <span>→</span>
-                </div>
-              </Link>
             </div>
           </div>
 
@@ -310,7 +248,7 @@ export default function DashboardPage() {
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning ☀️';
-  if (h < 17) return 'Good afternoon 🌤️';
-  return 'Good evening 🌙';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }

@@ -147,7 +147,7 @@ export default function EnginePage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>AI Engine — Dr. Q — QSToolkit</title></Head>
+      <Head><title>Engine | QSToolkit</title></Head>
       <Layout title="AI Engine">
         <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)] min-h-[500px]">
 
