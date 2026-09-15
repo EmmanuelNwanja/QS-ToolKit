@@ -150,17 +150,11 @@ self.addEventListener('fetch', (event) => {
   if (!url.protocol.startsWith('http')) return;
 
   // Skip Next.js build artifacts — Next.js manages these via HTTP cache headers.
-  // Caching them here causes stale chunk errors after new deployments.
   if (url.pathname.startsWith('/_next/')) return;
 
-  // HTML navigations: network-first only, no cache write to avoid stale authenticated pages.
+  // Always go network for HTML navigations — no cache
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cachedShell = await caches.match('/');
-        return cachedShell || offlineFallbackResponse();
-      })
-    );
+    event.respondWith(fetch(event.request));
     return;
   }
 
@@ -184,17 +178,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Other requests: network-first with cache fallback only (no cache write).
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => response)
-      .catch(async () => {
-        const cachedRequest = await caches.match(event.request);
-        if (cachedRequest) return cachedRequest;
-        const cachedShell = await caches.match('/');
-        return cachedShell || offlineFallbackResponse();
-      })
-  );
+  // Everything else: network only
+  event.respondWith(fetch(event.request));
 });
 
 // ── MESSAGE HANDLER (from main thread) ────────────────────

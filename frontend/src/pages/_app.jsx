@@ -35,6 +35,8 @@ export default function App({ Component, pageProps }) {
   // Register service worker and detect updates
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
+    // Skip service worker in dev mode to prevent reload loops
+    if (process.env.NEXT_PUBLIC_APP_VERSION === 'dev') return;
 
     let isMounted = true;
     let visibilityHandler = null;
@@ -97,6 +99,7 @@ export default function App({ Component, pageProps }) {
   // Initialize push notifications once the user is authenticated
   useEffect(() => {
     if (!user?.id) return;
+    if (process.env.NEXT_PUBLIC_APP_VERSION === 'dev') return;
     pushNotificationService.init().then((ok) => {
       if (ok && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         pushNotificationService.subscribe().catch(() => {});

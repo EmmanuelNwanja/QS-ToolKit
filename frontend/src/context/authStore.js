@@ -1,6 +1,20 @@
 import { create } from 'zustand';
 import { authAPI } from '../services/api';
 
+const DEV_USER = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'dev@qstoolkit.local',
+  name: 'Dev User',
+  user_type: 'professional',
+  org_role: 'super_admin',
+  subscription_status: 'active',
+  subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+  subscription_plans: { name: 'enterprise' },
+  onboarding_completed: true,
+  account_status: 'active',
+};
+const IS_DEV = process.env.NEXT_PUBLIC_APP_VERSION === 'dev';
+
 const useAuthStore = create((set, get) => ({
   user:        null,
   token:       null,
@@ -10,6 +24,15 @@ const useAuthStore = create((set, get) => ({
   // ── Initialize from localStorage ─────────────────────────
   init: async () => {
     if (typeof window === 'undefined') return;
+
+    // Dev mode: skip auth entirely, inject mock user
+    if (IS_DEV) {
+      localStorage.setItem('qst_token', 'dev-token');
+      localStorage.setItem('qst_user', JSON.stringify(DEV_USER));
+      set({ user: DEV_USER, token: 'dev-token', loading: false, initialized: true });
+      return;
+    }
+
     const token = localStorage.getItem('qst_token');
     const cached = localStorage.getItem('qst_user');
 
