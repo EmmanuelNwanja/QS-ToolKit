@@ -176,9 +176,6 @@ export default function SubscriptionPage() {
     if (planId === 'free') return;
     setPendingPlan(planId);
     setPaymentMethod(null);
-    setTransferRef('');
-    setTransferFile(null);
-    setTransferDone(false);
     setShowPaymentModal(true);
   }
 
@@ -494,7 +491,7 @@ export default function SubscriptionPage() {
                 <p className="text-sm text-gray-500 mb-3">AI-powered learning pathways, knowledge arena & resource library.</p>
                 <button
                   onClick={() => handleAddOnSubscribe('academy')}
-                  disabled={!!addOnPaying}
+                  disabled={addOnPaying === 'academy'}
                   className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
                 >
                   {addOnPaying === 'academy' ? 'Redirecting...' : 'Subscribe'}
@@ -528,7 +525,7 @@ export default function SubscriptionPage() {
                 <p className="text-sm text-gray-500 mb-3">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
                 <button
                   onClick={() => handleAddOnSubscribe('exam_prep')}
-                  disabled={!!addOnPaying}
+                  disabled={addOnPaying === 'exam_prep'}
                   className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
                 >
                   {addOnPaying === 'exam_prep' ? 'Redirecting...' : 'Subscribe'}

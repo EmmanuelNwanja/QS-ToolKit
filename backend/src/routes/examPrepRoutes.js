@@ -13,7 +13,7 @@ router.get('/status', ctrl.getStatus);
 router.get('/bank-transfer-settings', ctrl.getBankTransferSettings);
 router.post('/subscribe', paymentLimiter, [
   body('email').optional().isEmail().normalizeEmail(),
-  body('payment_method').optional().isIn(['paystack', 'flutterwave', 'bank_transfer']).withMessage('Invalid payment_method'),
+  body('payment_method').optional().isIn(['paystack', 'flutterwave', 'bank_transfer', 'card']).withMessage('Invalid payment_method'),
   validate
 ], ctrl.subscribe);
 
