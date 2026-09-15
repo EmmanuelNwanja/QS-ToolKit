@@ -81,7 +81,7 @@ exports.processRefund = async (userId, subscriptionId, refundData) => {
     const { data: originalTransaction, error: txError } = await supabase
       .from('billing_transactions')
       .select('*')
-      .eq('paystack_reference', originalTransactionReference)
+      .eq('payment_reference', originalTransactionReference)
       .single();
 
     if (txError || !originalTransaction) {
@@ -123,7 +123,7 @@ exports.processRefund = async (userId, subscriptionId, refundData) => {
         currency: originalTransaction?.currency || 'NGN',
         type: 'refund',
         status: 'completed',
-        paystack_reference: paystackRefundId,
+        payment_reference: paystackRefundId,
         description: `Refund: ${reason}`,
         metadata: {
           original_transaction_reference: originalTransactionReference,

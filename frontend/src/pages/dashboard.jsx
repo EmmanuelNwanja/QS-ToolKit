@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && user.is_admin) {
+    if (process.env.NEXT_PUBLIC_APP_VERSION !== 'dev' && user && user.is_admin) {
       router.replace('/admin');
     }
   }, [user?.id, router]);
@@ -217,6 +217,22 @@ export default function DashboardPage() {
                   </div>
                 </Link>
               </div>
+
+              {/* QS Research */}
+              <Link href="/research" className="card hover:shadow-md transition-all border-l-4 border-l-indigo-500 group">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-600 text-sm font-bold">📚</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700">QS Research</h3>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">10-stage research pipeline, literature sources, cost data analysis.</p>
+                    <span className="text-xs font-semibold text-indigo-600 group-hover:text-indigo-700 flex items-center gap-1 mt-2">
+                      Open Research <span>&rarr;</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
 
               {/* Quick calculators */}
               <div className="card">

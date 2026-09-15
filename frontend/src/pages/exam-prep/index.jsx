@@ -129,23 +129,45 @@ export default function ExamPrepDashboard() {
           </div>
 
           {/* Quick access cards */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.1 }}>
+              <Link href="/exam-prep/interactive" className="card hover:shadow-card-md hover:border-purple-200 transition-all group block border-l-4 border-l-purple-500">
+                <div className="text-3xl mb-3">🎯</div>
+                <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Interactive Practice</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">Answer-by-answer mode with instant feedback. Difficulty adapts to your level.</p>
+                <div className="mt-3 text-xs font-semibold text-purple-600 group-hover:text-purple-700 flex items-center gap-1">
+                  Start Practice <span>&rarr;</span>
+                </div>
+              </Link>
+            </motion.div>
+
+            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.15 }}>
+              <Link href="/exam-prep/analytics" className="card hover:shadow-card-md hover:border-green-200 transition-all group block border-l-4 border-l-green-500">
+                <div className="text-3xl mb-3">📊</div>
+                <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Analytics Dashboard</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">Score trends, topic breakdown, weakness heatmap, pass probability.</p>
+                <div className="mt-3 text-xs font-semibold text-green-600 group-hover:text-green-700 flex items-center gap-1">
+                  View Analytics <span>&rarr;</span>
+                </div>
+              </Link>
+            </motion.div>
+
+            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.2 }}>
               <Link href="/exam-prep/professional" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
                 <div className="text-3xl mb-3">🏗️</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Professional Exams</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">Nigerian (NIQS, QSRBN) &amp; International (RICS, CIOB, PMP, PRINCE2) professional certification prep.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Nigerian (NIQS, QSRBN) &amp; International (RICS, CIOB, PMP) certification prep.</p>
                 <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
                   Browse Exams <span>&rarr;</span>
                 </div>
               </Link>
             </motion.div>
 
-            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.2 }}>
+            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.25 }}>
               <Link href="/exam-prep/students" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
                 <div className="text-3xl mb-3">🎓</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Student Exams</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">University past questions from 25 Nigerian universities. Browse by course and year.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">University past questions from 25 Nigerian universities.</p>
                 <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
                   Browse Universities <span>&rarr;</span>
                 </div>
@@ -154,20 +176,20 @@ export default function ExamPrepDashboard() {
 
             <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
               <Link href="/exam-prep/practice" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
-                <div className="text-3xl mb-3">🎯</div>
-                <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Practice Exam</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">AI-powered personalized practice targeting your weak areas.</p>
+                <div className="text-3xl mb-3">🤖</div>
+                <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">AI Practice Exam</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">AI generates personalized questions targeting your weak areas.</p>
                 <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
-                  Start Practice <span>&rarr;</span>
+                  Generate Exam <span>&rarr;</span>
                 </div>
               </Link>
             </motion.div>
 
-            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
+            <motion.div variants={card} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
               <Link href="/exam-prep/results" className="card hover:shadow-card-md hover:border-primary-200 transition-all group block">
-                <div className="text-3xl mb-3">📊</div>
+                <div className="text-3xl mb-3">📋</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">My Results</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">View detailed results, score trends, and identify weak areas to improve.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Detailed results, score trends, and improvement tracking.</p>
                 <div className="mt-3 text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center gap-1">
                   View Results <span>&rarr;</span>
                 </div>

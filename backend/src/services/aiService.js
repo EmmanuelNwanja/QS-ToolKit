@@ -1339,8 +1339,240 @@ exports.healthCheck = async () => {
   return checks;
 };
 
+// ─── Academy AI Lesson Generation ────────────────────────────
+async function generateAcademyLesson(pathway, moduleTitle, topic, difficulty = 'intermediate') {
+  const prompt = `You are Dr. Q, generating a structured lesson for Nigerian Quantity Surveying students.
+
+Pathway: ${pathway.title} (${pathway.focus_area || 'QS Practice'})
+Module: ${moduleTitle}
+Topic: ${topic}
+Difficulty: ${difficulty}
+
+Generate a complete lesson with:
+1. Learning objectives (3-5 specific, measurable objectives)
+2. Core content in 3-5 sections with headings, detailed explanations, and Nigerian QS examples
+3. Use Nigerian context: ₦ currency, local materials (Dangote cement, local sand/gravel), SMM7/NRM2 references, NIQS standards
+4. Practice questions (3-5 MCQ with 4 options each, correct answer, and explanation)
+5. Key takeaways (3-5 bullet points)
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "objectives": ["Objective 1", "Objective 2"],
+  "sections": [
+    { "heading": "Section Title", "body": "Detailed content with examples...", "examples": ["Example 1 with Nigerian QS context"] }
+  ],
+  "practice_questions": [
+    { "question": "Question text?", "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"], "correct": "B", "explanation": "Why B is correct..." }
+  ],
+  "takeaways": ["Key takeaway 1", "Key takeaway 2"],
+  "estimated_minutes": 15
+}`;
+
+  try {
+    const raw = await callAI(prompt, { temperature: 0.4, maxTokens: 4000 });
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    logger.warn('AI lesson generation failed, using fallback:', err.message);
+    return {
+      objectives: [
+        `Understand the fundamentals of ${topic}`,
+        `Apply ${topic} concepts to Nigerian QS practice`,
+        `Identify key considerations for ${topic} in construction projects`
+      ],
+      sections: [
+        {
+          heading: `Introduction to ${topic}`,
+          body: `This lesson covers the essential aspects of ${topic} as it relates to Quantity Surveying in Nigeria. ${topic} is a critical skill for QS professionals working on construction projects across the country.`,
+          examples: [`In a typical Lagos commercial project, ${topic} plays a key role in cost estimation and project delivery.`]
+        },
+        {
+          heading: `Practical Application`,
+          body: `When applying ${topic} in Nigerian construction, consider local factors such as material availability, labor costs, and regional pricing variations. The QS must account for these in all estimates and valuations.`,
+          examples: [`For a residential project in Abuja, the QS would apply ${topic} principles using current Dangote cement rates and local aggregate pricing.`]
+        }
+      ],
+      practice_questions: [
+        {
+          question: `Which of the following is most relevant to ${topic} in Nigerian QS practice?`,
+          options: ['A. Using international rates directly', 'B. Adapting to local market conditions', 'C. Ignoring regional variations', 'D. Following only NRM2 without local adaptation'],
+          correct: 'B',
+          explanation: 'Nigerian QS practice requires adapting international standards to local market conditions for accurate cost estimation.'
+        }
+      ],
+      takeaways: [
+        `${topic} is essential for accurate QS cost estimation`,
+        'Always adapt international standards to Nigerian market conditions',
+        'Consider regional material and labor cost variations'
+      ],
+      estimated_minutes: 15
+    };
+  }
+}
+
+// ─── Academy Simulation Generation ───────────────────────────
+async function generateSimulation(type, pathway, difficulty = 'medium') {
+  const prompts = {
+    boq_scenario: `Generate a Bill of Quantities (BOQ) scenario for a Nigerian construction project.
+
+Project type: ${pathway.title}
+Difficulty: ${difficulty}
+
+Create a realistic BOQ with 8-12 line items covering different trade categories (substructure, superstructure, finishes, MEP). Include Nigerian-specific materials and current approximate rates.
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "project_type": "Residential/Commercial/Industrial",
+  "project_description": "Brief description of the project",
+  "items": [
+    { "id": 1, "name": "Item name", "unit": "no|m2|m3|kg|lot", "quantity": 100, "rate_ngn": 5000, "category": "Substructure|Superstructure|Finishes|MEP" }
+  ],
+  "budget_range_ngn": { "min": 5000000, "max": 15000000 },
+  "scoring": { "total_marks": 100, "criteria": "Accuracy of measurement and rate application" }
+}`,
+
+    rate_analysis: `Generate a rate analysis exercise for Nigerian Quantity Surveying.
+
+Difficulty: ${difficulty}
+
+Create a detailed rate analysis for a common Nigerian construction item. Include material breakdown, labor rates, overheads, and profit margins per NRM2/SMM7 standards.
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "item_description": "Description of the construction item",
+  "unit": "m2|m3|no|lot",
+  "materials": [
+    { "name": "Material name", "unit": "kg|bag|piece|m|m2", "quantity": 10, "rate_ngn": 500 }
+  ],
+  "labor": [
+    { "role": "Skilled/Unskilled laborer", "hours": 4, "rate_per_hour_ngn": 250 }
+  ],
+  "plant": [
+    { "name": "Equipment name", "hours": 2, "rate_per_hour_ngn": 1500 }
+  ],
+  "overhead_pct": 15,
+  "profit_pct": 10,
+  "factors": ["Location-specific", "Market volatility", "Seasonal considerations"]
+}`,
+
+    measurement_takeoff: `Generate a measurement takeoff exercise for Nigerian QS students.
+
+Difficulty: ${difficulty}
+
+Create a set of building elements for measurement takeoff from a described floor plan.
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "elements": [
+    { "id": 1, "name": "Element name", "description": "Description with dimensions", "dimension": "L x W x H in meters", "unit": "m2|m3|m|no", "standard": "NRM2 SMM7" }
+  ],
+  "total_elements": 8,
+  "marking_criteria": "Accuracy of dimensions, correct unit selection, adherence to NRM2 rules"
+}`,
+
+    cost_plan: `Generate a cost plan exercise for a Nigerian construction project.
+
+Difficulty: ${difficulty}
+
+Create elemental cost plan with percentage splits based on typical Nigerian building costs.
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "building_type": "Residential|Commercial|Industrial",
+  "area_m2": 500,
+  "location": "Lagos|Abuja|Port Harcourt",
+  "total_estimated_cost_ngn": 75000000,
+  "elements": [
+    { "name": "Substructure", "pct": 8, "estimated_cost_ngn": 6000000 },
+    { "name": "Superstructure", "pct": 25, "estimated_cost_ngn": 18750000 }
+  ],
+  "preliminaries_pct": 15,
+  "contingency_pct": 5,
+  "notes": "Based on current Nigerian market rates for Q3 2026"
+}`
+  };
+
+  const prompt = prompts[type] || prompts.boq_scenario;
+
+  try {
+    const raw = await callAI(prompt, { temperature: 0.4, maxTokens: 3000 });
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    logger.warn('AI simulation generation failed, using fallback:', err.message);
+    return {
+      project_type: 'Residential',
+      project_description: 'A standard 3-bedroom residential bungalow in Lagos',
+      items: [
+        { id: 1, name: 'Excavation for foundations', unit: 'm3', quantity: 45, rate_ngn: 3500, category: 'Substructure' },
+        { id: 2, name: 'Plain concrete foundation', unit: 'm3', quantity: 12, rate_ngn: 65000, category: 'Substructure' },
+        { id: 3, name: 'Reinforced concrete columns', unit: 'm3', quantity: 8, rate_ngn: 185000, category: 'Superstructure' },
+        { id: 4, name: 'Sandcrete blockwork (150mm)', unit: 'm2', quantity: 280, rate_ngn: 4500, category: 'Superstructure' },
+        { id: 5, name: 'Floor tiling', unit: 'm2', quantity: 120, rate_ngn: 5500, category: 'Finishes' },
+        { id: 6, name: 'Internal painting', unit: 'm2', quantity: 350, rate_ngn: 2800, category: 'Finishes' },
+        { id: 7, name: 'Electrical wiring (1st fix)', unit: 'lot', quantity: 1, rate_ngn: 850000, category: 'MEP' },
+        { id: 8, name: 'Plumbing (1st fix)', unit: 'lot', quantity: 1, rate_ngn: 650000, category: 'MEP' }
+      ],
+      budget_range_ngn: { min: 35000000, max: 55000000 },
+      scoring: { total_marks: 100, criteria: 'Accuracy of measurement and rate application' }
+    };
+  }
+}
+
 // Expose raw Gemini for advanced use
 exports.callGemini = callGemini;
 exports.callAI = callAI;
 exports.buildUserContext = buildUserContext;
+exports.generateAcademyLesson = generateAcademyLesson;
+exports.generateSimulation = generateSimulation;
+
+// ─── Exam Prep AI Question Generation ────────────────────────
+async function generateExamQuestions(examCategory, examName, topic, difficulty = 'medium', count = 10) {
+  const prompt = `You are Dr. Q, generating exam practice questions for Nigerian Quantity Surveying students.
+
+Exam Category: ${examCategory}
+Exam: ${examName}
+Topic: ${topic}
+Difficulty: ${difficulty}
+Number of questions: ${count}
+
+Generate ${count} exam-quality MCQ questions with 4 options each (A, B, C, D). Questions should be contextually relevant to Nigerian QS practice, referencing local standards (SMM7, NRM2, NIQS), Nigerian building costs in ₦, and local construction practices.
+
+Output ONLY valid JSON (no markdown fences):
+{
+  "questions": [
+    {
+      "question": "Question text?",
+      "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
+      "correct": "B",
+      "explanation": "Detailed explanation of why B is correct...",
+      "topic": "${topic}",
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`;
+
+  try {
+    const raw = await callAI(prompt, { temperature: 0.4, maxTokens: 4000 });
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    logger.warn('AI exam question generation failed:', err.message);
+    return {
+      questions: Array.from({ length: Math.min(count, 5) }, (_, i) => ({
+        question: `Question ${i + 1} about ${topic} in Nigerian QS practice?`,
+        options: [
+          'A. Apply international standards directly',
+          'B. Adapt to Nigerian market conditions and standards',
+          'C. Ignore local variations',
+          'D. Follow only foreign guidelines'
+        ],
+        correct: 'B',
+        explanation: 'Nigerian QS practice requires adapting international standards to local market conditions.',
+        topic,
+        difficulty
+      }))
+    };
+  }
+}
 exports.SYSTEM_PROMPTS = SYSTEM_PROMPTS;

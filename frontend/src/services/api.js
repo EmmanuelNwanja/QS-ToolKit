@@ -171,11 +171,12 @@ export const subscriptionAPI = {
   getMy:                ()                         => api.get('/subscriptions/my'),
   getGatewayStatus:     ()                         => api.get('/subscriptions/gateway-status'),
   initiate:             (plan, billing, promoCode) => api.post('/subscriptions/initiate', { plan_name: plan, billing_cycle: billing, promo_code: promoCode }),
-  verify:               (ref)                      => api.get(`/subscriptions/verify?reference=${ref}`),
+  verify:               (ref, gateway)             => api.get(`/subscriptions/verify?reference=${ref}${gateway ? `&gateway=${gateway}` : ''}`),
   validatePromo:        (code, plan_name)          => api.post('/subscriptions/validate-promo', { code, plan_name }),
   initiatePhilanthropist: (form, plan_name, billing_cycle) => api.post('/subscriptions/philanthropist', { ...form, plan_name, billing_cycle }),
   cancel:               ()                         => api.post('/subscriptions/cancel'),
   renew:                (billing_cycle)            => api.post('/subscriptions/renew', { billing_cycle }),
+  changePlan:           (new_plan_name, billing_cycle) => api.post('/subscriptions/change-plan', { new_plan_name, billing_cycle }),
   setAutoRenew:         (enabled)                  => api.patch('/subscriptions/auto-renew', { enabled }),
   getBankTransferSettings: ()                    => api.get('/subscriptions/bank-transfer/settings'),
   submitBankTransfer:   (formData)                => api.post('/subscriptions/direct/submit-payment', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
@@ -307,6 +308,20 @@ export const academyAPI = {
   getContestResults: (id)                     => api.get(`/academy/contests/${id}/results`),
   getTokens:        ()                        => api.get('/academy/tokens'),
   getAnalytics:     ()                        => api.get('/academy/analytics'),
+  // Lessons
+  generateLesson:   (data)                    => api.post('/academy/lessons/generate', data),
+  getLessons:        (params)                  => api.get('/academy/lessons', { params }),
+  getLesson:         (id)                      => api.get(`/academy/lessons/${id}`),
+  completeLesson:    (id, data)                => api.post(`/academy/lessons/${id}/complete`, data),
+  getLessonProgress: ()                        => api.get('/academy/lessons/progress'),
+  // Simulations
+  generateSimulation: (data)                   => api.post('/academy/simulations/generate', data),
+  getSimulations:    (params)                  => api.get('/academy/simulations', { params }),
+  startSimulation:   (id)                      => api.post(`/academy/simulations/${id}/start`),
+  submitSimulation:  (id, data)                => api.post(`/academy/simulations/${id}/submit`, data),
+  // Whiteboard
+  saveWhiteboard:    (data)                    => api.post('/academy/whiteboard/save', data),
+  getWhiteboard:     (lessonId)                => api.get(`/academy/whiteboard/${lessonId}`),
 };
 
 // ─── QS Exam Prep ─────────────────────────────────────────────
@@ -328,6 +343,16 @@ export const examAPI = {
   logSearch:          (data)                  => api.post('/exam-prep/search/log', data),
   explainQuestion:    (id, data)              => api.post(`/exam-prep/exams/${id}/explain`, data),
   generatePractice:   (data)                  => api.post('/exam-prep/practice/generate', data),
+  // AI Exam Generation
+  generateAIQuestions: (data)                 => api.post('/exam-prep/practice/generate-ai', data),
+  // Adaptive Difficulty
+  getDifficultyProfile: (params)             => api.get('/exam-prep/difficulty', { params }),
+  // Interactive Mode
+  startInteractive:   (data)                  => api.post('/exam-prep/interactive/start', data),
+  submitAnswer:       (data)                  => api.post('/exam-prep/interactive/submit-answer', data),
+  // Analytics
+  getAnalytics:       (params)                => api.get('/exam-prep/analytics', { params }),
+  getWeaknesses:      ()                      => api.get('/exam-prep/analytics/weaknesses'),
 };
 
 // ─── Utilities ─────────────────────────────────────────────────
@@ -338,6 +363,42 @@ export const downloadBlob = (blob, filename) => {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+};
+
+// ── QS Research Module ──────────────────────────────────────
+
+export const researchAPI = {
+  // Projects
+  getProjects: (status) => api.get('/research/projects', { params: { status } }),
+  getProject: (id) => api.get(`/research/projects/${id}`),
+  createProject: (data) => api.post('/research/projects', data),
+  updateProject: (id, data) => api.put(`/research/projects/${id}`, data),
+  deleteProject: (id) => api.delete(`/research/projects/${id}`),
+
+  // Stages
+  advanceStage: (id) => api.post(`/research/projects/${id}/advance`),
+  updateStageData: (id, stage_num, data) => api.post(`/research/projects/${id}/stage`, { stage_num, data }),
+  aiAssist: (id, stage_num, prompt) => api.post(`/research/projects/${id}/ai-assist`, { stage_num, prompt }),
+
+  // Sources
+  getSources: (params) => api.get('/research/sources', { params }),
+  addSource: (data) => api.post('/research/sources', data),
+
+  // Cost Data
+  getCostData: (params) => api.get('/research/cost-data', { params }),
+  addCostData: (data) => api.post('/research/cost-data', data),
+  getCostAggregate: (item) => api.get('/research/cost-data/aggregate', { params: { item } }),
+
+  // Templates
+  getTemplates: () => api.get('/research/templates'),
+
+  // Collaborations
+  inviteCollaborator: (id, data) => api.post(`/research/projects/${id}/collaborate`, data),
+
+  // Subscription
+  getSubscriptionStatus: () => api.get('/research/subscription/status'),
+  subscribe: (data) => api.post('/research/subscription/subscribe', data),
+  cancelSubscription: () => api.post('/research/subscription/cancel'),
 };
 
 export default api;

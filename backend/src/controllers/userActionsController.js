@@ -1043,7 +1043,7 @@ exports.processRefund = async (req, res, next) => {
         amount,
         reason,
         method,
-        originalTransactionReference: originalTx.paystack_reference
+        originalTransactionReference: originalTx.payment_reference
       }
     );
 
@@ -1133,7 +1133,7 @@ exports.processRefundByUser = async (req, res, next) => {
     const refundTx = await billingAuditService.processRefund(
       userId,
       subscription.id,
-      { amount, reason, method, originalTransactionReference: originalTx.paystack_reference }
+      { amount, reason, method, originalTransactionReference: originalTx.payment_reference }
     );
 
     // Send notification email

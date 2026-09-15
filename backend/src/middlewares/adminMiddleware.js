@@ -27,7 +27,17 @@ function getEffectivePermissions(adminUser = {}) {
  * Middleware to verify admin access
  * Checks if user is a platform admin (not org admin)
  */
+const DEV_ADMIN = { id: 'dev-admin', user_id: '00000000-0000-0000-0000-000000000001', admin_role: 'super_admin', permissions: ['*'] };
+
 const adminAuth = async (req, res, next) => {
+  // Dev mode bypass
+  if (process.env.NODE_ENV === 'development') {
+    req.adminUser = { ...DEV_ADMIN };
+    req.isAdmin = true;
+    req.isSuperAdmin = true;
+    return next();
+  }
+
   try {
     const userId = req.user?.id;
 
@@ -67,6 +77,7 @@ const adminAuth = async (req, res, next) => {
  * Middleware to verify super admin access
  */
 const superAdminAuth = async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     // First check if user is admin
     if (!req.isAdmin) {
@@ -91,6 +102,8 @@ const superAdminAuth = async (req, res, next) => {
  */
 const requirePermission = (requiredPermissions) => {
   return (req, res, next) => {
+    if (process.env.NODE_ENV === 'development') return next();
+
     if (!req.isAdmin) {
       return res.status(403).json(error('Admin access required'));
     }

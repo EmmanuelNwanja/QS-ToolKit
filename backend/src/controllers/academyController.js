@@ -1,24 +1,9 @@
-const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 const paymentSettingsController = require('./paymentSettingsController');
-
-const PAYSTACK_BASE = 'https://api.paystack.co';
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-  'Content-Type': 'application/json'
-});
-
-const ACADEMY_WEEKLY_AMOUNT = 200000; // ₦2,000 in kobo
-const ACADEMY_MONTHLY_AMOUNT = 760000; // ₦7,600 in kobo (5% discount on 4 weeks)
-const ACADEMY_ANNUAL_AMOUNT = 9360000; // ₦93,600 in kobo (10% discount on 52 weeks)
-
-const ACADEMY_BILLING_AMOUNTS = {
-  weekly: ACADEMY_WEEKLY_AMOUNT,
-  monthly: ACADEMY_MONTHLY_AMOUNT,
-  annual: ACADEMY_ANNUAL_AMOUNT,
-};
+const { initializePayment } = require('../services/paymentGateway');
+const { generateAcademyLesson, generateSimulation } = require('../services/aiService');
 
 const ACADEMY_BILLING_NGN = {
   weekly: 2000,
@@ -91,12 +76,11 @@ exports.getStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Subscribe (Paystack or Bank Transfer) ────────────────────
+// ─── Subscribe ──────────────────────────────────────────────
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email, payment_method, billing_cycle = 'weekly' } = req.body;
-    const cycleAmount = ACADEMY_BILLING_AMOUNTS[billing_cycle] || ACADEMY_WEEKLY_AMOUNT;
+    const { payment_method, billing_cycle = 'weekly' } = req.body;
     const cycleAmountNgn = ACADEMY_BILLING_NGN[billing_cycle] || 2000;
 
     // Check if already has active subscription
@@ -136,15 +120,17 @@ exports.subscribe = async (req, res, next) => {
       }));
     }
 
-    // Paystack path (default)
-    if (!email) return res.status(400).json(error('Email is required'));
+    // Online payment (routes to Flutterwave or Paystack based on country)
+    const { data: user } = await supabase.from('users').select('email, country').eq('id', req.user.id).single();
+    if (!user?.email) return res.status(400).json(error('User email is required'));
 
-    let paystackRes;
+    const userCountry = user.country || 'NG';
+    let paymentResult;
     try {
-      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
-        email,
-        amount: cycleAmount,
-        currency: 'NGN',
+      paymentResult = await initializePayment({
+        email: user.email,
+        amountNGN: cycleAmountNgn,
+        country: userCountry,
         metadata: {
           user_id: req.user.id,
           product_type: 'academy_subscription',
@@ -153,16 +139,18 @@ exports.subscribe = async (req, res, next) => {
             { display_name: 'Product', variable_name: 'product', value: `QS Academy ${billing_cycle}` }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/academy`
-      }, { headers: paystackHeaders() });
-    } catch (paystackErr) {
-      const providerMsg = paystackErr?.response?.data?.message || paystackErr.message;
+        callbackUrl: `${process.env.FRONTEND_URL}/academy`,
+        txPrefix: 'academy'
+      });
+    } catch (payErr) {
+      const providerMsg = payErr?.response?.data?.message || payErr?.response?.data?.msg || payErr.message;
       return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
     }
 
     return res.json(success('Payment initiated', {
-      authorization_url: paystackRes.data.data.authorization_url,
-      reference: paystackRes.data.data.reference,
+      gateway: paymentResult.gateway,
+      authorization_url: paymentResult.authorization_url,
+      reference: paymentResult.reference,
       amount: cycleAmountNgn,
       billing_cycle
     }));
@@ -1661,3 +1649,258 @@ function generateFallbackAdmissionQuestions(weaknesses = []) {
 
   return allQuestions.slice(0, 7);
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  AI LESSONS
+// ═══════════════════════════════════════════════════════════════
+
+exports.generateLesson = async (req, res, next) => {
+  try {
+    const { pathway_id, module_id, topic, difficulty } = req.body;
+    if (!pathway_id || !module_id || !topic) {
+      return res.status(400).json(error('pathway_id, module_id, and topic are required'));
+    }
+
+    const { data: pathway } = await supabase.from('academy_pathways').select('id, title, focus_area').eq('id', pathway_id).single();
+    if (!pathway) return res.status(404).json(error('Pathway not found'));
+
+    const lessonContent = await generateAcademyLesson(pathway, module_id, topic, difficulty || 'intermediate');
+
+    const { data: lesson, err } = await supabase.from('academy_lessons').insert({
+      pathway_id,
+      module_id,
+      title: topic,
+      content: lessonContent,
+      lesson_type: 'ai_generated',
+      difficulty: difficulty || 'intermediate',
+      estimated_minutes: lessonContent.estimated_minutes || 15,
+      is_published: true
+    }).select('*').single();
+
+    if (err) throw err;
+
+    return res.status(201).json(success('Lesson generated', lesson));
+  } catch (err) { next(err); }
+};
+
+exports.getLessons = async (req, res, next) => {
+  try {
+    const { pathway_id, module_id, difficulty } = req.query;
+    let q = supabase.from('academy_lessons').select('*').eq('is_published', true);
+    if (pathway_id) q = q.eq('pathway_id', pathway_id);
+    if (module_id) q = q.eq('module_id', module_id);
+    if (difficulty) q = q.eq('difficulty', difficulty);
+    q = q.order('created_at', { ascending: false });
+
+    const { data: lessons, err } = await q;
+    if (err) throw err;
+
+    return res.json(success('Lessons fetched', { lessons }));
+  } catch (err) { next(err); }
+};
+
+exports.getLesson = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data: lesson, err } = await supabase.from('academy_lessons').select('*').eq('id', id).single();
+    if (err || !lesson) return res.status(404).json(error('Lesson not found'));
+
+    const { data: progress } = await supabase.from('academy_lesson_progress')
+      .select('*').eq('user_id', req.user.id).eq('lesson_id', id).maybeSingle();
+
+    return res.json(success('Lesson fetched', { lesson, progress }));
+  } catch (err) { next(err); }
+};
+
+exports.completeLesson = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quiz_score, time_spent_seconds } = req.body;
+
+    const { data: existing } = await supabase.from('academy_lesson_progress')
+      .select('*').eq('user_id', req.user.id).eq('lesson_id', id).maybeSingle();
+
+    const upsert = {
+      user_id: req.user.id,
+      lesson_id: id,
+      status: 'completed',
+      completion_pct: 100,
+      quiz_score: quiz_score || null,
+      time_spent_seconds: time_spent_seconds || 0,
+      completed_at: new Date().toISOString(),
+      started_at: existing?.started_at || new Date().toISOString()
+    };
+
+    const { data: progress, err } = await supabase.from('academy_lesson_progress')
+      .upsert(upsert, { onConflict: 'user_id,lesson_id' }).select('*').single();
+
+    if (err) throw err;
+    return res.json(success('Lesson completed', progress));
+  } catch (err) { next(err); }
+};
+
+exports.getLessonProgress = async (req, res, next) => {
+  try {
+    const { data: progress, err } = await supabase.from('academy_lesson_progress')
+      .select('*, academy_lessons(pathway_id, module_id, title)')
+      .eq('user_id', req.user.id);
+    if (err) throw err;
+
+    const total = progress.length;
+    const completed = progress.filter(p => p.status === 'completed').length;
+
+    return res.json(success('Progress fetched', { total, completed, lessons: progress }));
+  } catch (err) { next(err); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  SIMULATIONS
+// ═══════════════════════════════════════════════════════════════
+
+exports.generateSim = async (req, res, next) => {
+  try {
+    const { pathway_id, simulation_type, difficulty } = req.body;
+    if (!pathway_id || !simulation_type) {
+      return res.status(400).json(error('pathway_id and simulation_type are required'));
+    }
+
+    const { data: pathway } = await supabase.from('academy_pathways').select('id, title').eq('id', pathway_id).single();
+    if (!pathway) return res.status(404).json(error('Pathway not found'));
+
+    const simConfig = await generateSimulation(simulation_type, pathway, difficulty || 'medium');
+
+    const { data: sim, err } = await supabase.from('academy_simulations').insert({
+      pathway_id,
+      title: `${simulation_type.replace(/_/g, ' ')} — ${pathway.title}`,
+      description: simConfig.project_description || simConfig.item_description || simConfig.scoring?.criteria || '',
+      simulation_type,
+      config: simConfig,
+      difficulty: difficulty || 'medium',
+      is_published: true
+    }).select('*').single();
+
+    if (err) throw err;
+    return res.status(201).json(success('Simulation generated', sim));
+  } catch (err) { next(err); }
+};
+
+exports.getSims = async (req, res, next) => {
+  try {
+    const { pathway_id, simulation_type } = req.query;
+    let q = supabase.from('academy_simulations').select('*').eq('is_published', true);
+    if (pathway_id) q = q.eq('pathway_id', pathway_id);
+    if (simulation_type) q = q.eq('simulation_type', simulation_type);
+    q = q.order('created_at', { ascending: false });
+
+    const { data: sims, err } = await q;
+    if (err) throw err;
+    return res.json(success('Simulations fetched', { simulations: sims }));
+  } catch (err) { next(err); }
+};
+
+exports.startSim = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data: sim, err } = await supabase.from('academy_simulations').select('*').eq('id', id).single();
+    if (err || !sim) return res.status(404).json(error('Simulation not found'));
+
+    const { data: attempt, insErr } = await supabase.from('academy_simulation_attempts').insert({
+      user_id: req.user.id,
+      simulation_id: id,
+      answers: {}
+    }).select('*').single();
+
+    if (insErr) throw insErr;
+    return res.status(201).json(success('Simulation started', { attempt, simulation: sim }));
+  } catch (err) { next(err); }
+};
+
+exports.submitSim = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { attempt_id, answers, time_spent_seconds } = req.body;
+
+    const { data: attempt } = await supabase.from('academy_simulation_attempts')
+      .select('*, academy_simulations(config, scoring)').eq('id', attempt_id).eq('user_id', req.user.id).single();
+
+    if (!attempt) return res.status(404).json(error('Attempt not found'));
+
+    let score = 0;
+    let maxScore = 0;
+    const simConfig = attempt.academy_simulations?.config;
+    const items = simConfig?.items || [];
+
+    if (answers?.items && items.length > 0) {
+      for (const userItem of answers.items) {
+        const original = items.find(i => i.id === userItem.id);
+        if (!original) continue;
+        maxScore += 10;
+        if (userItem.user_qty === original.quantity) score += 5;
+        if (Math.abs((userItem.user_rate || 0) - original.rate_ngn) / original.rate_ngn < 0.1) score += 5;
+      }
+    } else {
+      maxScore = 100;
+      score = answers?.score || 0;
+    }
+
+    const { data: updated, err } = await supabase.from('academy_simulation_attempts').update({
+      answers,
+      score,
+      max_score: maxScore,
+      time_spent_seconds: time_spent_seconds || 0,
+      completed: true
+    }).eq('id', attempt_id).select('*').single();
+
+    if (err) throw err;
+    return res.json(success('Simulation submitted', { score, max_score: maxScore, attempt: updated }));
+  } catch (err) { next(err); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  WHITEBOARD
+// ═══════════════════════════════════════════════════════════════
+
+exports.saveWhiteboard = async (req, res, next) => {
+  try {
+    const { lesson_id, simulation_id, title, drawing_data } = req.body;
+
+    const { data: existing } = await supabase.from('academy_whiteboard')
+      .select('id').eq('user_id', req.user.id)
+      .maybeSingle();
+
+    let result;
+    if (existing) {
+      const { data, err } = await supabase.from('academy_whiteboard').update({
+        lesson_id: lesson_id || null,
+        simulation_id: simulation_id || null,
+        title: title || 'Untitled',
+        drawing_data: drawing_data || '[]'
+      }).eq('id', existing.id).select('*').single();
+      if (err) throw err;
+      result = data;
+    } else {
+      const { data, err } = await supabase.from('academy_whiteboard').insert({
+        user_id: req.user.id,
+        lesson_id: lesson_id || null,
+        simulation_id: simulation_id || null,
+        title: title || 'Untitled',
+        drawing_data: drawing_data || '[]'
+      }).select('*').single();
+      if (err) throw err;
+      result = data;
+    }
+
+    return res.json(success('Whiteboard saved', result));
+  } catch (err) { next(err); }
+};
+
+exports.getWhiteboard = async (req, res, next) => {
+  try {
+    const { lessonId } = req.params;
+    const { data, err } = await supabase.from('academy_whiteboard')
+      .select('*').eq('user_id', req.user.id).eq('lesson_id', lessonId).maybeSingle();
+
+    if (err) throw err;
+    return res.json(success('Whiteboard fetched', data));
+  } catch (err) { next(err); }
+};

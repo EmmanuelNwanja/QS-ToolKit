@@ -33,7 +33,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading]     = useState(true);
   const [paying, setPaying]       = useState('');
   const [billing, setBilling]     = useState('monthly');
-  const [gatewayStatus, setGatewayStatus] = useState({ paystack: { configured: false }, flutterwave: { configured: false } });
+  const [gatewayStatus, setGatewayStatus] = useState({ flutterwave: { configured: false } });
 
   const [promoInputs, setPromoInputs]   = useState({});
   const [promoResults, setPromoResults] = useState({});
@@ -51,13 +51,8 @@ export default function SubscriptionPage() {
   const [transferDone, setTransferDone]     = useState(false);
   const fileInputRef = useRef(null);
 
-  // Add-on bank transfer state
-  const [addOnModal, setAddOnModal]         = useState(null); // 'academy' | 'exam_prep' | null
-  const [addOnBankSettings, setAddOnBankSettings] = useState(null);
-  const [addOnBankLoading, setAddOnBankLoading] = useState(false);
-  const [addOnTransferRef, setAddOnTransferRef] = useState('');
-  const [addOnTransferDone, setAddOnTransferDone] = useState(false);
-  const [addOnSubmitting, setAddOnSubmitting] = useState(false);
+  // Add-on payment loading state
+  const [addOnPaying, setAddOnPaying] = useState('');
 
   // Philanthropist modal state
   const [showPhilModal, setShowPhilModal] = useState(false);
@@ -94,15 +89,17 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!router.isReady) return;
     const reference = router.query.reference || router.query.trxref;
-    if (!reference || Array.isArray(reference)) return;
+    const txRef = router.query.tx_ref;
+    if (!reference && !txRef) return;
 
-    subscriptionAPI.verify(reference).then(async () => {
+    const verifyRef = txRef || reference;
+    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
       toast.success('Subscription activated!');
       await refreshUser();
       await fetchMySub();
       router.replace('/dashboard');
     }).catch(() => toast.error('Payment verification failed. Please contact support.'));
-  }, [router.isReady, router.query.reference, router.query.trxref]);
+  }, [router.isReady, router.query.reference, router.query.trxref, router.query.tx_ref]);
 
   // Fetch bank settings when user picks bank_transfer
   useEffect(() => {
@@ -114,39 +111,25 @@ export default function SubscriptionPage() {
       .finally(() => setBankSettingsLoading(false));
   }, [paymentMethod]);
 
-  // Fetch bank settings for add-on modal
-  useEffect(() => {
-    if (!addOnModal) return;
-    setAddOnBankLoading(true);
-    const api = addOnModal === 'academy' ? academyAPI : examAPI;
-    api.getBankTransferSettings()
-      .then(r => setAddOnBankSettings(r.data.data || null))
-      .catch(() => setAddOnBankSettings(null))
-      .finally(() => setAddOnBankLoading(false));
-  }, [addOnModal]);
+  const handleAddOnSubscribe = async (addOnType) => {
+    const billingCycle = addOnType === 'academy'
+      ? (document.querySelector('input[name="academy_billing"]:checked')?.value || 'weekly')
+      : (document.querySelector('input[name="exam_billing"]:checked')?.value || 'weekly');
 
-  async function handleAddOnBankTransfer() {
-    if (!addOnTransferRef.trim()) { toast.error('Please enter your bank transaction reference'); return; }
-    setAddOnSubmitting(true);
+    setAddOnPaying(addOnType);
     try {
-      const api = addOnModal === 'academy' ? academyAPI : examAPI;
-      await api.submitBankTransfer({ referenceNote: addOnTransferRef.trim() });
-      setAddOnTransferDone(true);
-      toast.success('Submission received! An admin will verify and activate your subscription within 24 hours.');
+      const api = addOnType === 'academy' ? academyAPI : examAPI;
+      const { data } = await api.subscribe({ billing_cycle: billingCycle });
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+        return;
+      }
+      throw new Error('Missing payment authorization URL');
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Submission failed');
-    } finally {
-      setAddOnSubmitting(false);
+      toast.error(err.response?.data?.message || 'Could not initiate payment');
+      setAddOnPaying('');
     }
-  }
-
-  function closeAddOnModal() {
-    setAddOnModal(null);
-    setAddOnBankSettings(null);
-    setAddOnTransferRef('');
-    setAddOnTransferDone(false);
-    setAddOnSubmitting(false);
-  }
+  };
 
   const displayPrice = (plan) => {
     if (plan.price_monthly === 0) return 'Free';
@@ -306,6 +289,28 @@ export default function SubscriptionPage() {
   };
 
   const current = planName();
+  const [changingPlan, setChangingPlan] = useState('');
+
+  const handleChangePlan = async (newPlanName) => {
+    if (!confirm(`Switch to ${PLAN_DISPLAY_NAMES[newPlanName] || newPlanName}? Downgrades take effect immediately; upgrades require payment.`)) return;
+    setChangingPlan(newPlanName);
+    try {
+      const { data } = await subscriptionAPI.changePlan(newPlanName, billing);
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+        return;
+      }
+      toast.success(data.message || 'Plan changed successfully');
+      await fetchMySub();
+      await refreshUser();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to change plan');
+    } finally {
+      setChangingPlan('');
+    }
+  };
+
+  const PLAN_HIERARCHY = ['free', 'basic', 'pro', 'enterprise'];
 
   return (
     <ProtectedRoute>
@@ -341,10 +346,32 @@ export default function SubscriptionPage() {
                 </p>
                 {mySub.expires_at && (
                   <p className="text-sm text-gray-500">
-                    Renews / Expires: {new Date(mySub.expires_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    {mySub.status === 'cancelled' ? 'Access until' : 'Renews / Expires'}: {new Date(mySub.expires_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })}
                   </p>
                 )}
               </div>
+              {mySub.status === 'active' && mySub.plan?.name && mySub.plan.name !== 'free' && (
+                <div className="flex items-center gap-2">
+                  {PLAN_HIERARCHY.indexOf(mySub.plan.name) < PLAN_HIERARCHY.length - 1 && (
+                    <button
+                      onClick={() => handleChangePlan(PLAN_HIERARCHY[PLAN_HIERARCHY.indexOf(mySub.plan.name) + 1])}
+                      disabled={!!changingPlan}
+                      className="btn-primary text-xs px-3 py-1.5"
+                    >
+                      {changingPlan ? '...' : 'Upgrade'}
+                    </button>
+                  )}
+                  {PLAN_HIERARCHY.indexOf(mySub.plan.name) > 1 && (
+                    <button
+                      onClick={() => handleChangePlan(PLAN_HIERARCHY[PLAN_HIERARCHY.indexOf(mySub.plan.name) - 1])}
+                      disabled={!!changingPlan}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
+                      {changingPlan ? '...' : 'Downgrade'}
+                    </button>
+                  )}
+                </div>
+              )}
               {mySub.status !== 'active' && (
                 <p className="text-sm text-amber-700 font-medium">Upgrade to unlock all features</p>
               )}
@@ -517,8 +544,13 @@ export default function SubscriptionPage() {
                   </label>
                 </div>
                 <p className="text-sm text-gray-500 mb-3">AI-powered learning pathways, knowledge arena & resource library.</p>
-                <button onClick={() => setAddOnModal('academy')} className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">Subscribe</button>
-                <button onClick={() => setAddOnModal('academy')} className="w-full text-xs text-purple-600 hover:text-purple-700 font-medium py-1.5 mt-1.5 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">Pay via Bank Transfer</button>
+                <button
+                  onClick={() => handleAddOnSubscribe('academy')}
+                  disabled={!!addOnPaying}
+                  className="w-full bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
+                >
+                  {addOnPaying === 'academy' ? 'Redirecting...' : 'Subscribe'}
+                </button>
               </div>
 
               <div className="bg-white rounded-xl border border-emerald-200 p-5 hover:shadow-md transition-shadow">
@@ -546,8 +578,13 @@ export default function SubscriptionPage() {
                   </label>
                 </div>
                 <p className="text-sm text-gray-500 mb-3">NIQS, RICS, PMP exams & university past questions with AI explanations.</p>
-                <button onClick={() => setAddOnModal('exam_prep')} className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors">Subscribe</button>
-                <button onClick={() => setAddOnModal('exam_prep')} className="w-full text-xs text-emerald-600 hover:text-emerald-700 font-medium py-1.5 mt-1.5 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors">Pay via Bank Transfer</button>
+                <button
+                  onClick={() => handleAddOnSubscribe('exam_prep')}
+                  disabled={!!addOnPaying}
+                  className="w-full bg-emerald-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                >
+                  {addOnPaying === 'exam_prep' ? 'Redirecting...' : 'Subscribe'}
+                </button>
               </div>
             </div>
           </div>
@@ -580,7 +617,7 @@ export default function SubscriptionPage() {
                   <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Choose Payment Method</h2>
                   <p className="text-sm text-slate-500 mb-6">Select how you&rsquo;d like to pay for the <span className="font-semibold capitalize">{pendingPlan}</span> plan.</p>
                   <div className="space-y-3">
-                    {(gatewayStatus.paystack.configured || gatewayStatus.flutterwave.configured) ? (
+                    {gatewayStatus.flutterwave.configured ? (
                       <button
                         onClick={() => handleSubscribe(plans.find(p => p.name === pendingPlan))}
                         disabled={!!paying}
@@ -595,12 +632,7 @@ export default function SubscriptionPage() {
                             <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Instant</span>
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            {gatewayStatus.paystack.configured && gatewayStatus.flutterwave.configured
-                              ? 'Pay via Paystack or Flutterwave — card, bank transfer, USSD, or mobile money.'
-                              : gatewayStatus.paystack.configured
-                                ? 'Pay via Paystack — card, bank transfer, or USSD.'
-                                : 'Pay via Flutterwave — card, bank transfer, USSD, or mobile money.'}
-                            {' '}Instant activation.
+                            Pay via Flutterwave — card, bank transfer, USSD, or mobile money. Instant activation.
                           </p>
                         </div>
                       </button>
@@ -807,90 +839,6 @@ export default function SubscriptionPage() {
         )}
 
       </Layout>
-
-      {/* ── Add-on Bank Transfer Modal ─────────────────────────── */}
-      {addOnModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={closeAddOnModal}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-
-            {!addOnTransferDone && (
-              <div className="p-6">
-                <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Bank Transfer Details</h2>
-                <p className="text-sm text-slate-500 mb-5">
-                  Transfer <span className="font-semibold text-slate-800">₦2,000</span> to the account below for the{' '}
-                  <span className="font-semibold capitalize">{addOnModal === 'academy' ? 'QS Academy' : 'QS Exam Prep'}</span> weekly subscription.
-                </p>
-
-                {addOnBankLoading && <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700" /></div>}
-
-                {!addOnBankLoading && addOnBankSettings?.is_active === false && (
-                  <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Direct bank transfer is temporarily unavailable. Please contact support@qs.solnuv.com.</p>
-                )}
-
-                {!addOnBankLoading && addOnBankSettings?.is_active !== false && addOnBankSettings && (
-                  <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-2 text-sm border border-slate-200">
-                    {addOnBankSettings.bank_name && (
-                      <div className="flex justify-between"><span className="text-slate-500">Bank</span><span className="font-semibold text-slate-800">{addOnBankSettings.bank_name}</span></div>
-                    )}
-                    {addOnBankSettings.account_number && (
-                      <div className="flex justify-between"><span className="text-slate-500">Account No.</span><span className="font-mono font-semibold text-slate-800 text-base tracking-widest">{addOnBankSettings.account_number}</span></div>
-                    )}
-                    {addOnBankSettings.account_name && (
-                      <div className="flex justify-between"><span className="text-slate-500">Account Name</span><span className="font-semibold text-slate-800">{addOnBankSettings.account_name}</span></div>
-                    )}
-                    {addOnBankSettings.additional_instructions && (
-                      <p className="text-slate-500 pt-2 border-t border-slate-200 text-xs">{addOnBankSettings.additional_instructions}</p>
-                    )}
-                  </div>
-                )}
-
-                {!addOnBankLoading && !addOnBankSettings && (
-                  <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Bank account details are not configured yet. Please contact support@qs.solnuv.com.</p>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Transaction Reference / Narration <span className="text-red-500">*</span></label>
-                    <input
-                      value={addOnTransferRef}
-                      onChange={e => setAddOnTransferRef(e.target.value)}
-                      placeholder="e.g. Bank teller ID or transfer narration"
-                      className="input w-full"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Enter the reference or narration from your bank receipt to help us match the payment.</p>
-                  </div>
-
-                  <button
-                    onClick={handleAddOnBankTransfer}
-                    disabled={addOnSubmitting || addOnBankSettings?.is_active === false}
-                    className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {addOnSubmitting ? 'Submitting...' : 'Submit for Verification'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {addOnTransferDone && (
-              <div className="p-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-                  <svg className="text-emerald-600" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <h2 className="font-display font-bold text-xl text-primary-800 mb-2">Submission Received!</h2>
-                <p className="text-sm text-slate-600 mb-6">Your payment proof has been submitted. An admin will review and activate your <span className="font-semibold capitalize">{addOnModal === 'academy' ? 'QS Academy' : 'QS Exam Prep'}</span> subscription within 24 hours.</p>
-                <button onClick={closeAddOnModal} className="btn-primary w-full py-3">Done</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
     </ProtectedRoute>
   );

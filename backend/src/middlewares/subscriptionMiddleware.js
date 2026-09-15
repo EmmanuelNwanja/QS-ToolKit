@@ -43,7 +43,13 @@ function isSubscriptionCurrentlyValid(user, planName) {
 
   if (status === 'active' || status === 'trial' || status === 'paid') return true;
   if (!hasPaidPlan) return false;
-  if (status === 'cancelled' || status === 'expired') return false;
+
+  // Cancelled: access remains until expiry date
+  if (status === 'cancelled') {
+    return user?.subscription_expires_at && new Date(user.subscription_expires_at) > new Date();
+  }
+
+  if (status === 'expired') return false;
 
   // Some environments have legacy status data while plan + expiry is valid.
   if (user?.subscription_expires_at) {
@@ -81,6 +87,7 @@ async function fetchUserWithPlan(userId, planSelect) {
 
 // ── Check calculator usage limit ──────────────────────────────
 exports.checkCalculatorLimit = async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     const user = await fetchUserWithPlan(req.user.id, 'max_calculator_uses, name');
 
@@ -132,6 +139,7 @@ exports.checkCalculatorLimit = async (req, res, next) => {
 
 // ── Require active subscription at a given plan level ─────────
 exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     const user = await fetchUserWithPlan(req.user.id, 'name');
 
@@ -162,6 +170,7 @@ exports.requireSubscription = (planLevel = 'basic') => async (req, res, next) =>
 
 // ── Check project logging limit ───────────────────────────────
 exports.checkProjectLimit = async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     const user = await fetchUserWithPlan(req.user.id, 'max_projects, name');
 
@@ -194,6 +203,7 @@ exports.checkProjectLimit = async (req, res, next) => {
 
 // ── Check BOQ creation limit (monthly) ────────────────────────
 exports.checkBoqLimit = async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     const user = await fetchUserWithPlan(req.user.id, 'max_boq, name');
 
@@ -237,6 +247,7 @@ exports.checkBoqLimit = async (req, res, next) => {
 
 // ── Check invoice/document creation limit (per type, monthly) ─
 exports.checkInvoiceLimit = async (req, res, next) => {
+  if (process.env.NODE_ENV === 'development') return next();
   try {
     const user = await fetchUserWithPlan(req.user.id, 'max_invoices, name');
 

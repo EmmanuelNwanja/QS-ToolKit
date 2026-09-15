@@ -345,6 +345,31 @@ exports.completeOnboarding = async (req, res, next) => {
 // ── Get current user ──────────────────────────────────────────
 exports.me = async (req, res, next) => {
   try {
+    // Dev mode: return mock user without hitting Supabase
+    if (process.env.NODE_ENV === 'development') {
+      const devUser = {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'dev@qstoolkit.local',
+        name: 'Dev User',
+        user_type: 'professional',
+        phone: '+2348000000000',
+        subscription_status: 'active',
+        subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        plan_id: null,
+        org_role: 'super_admin',
+        organization_id: null,
+        account_status: 'active',
+        force_password_change: false,
+        onboarding_completed: true,
+        subscription_plans: { name: 'enterprise', max_projects: null, max_boq: null, max_invoices: null, max_calculator_uses: null },
+        branding_settings: null,
+        is_admin: true,
+        admin_role: 'super_admin',
+        permissions: ['*'],
+      };
+      return res.json(success('User profile', { user: devUser }));
+    }
+
     const { data: user } = await supabase
       .from('users')
       .select('*, subscription_plans(*), branding_settings(*)')

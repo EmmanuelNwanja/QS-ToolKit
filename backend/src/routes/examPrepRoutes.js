@@ -12,8 +12,8 @@ router.use(protect);
 router.get('/status', ctrl.getStatus);
 router.get('/bank-transfer-settings', ctrl.getBankTransferSettings);
 router.post('/subscribe', paymentLimiter, [
-  body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required if paying via Paystack'),
-  body('payment_method').optional().isIn(['paystack', 'bank_transfer']).withMessage('payment_method must be paystack or bank_transfer'),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('payment_method').optional().isIn(['paystack', 'flutterwave', 'bank_transfer']).withMessage('Invalid payment_method'),
   validate
 ], ctrl.subscribe);
 
@@ -88,5 +88,46 @@ router.post('/search/log', [
   body('results_count').optional().isInt({ min: 0 }),
   validate
 ], ctrl.logSearch);
+
+// ── AI Exam Generation ────────────────────────────────────────
+router.post('/practice/generate-ai', [
+  body('exam_category').trim().notEmpty().withMessage('exam_category is required'),
+  body('exam_name').trim().notEmpty().withMessage('exam_name is required'),
+  body('topic').trim().notEmpty().withMessage('topic is required'),
+  body('difficulty').optional().isIn(['easy', 'medium', 'hard']),
+  body('count').optional().isInt({ min: 1, max: 50 }).withMessage('count must be 1-50'),
+  validate
+], ctrl.generateAIQuestions);
+
+// ── Adaptive Difficulty ───────────────────────────────────────
+router.get('/difficulty', [
+  query('topic').optional().isString(),
+  validate
+], ctrl.getDifficultyProfile);
+
+// ── Interactive Mode ──────────────────────────────────────────
+router.post('/interactive/start', [
+  body('exam_category').trim().notEmpty().withMessage('exam_category is required'),
+  body('exam_name').trim().notEmpty().withMessage('exam_name is required'),
+  body('topic').optional().isString(),
+  validate
+], ctrl.startInteractive);
+
+router.post('/interactive/submit-answer', [
+  body('question_id').trim().notEmpty().withMessage('question_id is required'),
+  body('answer').trim().notEmpty().withMessage('answer is required'),
+  body('topic').optional().isString(),
+  body('was_correct').isBoolean().withMessage('was_correct is required'),
+  validate
+], ctrl.submitAnswer);
+
+// ── Analytics ─────────────────────────────────────────────────
+router.get('/analytics', [
+  query('exam_category').optional().isString(),
+  query('exam_name').optional().isString(),
+  validate
+], ctrl.getAnalytics);
+
+router.get('/analytics/weaknesses', ctrl.getWeaknesses);
 
 module.exports = router;

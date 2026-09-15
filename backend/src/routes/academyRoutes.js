@@ -12,8 +12,8 @@ router.use(protect);
 router.get('/status', ctrl.getStatus);
 router.get('/bank-transfer-settings', ctrl.getBankTransferSettings);
 router.post('/subscribe', paymentLimiter, [
-  body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required if paying via Paystack'),
-  body('payment_method').optional().isIn(['paystack', 'bank_transfer']).withMessage('payment_method must be paystack or bank_transfer'),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('payment_method').optional().isIn(['paystack', 'flutterwave', 'bank_transfer']).withMessage('Invalid payment_method'),
   validate
 ], ctrl.subscribe);
 
@@ -100,5 +100,67 @@ router.get('/contests/:id/results', [
 // ── Tokens & Analytics ─────────────────────────────────────────
 router.get('/tokens', ctrl.getTokens);
 router.get('/analytics', ctrl.getAnalytics);
+
+// ── AI Lessons ─────────────────────────────────────────────────
+router.post('/lessons/generate', [
+  body('pathway_id').isUUID().withMessage('Valid pathway_id required'),
+  body('module_id').trim().notEmpty().withMessage('module_id is required'),
+  body('topic').trim().notEmpty().withMessage('topic is required'),
+  body('difficulty').optional().isIn(['beginner', 'intermediate', 'advanced']),
+  validate
+], ctrl.generateLesson);
+router.get('/lessons', [
+  query('pathway_id').optional().isUUID(),
+  query('module_id').optional().isString(),
+  query('difficulty').optional().isIn(['beginner', 'intermediate', 'advanced']),
+  validate
+], ctrl.getLessons);
+router.get('/lessons/progress', ctrl.getLessonProgress);
+router.get('/lessons/:id', [
+  param('id').isUUID().withMessage('Valid lesson ID required'),
+  validate
+], ctrl.getLesson);
+router.post('/lessons/:id/complete', [
+  param('id').isUUID().withMessage('Valid lesson ID required'),
+  body('quiz_score').optional().isFloat({ min: 0, max: 100 }),
+  body('time_spent_seconds').optional().isInt({ min: 0 }),
+  validate
+], ctrl.completeLesson);
+
+// ── Simulations ────────────────────────────────────────────────
+router.post('/simulations/generate', [
+  body('pathway_id').isUUID().withMessage('Valid pathway_id required'),
+  body('simulation_type').isIn(['boq_scenario', 'rate_analysis', 'measurement_takeoff', 'cost_plan']).withMessage('Invalid simulation_type'),
+  body('difficulty').optional().isIn(['easy', 'medium', 'hard']),
+  validate
+], ctrl.generateSim);
+router.get('/simulations', [
+  query('pathway_id').optional().isUUID(),
+  query('simulation_type').optional().isIn(['boq_scenario', 'rate_analysis', 'measurement_takeoff', 'cost_plan']),
+  validate
+], ctrl.getSims);
+router.post('/simulations/:id/start', [
+  param('id').isUUID().withMessage('Valid simulation ID required'),
+  validate
+], ctrl.startSim);
+router.post('/simulations/:id/submit', [
+  param('id').isUUID().withMessage('Valid simulation ID required'),
+  body('attempt_id').isUUID().withMessage('Valid attempt_id required'),
+  body('answers').isObject().withMessage('answers must be an object'),
+  validate
+], ctrl.submitSim);
+
+// ── Whiteboard ─────────────────────────────────────────────────
+router.post('/whiteboard/save', [
+  body('lesson_id').optional().isUUID(),
+  body('simulation_id').optional().isUUID(),
+  body('title').optional().isString(),
+  body('drawing_data').optional().isArray(),
+  validate
+], ctrl.saveWhiteboard);
+router.get('/whiteboard/:lessonId', [
+  param('lessonId').isUUID().withMessage('Valid lesson ID required'),
+  validate
+], ctrl.getWhiteboard);
 
 module.exports = router;

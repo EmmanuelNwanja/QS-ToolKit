@@ -19,6 +19,7 @@ router.use('/ai',            require('./aiRoutes'));
 router.use('/integrity',     require('./integrityRoutes'));
 router.use('/academy',       require('./academyRoutes'));
 router.use('/exam-prep',     require('./examPrepRoutes'));
+router.use('/research',      require('./researchRoutes'));
 router.use('/',              require('./boqRevisionRoutes'));
 
 module.exports = router;

@@ -1013,7 +1013,7 @@ exports.getDashboardStats = async (req, res, next) => {
 
     const paymentQuery = supabase
         .from('billing_transactions')
-        .select('id, user_id, amount, currency, paystack_reference, description, transaction_date, created_at, metadata, users(name, email)')
+        .select('id, user_id, amount, currency, payment_reference, description, transaction_date, created_at, metadata, users(name, email)')
         .eq('type', 'payment')
         .eq('status', 'completed');
 
@@ -1126,7 +1126,7 @@ exports.getDashboardStats = async (req, res, next) => {
           gross_amount: roundMoney(grossAmount),
           discount_amount: roundMoney(discountAmount),
           net_amount: roundMoney(netAmount),
-          paystack_reference: payment.paystack_reference,
+          payment_reference: payment.payment_reference,
           transaction_date: payment.transaction_date || payment.created_at,
           payment_mode: readTransactionText(payment, 'payment_mode', 'subscription')
         };

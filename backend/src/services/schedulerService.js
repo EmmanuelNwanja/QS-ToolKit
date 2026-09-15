@@ -95,7 +95,7 @@ async function autoRenewSubscriptions() {
     const now = new Date().toISOString();
     const { data: users, error: queryErr } = await supabase
       .from('users')
-      .select('id, email, plan_id, subscription_expires_at, billing_cycle, paystack_subscription_code, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
+      .select('id, email, plan_id, subscription_expires_at, billing_cycle, paystack_subscription_code, flutterwave_subscription_id, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
       .eq('auto_renew', true)
       .eq('subscription_status', 'active')
       .lte('subscription_expires_at', now);
@@ -126,6 +126,12 @@ async function autoRenewSubscriptions() {
         const mappedPaystackPlanCode = billingCycle === 'annual'
           ? plan.paystack_plan_code_annual
           : plan.paystack_plan_code;
+
+        // Flutterwave recurring subscriptions renew automatically via Flutterwave API
+        if (user.flutterwave_subscription_id) {
+          logger.info(`Skipping user ${user.id}; Flutterwave recurring subscription handles renewal.`);
+          continue;
+        }
 
         if (mappedPaystackPlanCode) {
           logger.info(`Skipping manual auto-renew for user ${user.id}; Paystack recurring plan mapping is configured.`);
@@ -174,7 +180,7 @@ async function autoRenewSubscriptions() {
             plan_name: plan.name,
             billing_cycle: billingCycle,
             amount: Number(basePrice),
-            paystack_reference: reference,
+            payment_reference: reference,
             status: 'initiated',
             attempted_at: new Date().toISOString()
           });
@@ -194,7 +200,7 @@ async function autoRenewSubscriptions() {
             plan_name: user.subscription_plans?.name,
             billing_cycle: user.billing_cycle || 'monthly',
             amount: user.subscription_plans ? Number(user.subscription_plans.price_monthly) : 0,
-            paystack_reference: null,
+            payment_reference: null,
             status: 'failed',
             error_message: renewErr.message,
             attempted_at: new Date().toISOString()

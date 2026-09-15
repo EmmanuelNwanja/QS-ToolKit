@@ -188,6 +188,8 @@ export default function AcademyDashboard() {
               {/* Quick links */}
               <motion.div {...fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
+                  { href: '/academy/lessons', icon: '📚', label: 'AI Lessons', desc: 'AI-generated interactive lessons' },
+                  { href: '/academy/simulations', icon: '🧮', label: 'Simulations', desc: 'BOQ, rate analysis & more' },
                   { href: '/academy/pathways', icon: '🛤️', label: 'Pathways', desc: 'Browse all 7 career tracks' },
                   { href: '/academy/resources', icon: '📖', label: 'Resources', desc: 'Learning materials & guides' },
                   { href: '/academy/arena', icon: '⚔️', label: 'Arena', desc: 'Test your knowledge' },

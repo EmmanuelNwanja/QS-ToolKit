@@ -33,7 +33,7 @@ const flwHeaders = () => ({
   'Content-Type': 'application/json'
 });
 
-async function flutterwaveInitialize({ email, amount, currency, txRef, metadata, redirectUrl }) {
+async function flutterwaveInitialize({ email, amount, currency, txRef, metadata, redirectUrl, paymentPlan }) {
   const payload = {
     tx_ref: txRef,
     amount,
@@ -42,11 +42,48 @@ async function flutterwaveInitialize({ email, amount, currency, txRef, metadata,
     customer: { email },
     meta: metadata
   };
+  if (paymentPlan) payload.payment_plan = paymentPlan;
   return axios.post(`${FLW_BASE}/payments`, payload, { headers: flwHeaders() });
 }
 
 async function flutterwaveVerify(transactionId) {
   return axios.get(`${FLW_BASE}/transactions/${transactionId}/verify`, { headers: flwHeaders() });
+}
+
+async function flutterwaveVerifyByReference(txRef) {
+  const res = await axios.get(`${FLW_BASE}/transactions/verify_by_reference?tx_ref=${txRef}`, { headers: flwHeaders() });
+  const tx = res.data.data;
+  return {
+    success: tx.status === 'successful',
+    gateway: 'flutterwave',
+    reference: tx.tx_ref,
+    amount: tx.amount,
+    currency: tx.currency,
+    customer_email: tx.customer?.email,
+    flw_transaction_id: tx.id,
+    paid_at: tx.created_at
+  };
+}
+
+async function flutterwaveCancelSubscription(subscriptionId) {
+  return axios.get(`${FLW_BASE}/subscriptions/${subscriptionId}/cancel`, { headers: flwHeaders() });
+}
+
+async function flutterwaveGetSubscription(subscriptionId) {
+  return axios.get(`${FLW_BASE}/subscriptions/${subscriptionId}`, { headers: flwHeaders() });
+}
+
+async function flutterwaveGetSubscriptionsByEmail(email) {
+  const res = await axios.get(`${FLW_BASE}/subscriptions?email=${encodeURIComponent(email)}`, { headers: flwHeaders() });
+  return res.data?.data || [];
+}
+
+function verifyFlutterwaveSignature(body, signature) {
+  const crypto = require('crypto');
+  const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+  if (!secretHash) return false;
+  const expectedHash = crypto.createHmac('sha256', secretHash).update(JSON.stringify(body)).digest('hex');
+  return expectedHash === signature;
 }
 
 // ─── Unified Gateway Router ───────────────────────────────────
@@ -66,7 +103,7 @@ function generateTxRef(prefix) {
  * @param {string} opts.txPrefix - tx_ref prefix (e.g., 'sub', 'academy', 'exam')
  * @param {string} opts.paystackPlanCode - Paystack plan code (Paystack only)
  */
-async function initializePayment({ email, amountNGN, country, metadata, callbackUrl, txPrefix, paystackPlanCode }) {
+async function initializePayment({ email, amountNGN, country, metadata, callbackUrl, txPrefix, paystackPlanCode, paymentPlan }) {
   const gw = getGatewayForCountry(country);
 
   if (gw.gateway === 'paystack') {
@@ -76,7 +113,7 @@ async function initializePayment({ email, amountNGN, country, metadata, callback
       email,
       amountKobo,
       currency: gw.currency,
-      metadata,
+      metadata: { ...metadata, project: 'qstoolkit' },
       callbackUrl,
       planCode: paystackPlanCode
     });
@@ -97,8 +134,9 @@ async function initializePayment({ email, amountNGN, country, metadata, callback
     amount: amountFLW,
     currency: gw.currency,
     txRef,
-    metadata: { ...metadata, flw_tx_ref: txRef },
-    redirectUrl: `${callbackUrl}?tx_ref=${txRef}`
+    metadata: { ...metadata, flw_tx_ref: txRef, project: 'qstoolkit' },
+    redirectUrl: `${callbackUrl}?tx_ref=${txRef}`,
+    paymentPlan: paymentPlan || undefined
   });
   return {
     gateway: 'flutterwave',
@@ -145,25 +183,17 @@ async function verifyPayment(reference, gateway) {
   };
 }
 
-/**
- * Verify Flutterwave webhook signature.
- */
-function verifyFlutterwaveSignature(body, signature) {
-  const crypto = require('crypto');
-  const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
-  if (!secretHash) return false;
-  const expectedHash = crypto.createHmac('sha256', secretHash).update(JSON.stringify(body)).digest('hex');
-  return expectedHash === signature;
-}
-
 module.exports = {
   initializePayment,
   verifyPayment,
   verifyFlutterwaveSignature,
+  flutterwaveVerifyByReference,
   generateTxRef,
-  // Export individual gateway functions for direct use
   paystackInitialize,
   paystackVerify,
   flutterwaveInitialize,
-  flutterwaveVerify
+  flutterwaveVerify,
+  flutterwaveCancelSubscription,
+  flutterwaveGetSubscription,
+  flutterwaveGetSubscriptionsByEmail
 };

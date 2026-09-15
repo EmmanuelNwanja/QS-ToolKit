@@ -2,8 +2,28 @@ const jwt = require('jsonwebtoken');
 const supabase = require('../config/supabase');
 const { error } = require('../utils/responseHelper');
 
+const DEV_USER = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'dev@qstoolkit.local',
+  user_type: 'professional',
+  plan_id: null,
+  subscription_status: 'active',
+  subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+  org_role: 'super_admin',
+  organization_id: null,
+  account_status: 'active',
+  force_password_change: false,
+  name: 'Dev User',
+};
+
 exports.protect = async (req, res, next) => {
   try {
+    // ── Dev mode bypass ────────────────────────────────────
+    if (process.env.NODE_ENV === 'development') {
+      req.user = { ...DEV_USER };
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json(error('No token provided'));

@@ -1,24 +1,9 @@
-const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 const paymentSettingsController = require('./paymentSettingsController');
-
-const PAYSTACK_BASE = 'https://api.paystack.co';
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-  'Content-Type': 'application/json'
-});
-
-const EXAM_PREP_WEEKLY_AMOUNT = 200000; // ₦2,000 in kobo
-const EXAM_PREP_MONTHLY_AMOUNT = 760000; // ₦7,600 in kobo (5% discount)
-const EXAM_PREP_ANNUAL_AMOUNT = 9360000; // ₦93,600 in kobo (10% discount)
-
-const EXAM_PREP_BILLING_AMOUNTS = {
-  weekly: EXAM_PREP_WEEKLY_AMOUNT,
-  monthly: EXAM_PREP_MONTHLY_AMOUNT,
-  annual: EXAM_PREP_ANNUAL_AMOUNT,
-};
+const { initializePayment } = require('../services/paymentGateway');
+const { generateExamQuestions: generateAIExamQuestions } = require('../services/aiService');
 
 function extractAnswerLetter(val) {
   if (val === null || val === undefined) return '';
@@ -367,12 +352,11 @@ exports.getStatus = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Subscribe (Paystack or Bank Transfer) ────────────────────
+// ─── Subscribe ──────────────────────────────────────────────
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { email, payment_method, billing_cycle = 'weekly' } = req.body;
-    const cycleAmount = EXAM_PREP_BILLING_AMOUNTS[billing_cycle] || EXAM_PREP_WEEKLY_AMOUNT;
+    const { payment_method, billing_cycle = 'weekly' } = req.body;
     const cycleAmountNgn = EXAM_PREP_BILLING_NGN[billing_cycle] || 2000;
 
     const hasAccess = await checkExamPrepAccess(req.user.id);
@@ -411,15 +395,17 @@ exports.subscribe = async (req, res, next) => {
       }));
     }
 
-    // Paystack path (default)
-    if (!email) return res.status(400).json(error('Email is required'));
+    // Online payment (routes to Flutterwave or Paystack based on country)
+    const { data: user } = await supabase.from('users').select('email, country').eq('id', req.user.id).single();
+    if (!user?.email) return res.status(400).json(error('User email is required'));
 
-    let paystackRes;
+    const userCountry = user.country || 'NG';
+    let paymentResult;
     try {
-      paystackRes = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, {
-        email,
-        amount: cycleAmount,
-        currency: 'NGN',
+      paymentResult = await initializePayment({
+        email: user.email,
+        amountNGN: cycleAmountNgn,
+        country: userCountry,
         metadata: {
           user_id: req.user.id,
           product_type: 'exam_prep_subscription',
@@ -428,16 +414,18 @@ exports.subscribe = async (req, res, next) => {
             { display_name: 'Product', variable_name: 'product', value: `QS Exam Prep ${billing_cycle}` }
           ]
         },
-        callback_url: `${process.env.FRONTEND_URL}/exam-prep`
-      }, { headers: paystackHeaders() });
-    } catch (paystackErr) {
-      const providerMsg = paystackErr?.response?.data?.message || paystackErr.message;
+        callbackUrl: `${process.env.FRONTEND_URL}/exam-prep`,
+        txPrefix: 'exam'
+      });
+    } catch (payErr) {
+      const providerMsg = payErr?.response?.data?.message || payErr?.response?.data?.msg || payErr.message;
       return res.status(400).json(error(`Payment initialization failed: ${providerMsg}`));
     }
 
     return res.json(success('Payment initiated', {
-      authorization_url: paystackRes.data.data.authorization_url,
-      reference: paystackRes.data.data.reference,
+      gateway: paymentResult.gateway,
+      authorization_url: paymentResult.authorization_url,
+      reference: paymentResult.reference,
       amount: cycleAmountNgn,
       billing_cycle
     }));
@@ -1383,5 +1371,242 @@ exports.logSearch = async (req, res, next) => {
     });
 
     return res.json(success('Search logged'));
+  } catch (err) { next(err); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ADAPTIVE DIFFICULTY ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+async function updateDifficultyProfile(userId, topic, wasCorrect) {
+  const { data: profile } = await supabase
+    .from('exam_difficulty_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('topic', topic)
+    .maybeSingle();
+
+  const streak = wasCorrect ? (profile?.streak_correct || 0) + 1 : 0;
+  const streakIncorrect = wasCorrect ? 0 : (profile?.streak_incorrect || 0) + 1;
+
+  let newLevel = profile?.current_level || 'medium';
+  const correctRate = profile?.questions_attempted
+    ? ((profile.correct_rate * profile.questions_attempted) + (wasCorrect ? 1 : 0)) / (profile.questions_attempted + 1)
+    : wasCorrect ? 1 : 0;
+
+  if (streak >= 3 && newLevel === 'easy') newLevel = 'medium';
+  else if (streak >= 3 && newLevel === 'medium') newLevel = 'hard';
+  if (streakIncorrect >= 3 && newLevel === 'hard') newLevel = 'medium';
+  else if (streakIncorrect >= 3 && newLevel === 'medium') newLevel = 'easy';
+
+  await supabase.from('exam_difficulty_profiles').upsert({
+    user_id: userId, topic, current_level: newLevel,
+    correct_rate: correctRate,
+    questions_attempted: (profile?.questions_attempted || 0) + 1,
+    streak_correct: streak, streak_incorrect: streakIncorrect,
+    last_attempt_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id,topic' });
+
+  return newLevel;
+}
+
+exports.generateAIQuestions = async (req, res, next) => {
+  try {
+    const { exam_category, exam_name, topic, difficulty, count } = req.body;
+    if (!exam_category || !exam_name || !topic) {
+      return res.status(400).json(error('exam_category, exam_name, and topic are required'));
+    }
+
+    const result = await generateAIExamQuestions(exam_category, exam_name, topic, difficulty || 'medium', count || 10);
+
+    const { data: saved, err } = await supabase.from('exam_ai_generated').insert({
+      user_id: req.user.id,
+      exam_category,
+      exam_name,
+      topic,
+      difficulty: difficulty || 'medium',
+      questions: result.questions || [],
+      generation_prompt: `Generate ${count || 10} questions for ${topic}`,
+    }).select('*').single();
+
+    if (err) throw err;
+    return res.status(201).json(success('Questions generated', { questions: result.questions, saved }));
+  } catch (err) { next(err); }
+};
+
+exports.getDifficultyProfile = async (req, res, next) => {
+  try {
+    const { topic } = req.query;
+    let q = supabase.from('exam_difficulty_profiles').select('*').eq('user_id', req.user.id);
+    if (topic) q = q.eq('topic', topic);
+    q = q.order('last_attempt_at', { ascending: false });
+
+    const { data: profiles, err } = await q;
+    if (err) throw err;
+    return res.json(success('Difficulty profiles', { profiles }));
+  } catch (err) { next(err); }
+};
+
+// ─── Interactive Exam Mode ────────────────────────────────────
+
+exports.startInteractive = async (req, res, next) => {
+  try {
+    const { exam_category, exam_name, topic } = req.body;
+    if (!exam_category || !exam_name) {
+      return res.status(400).json(error('exam_category and exam_name are required'));
+    }
+
+    // Get difficulty for topic
+    let difficulty = 'medium';
+    if (topic) {
+      const { data: profile } = await supabase.from('exam_difficulty_profiles')
+        .select('current_level').eq('user_id', req.user.id).eq('topic', topic).maybeSingle();
+      if (profile) difficulty = profile.current_level;
+    }
+
+    // Try bank questions first, then AI
+    let questions = [];
+    if (topic) {
+      const { data: bankQs } = await supabase.from('exam_questions')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, topic')
+        .eq('topic', topic).limit(10);
+      if (bankQs && bankQs.length >= 3) {
+        questions = bankQs.map(q => ({
+          id: q.id, question: q.question_text,
+          options: [`A. ${q.option_a}`, `B. ${q.option_b}`, `C. ${q.option_c}`, `D. ${q.option_d}`],
+          correct: extractAnswerLetter(q.correct_answer),
+          explanation: q.explanation || '', topic: q.topic, source: 'bank'
+        }));
+      }
+    }
+
+    // Supplement with AI if needed
+    if (questions.length < 5) {
+      const aiResult = await generateAIExamQuestions(exam_category, exam_name, topic || 'General QS', difficulty, 10 - questions.length);
+      const aiQuestions = (aiResult.questions || []).map((q, i) => ({ ...q, id: `ai_${Date.now()}_${i}`, source: 'ai' }));
+      questions = [...questions, ...aiQuestions];
+    }
+
+    // Shuffle
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+
+    return res.status(201).json(success('Interactive session started', { questions, difficulty, count: questions.length }));
+  } catch (err) { next(err); }
+};
+
+exports.submitAnswer = async (req, res, next) => {
+  try {
+    const { question_id, answer, topic, was_correct } = req.body;
+
+    const newLevel = await updateDifficultyProfile(req.user.id, topic || 'General', was_correct);
+
+    return res.json(success('Answer recorded', { new_level: newLevel, was_correct }));
+  } catch (err) { next(err); }
+};
+
+// ─── Exam Analytics ───────────────────────────────────────────
+
+exports.getAnalytics = async (req, res, next) => {
+  try {
+    const { exam_category, exam_name } = req.query;
+
+    // Aggregate from attempts
+    let q = supabase.from('exam_attempts')
+      .select('exam_category, exam_name, score, time_spent_seconds, detailed_results, created_at')
+      .eq('user_id', req.user.id);
+    if (exam_category) q = q.eq('exam_category', exam_category);
+    if (exam_name) q = q.eq('exam_name', exam_name);
+    q = q.order('created_at', { ascending: false });
+
+    const { data: attempts, err } = await q;
+    if (err) throw err;
+
+    if (!attempts || attempts.length === 0) {
+      return res.json(success('Analytics', { total_attempts: 0, exams: [], overall: { avg: 0, best: 0, pass_rate: 0 } }));
+    }
+
+    // Group by exam
+    const examMap = {};
+    for (const a of attempts) {
+      const key = `${a.exam_category}|${a.exam_name}`;
+      if (!examMap[key]) examMap[key] = { exam_category: a.exam_category, exam_name: a.exam_name, attempts: [] };
+      examMap[key].attempts.push(a);
+    }
+
+    const exams = Object.values(examMap).map(e => {
+      const scores = e.attempts.map(a => a.score || 0);
+      const avg = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+      const best = Math.max(...scores);
+      const passCount = e.attempts.filter(a => (a.score || 0) >= 60).length;
+      const passRate = Math.round((passCount / e.attempts.length) * 100);
+      const avgTime = Math.round(e.attempts.reduce((s, a) => s + (a.time_spent_seconds || 0), 0) / e.attempts.length);
+
+      // Topic breakdown
+      const topicBreakdown = {};
+      for (const a of e.attempts) {
+        if (a.detailed_results) {
+          const results = Array.isArray(a.detailed_results) ? a.detailed_results : [];
+          for (const r of results) {
+            const t = r.topic || 'General';
+            if (!topicBreakdown[t]) topicBreakdown[t] = { correct: 0, total: 0 };
+            topicBreakdown[t].total++;
+            if (r.correct) topicBreakdown[t].correct++;
+          }
+        }
+      }
+
+      const weaknesses = Object.entries(topicBreakdown)
+        .filter(([, v]) => v.total >= 2 && (v.correct / v.total) < 0.5)
+        .map(([topic]) => topic);
+
+      return {
+        exam_category: e.exam_category,
+        exam_name: e.exam_name,
+        total_attempts: e.attempts.length,
+        avg_score: avg,
+        best_score: best,
+        avg_time_seconds: avgTime,
+        topic_breakdown: topicBreakdown,
+        weakness_areas: weaknesses,
+        pass_probability: Math.min(0.95, (avg / 100) * (passRate / 100) + 0.1)
+      };
+    });
+
+    // Overall
+    const allScores = attempts.map(a => a.score || 0);
+    const overall = {
+      avg: Math.round(allScores.reduce((s, v) => s + v, 0) / allScores.length),
+      best: Math.max(...allScores),
+      total_attempts: attempts.length,
+      pass_rate: Math.round((attempts.filter(a => (a.score || 0) >= 60).length / attempts.length) * 100)
+    };
+
+    return res.json(success('Analytics', { exams, overall }));
+  } catch (err) { next(err); }
+};
+
+exports.getWeaknesses = async (req, res, next) => {
+  try {
+    const { data: profiles, err } = await supabase.from('exam_difficulty_profiles')
+      .select('topic, current_level, correct_rate, questions_attempted')
+      .eq('user_id', req.user.id)
+      .order('correct_rate', { ascending: true });
+
+    if (err) throw err;
+
+    const weaknesses = (profiles || [])
+      .filter(p => p.questions_attempted >= 3 && p.correct_rate < 0.6)
+      .map(p => ({
+        topic: p.topic,
+        level: p.current_level,
+        accuracy: Math.round(p.correct_rate * 100),
+        attempts: p.questions_attempted
+      }));
+
+    return res.json(success('Weaknesses', { weaknesses }));
   } catch (err) { next(err); }
 };

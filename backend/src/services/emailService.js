@@ -13,7 +13,10 @@ const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
 const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET;
 const MAILJET_SENDER_EMAIL = process.env.MAILJET_SENDER_EMAIL;
 const MAILJET_SENDER_NAME = process.env.MAILJET_SENDER_NAME;
-const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase(); // smtp | relay | mailjet | auto
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase(); // smtp | relay | mailjet | zeptomail | auto
+const ZEPTOMAIL_API_KEY = process.env.ZEPTOMAIL_API_KEY;
+const ZEPTOMAIL_SENDER_EMAIL = process.env.ZEPTOMAIL_SENDER_EMAIL;
+const ZEPTOMAIL_SENDER_NAME = process.env.ZEPTOMAIL_SENDER_NAME;
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
@@ -75,8 +78,12 @@ if (EMAIL_PROVIDER === 'mailjet' && !mailjetClient) {
   logger.error('Email service misconfigured: EMAIL_PROVIDER=mailjet but MAILJET_* credentials are missing');
 }
 
-if (EMAIL_PROVIDER === 'auto' && !mailjetClient && !smtpConfigured && !relayConfigured) {
-  logger.error('Email service misconfigured: no Mailjet, Relay, or SMTP provider is configured');
+if (EMAIL_PROVIDER === 'zeptomail' && !ZEPTOMAIL_API_KEY) {
+  logger.error('Email service misconfigured: EMAIL_PROVIDER=zeptomail but ZEPTOMAIL_API_KEY is missing');
+}
+
+if (EMAIL_PROVIDER === 'auto' && !mailjetClient && !smtpConfigured && !relayConfigured && !ZEPTOMAIL_API_KEY) {
+  logger.error('Email service misconfigured: no Mailjet, Relay, SMTP, or Zeptomail provider is configured');
 }
 
 // ── Core send function ────────────────────────────────────────
@@ -99,12 +106,17 @@ async function send({ to, subject, html, text, attachments = [] }) {
   const textPart = normalizePlainText(text || htmlToText(htmlPart));
 
   const providers = EMAIL_PROVIDER === 'auto'
-    ? ['relay', ...(mailjetClient ? ['mailjet'] : []), 'smtp']
+    ? ['relay', ...(mailjetClient ? ['mailjet'] : []), ...(ZEPTOMAIL_API_KEY ? ['zeptomail'] : []), 'smtp']
     : [EMAIL_PROVIDER];
 
   for (const provider of providers) {
     if (provider === 'mailjet' && mailjetClient) {
       const ok = await sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments });
+      if (ok) return true;
+    }
+
+    if (provider === 'zeptomail' && ZEPTOMAIL_API_KEY) {
+      const ok = await sendViaZeptomail({ recipients, subject, htmlPart, textPart, attachments });
       if (ok) return true;
     }
 
@@ -261,6 +273,41 @@ async function sendViaRelay({ recipients, subject, htmlPart, textPart, attachmen
   } catch (err) {
     logger.error({
       message: 'Relay email delivery failed',
+      subject,
+      status: err.response?.status,
+      provider_error: err.response?.data || err.message
+    });
+    return false;
+  }
+}
+
+async function sendViaZeptomail({ recipients, subject, htmlPart, textPart }) {
+  try {
+    const to = recipients.map((r) => ({
+      email_address: { address: r.email, name: r.name || undefined }
+    }));
+
+    await axios.post('https://api.zeptomail.in/v1.1/email', {
+      from: {
+        address: ZEPTOMAIL_SENDER_EMAIL || BRAND.email,
+        name: ZEPTOMAIL_SENDER_NAME || BRAND.name
+      },
+      to,
+      subject,
+      htmlbody: htmlPart,
+      textbody: textPart
+    }, {
+      timeout: 20000,
+      headers: {
+        'Authorization': `Zoho-encmt ${ZEPTOMAIL_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return true;
+  } catch (err) {
+    logger.error({
+      message: 'Zeptomail delivery failed',
       subject,
       status: err.response?.status,
       provider_error: err.response?.data || err.message
@@ -577,6 +624,75 @@ exports.sendSubscriptionConfirmation = async (user, billingCycle = 'monthly', ex
     `
   });
   return send({ to: user.email, subject: `Your QSToolkit ${displayName} plan is active`, html });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  SUBSCRIPTION CANCELLATION
+// ════════════════════════════════════════════════════════════════
+exports.sendSubscriptionCancellation = async (user, expiresAt) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+  const planName = user.subscription_plans?.name || 'your plan';
+  const displayName = PLAN_DISPLAY_NAMES[planName.toLowerCase()] || planName;
+  const expiry = expiresAt
+    ? new Date(expiresAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+
+  const html = layout({
+    preheader: `Your QSToolkit subscription has been cancelled`,
+    body: `
+      ${heroSection({ emoji: '📋', title: 'Subscription Cancelled', subtitle: `Your ${displayName} plan has been cancelled.` })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, your <strong>${displayName}</strong> subscription has been successfully cancelled.`)}
+        ${sectionTitle('What happens next')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Plan', displayName)}
+          ${infoRow('Access until', expiry)}
+          ${infoRow('Future charges', 'Stopped')}
+        </table>
+        ${bodyText(`You'll continue to have full access to your plan features until <strong>${expiry}</strong>. After that date, your account will be downgraded to the Free tier.`)}
+        ${noteBox(`Your projects, BOQs, and saved calculations are <strong>never deleted</strong>. You can resubscribe anytime to regain full access.`, 'success')}
+        ${ctaButton('Resubscribe →', `${BRAND.url}/subscription`)}
+      `)}
+    `
+  });
+  return send({ to: user.email, subject: `Your QSToolkit ${displayName} subscription has been cancelled`, html });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  PLAN CHANGE CONFIRMATION
+// ════════════════════════════════════════════════════════════════
+exports.sendPlanChangeConfirmation = async (user, oldPlanName, newPlanName, billingCycle, expiresAt) => {
+  const firstName = user.name?.split(' ')[0] || 'there';
+  const oldDisplay = PLAN_DISPLAY_NAMES[oldPlanName?.toLowerCase()] || oldPlanName;
+  const newDisplay = PLAN_DISPLAY_NAMES[newPlanName?.toLowerCase()] || newPlanName;
+  const cycle = billingCycle === 'annual' ? 'Annual' : 'Monthly';
+  const expiry = expiresAt
+    ? new Date(expiresAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+  const isUpgrade = ['basic', 'pro', 'enterprise'].indexOf(newPlanName) > ['basic', 'pro', 'enterprise'].indexOf(oldPlanName);
+  const action = isUpgrade ? 'Upgraded' : 'Downgraded';
+
+  const html = layout({
+    preheader: `Your QSToolkit plan has been ${action.toLowerCase()}`,
+    body: `
+      ${heroSection({ emoji: isUpgrade ? '⬆️' : '⬇️', title: `Plan ${action}!`, subtitle: `You're now on the ${newDisplay} plan.` })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, your plan has been successfully changed from <strong>${oldDisplay}</strong> to <strong>${newDisplay} (${cycle})</strong>.`)}
+        ${sectionTitle('New Plan Details')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Previous Plan', oldDisplay)}
+          ${infoRow('New Plan', `${newDisplay} · ${cycle}`)}
+          ${infoRow('New Expiry', expiry)}
+        </table>
+        ${isUpgrade
+          ? noteBox('Your new plan features are available immediately. Your new billing cycle starts from today.', 'success')
+          : noteBox('Your new plan takes effect immediately. Your billing cycle resets from today.', 'info')
+        }
+        ${ctaButton('Go to Dashboard →', `${BRAND.url}/dashboard`)}
+      `)}
+    `
+  });
+  return send({ to: user.email, subject: `QSToolkit: Plan changed to ${newDisplay}`, html });
 };
 
 // ════════════════════════════════════════════════════════════════

@@ -55,6 +55,10 @@ router.post('/renew',          paymentLimiter, [
   body('billing_cycle').isIn(['monthly', 'annual']).withMessage('billing_cycle must be monthly or annual'),
   validate
 ], ctrl.renewMySubscription);
+router.post('/change-plan',    paymentLimiter, [
+  body('new_plan_name').trim().notEmpty().withMessage('new_plan_name is required'),
+  validate
+], ctrl.changePlan);
 router.patch('/auto-renew',    ctrl.setAutoRenew);
 
 // Direct payment submission endpoints

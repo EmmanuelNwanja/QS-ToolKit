@@ -68,7 +68,9 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ── Rate Limiting ─────────────────────────────────────────────
-app.use('/api/', generalLimiter);
+if (process.env.NODE_ENV !== 'development') {
+  app.use('/api/', generalLimiter);
+}
 
 // ── Health Check ──────────────────────────────────────────────
 app.get('/health', (req, res) => {
