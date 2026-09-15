@@ -8,7 +8,7 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import StrengthsWeaknessesModal from '../../components/academy/StrengthsWeaknessesModal';
 import AdmissionTestModal from '../../components/academy/AdmissionTestModal';
-import { academyAPI } from '../../services/api';
+import { academyAPI, subscriptionAPI } from '../../services/api';
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -43,6 +43,21 @@ export default function AcademyDashboard() {
     }
     load();
   }, []);
+
+  // Verify Flutterwave payment after redirect
+  useEffect(() => {
+    if (!router.isReady) return;
+    const txRef = router.query.tx_ref;
+    const ref = router.query.reference || router.query.trxref;
+    if (!txRef && !ref) return;
+
+    const verifyRef = (txRef || ref).split(',')[0].trim();
+    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
+      toast.success('Academy subscription activated!');
+      await academyAPI.getStatus().then(r => setStatus(r.data));
+      router.replace('/academy');
+    }).catch(() => toast.error('Payment verification failed. Please contact support.'));
+  }, [router.isReady, router.query.tx_ref, router.query.reference, router.query.trxref]);
 
   const isAdmitted = status?.admission_completed;
   const isActive = status?.subscription_active;

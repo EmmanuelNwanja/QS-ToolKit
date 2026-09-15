@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { examAPI } from '../../services/api';
+import { examAPI, subscriptionAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/helpers';
 
@@ -14,6 +15,7 @@ const card = {
 };
 
 export default function ExamPrepDashboard() {
+  const router = useRouter();
   const [status, setStatus] = useState(null);
   const [attempts, setAttempts] = useState([]);
   const [stats, setStats] = useState({ taken: 0, avgScore: 0, passRate: 0 });
@@ -50,6 +52,22 @@ export default function ExamPrepDashboard() {
     }
     load();
   }, []);
+
+  // Verify Flutterwave payment after redirect
+  useEffect(() => {
+    if (!router.isReady) return;
+    const txRef = router.query.tx_ref;
+    const ref = router.query.reference || router.query.trxref;
+    if (!txRef && !ref) return;
+
+    const verifyRef = (txRef || ref).split(',')[0].trim();
+    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
+      toast.success('Exam Prep subscription activated!');
+      const res = await examAPI.getStatus();
+      setStatus(res.data);
+      router.replace('/exam-prep');
+    }).catch(() => toast.error('Payment verification failed. Please contact support.'));
+  }, [router.isReady, router.query.tx_ref, router.query.reference, router.query.trxref]);
 
   const hasActiveSub = status?.active === true || status?.subscription_status === 'active';
   const hasFreeTrial = status?.free_trial_available === true;

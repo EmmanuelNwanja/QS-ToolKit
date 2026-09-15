@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
@@ -43,13 +43,6 @@ export default function SubscriptionPage() {
   const [pendingPlan, setPendingPlan]       = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod]   = useState(null);
-  const [bankSettings, setBankSettings]     = useState(null);
-  const [bankSettingsLoading, setBankSettingsLoading] = useState(false);
-  const [transferRef, setTransferRef]       = useState('');
-  const [transferFile, setTransferFile]     = useState(null);
-  const [submittingTransfer, setSubmittingTransfer] = useState(false);
-  const [transferDone, setTransferDone]     = useState(false);
-  const fileInputRef = useRef(null);
 
   // Add-on payment loading state
   const [addOnPaying, setAddOnPaying] = useState('');
@@ -101,15 +94,6 @@ export default function SubscriptionPage() {
     }).catch(() => toast.error('Payment verification failed. Please contact support.'));
   }, [router.isReady, router.query.reference, router.query.trxref, router.query.tx_ref]);
 
-  // Fetch bank settings when user picks bank_transfer
-  useEffect(() => {
-    if (paymentMethod !== 'bank_transfer') return;
-    setBankSettingsLoading(true);
-    subscriptionAPI.getBankTransferSettings()
-      .then(r => setBankSettings(r.data.data || null))
-      .catch(() => setBankSettings(null))
-      .finally(() => setBankSettingsLoading(false));
-  }, [paymentMethod]);
 
   const handleAddOnSubscribe = async (addOnType) => {
     const billingCycle = addOnType === 'academy'
@@ -203,42 +187,6 @@ export default function SubscriptionPage() {
     setPendingPlan(null);
     setPaymentMethod(null);
     setPaying('');
-  }
-
-  function getPendingPlanPrice() {
-    const plan = plans.find(p => p.name === pendingPlan);
-    if (!plan) return 0;
-    const promo = promoResults[pendingPlan];
-    if (promo?.discount_percent) {
-      const base = billing === 'annual' ? (plan.price_annual || Math.round(plan.price_monthly * 12 * 0.90)) : plan.price_monthly;
-      return base * (1 - promo.discount_percent / 100);
-    }
-    return billing === 'annual' ? (plan.price_annual || Math.round(plan.price_monthly * 12 * 0.90)) : plan.price_monthly;
-  }
-
-  async function handleBankTransferSubmit() {
-    if (!transferRef.trim()) { toast.error('Please enter your bank transaction reference'); return; }
-    const amount = getPendingPlanPrice();
-    if (!amount) { toast.error('Could not determine plan amount'); return; }
-
-    setSubmittingTransfer(true);
-    try {
-      const formData = new FormData();
-      formData.append('planName', pendingPlan);
-      formData.append('billingInterval', billing);
-      formData.append('amountNgn', String(amount));
-      formData.append('referenceNote', transferRef.trim());
-      if (transferFile) {
-        formData.append('receipt', transferFile, transferFile.name);
-      }
-      await subscriptionAPI.submitBankTransfer(formData);
-      setTransferDone(true);
-      toast.success('Submission received! An admin will verify and activate your plan within 24 hours.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Submission failed');
-    } finally {
-      setSubmittingTransfer(false);
-    }
   }
 
   const handleSubscribe = async (plan) => {
@@ -651,117 +599,19 @@ export default function SubscriptionPage() {
                       </div>
                     )}
 
-                    <button
-                      onClick={() => setPaymentMethod('bank_transfer')}
-                      className="w-full flex items-start gap-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl p-4 text-left transition-all group"
-                    >
-                      <span className="mt-0.5 w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100">
-                        <svg className="text-emerald-600" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                    <div className="w-full flex items-start gap-4 border-2 border-slate-200 rounded-xl p-4 opacity-60">
+                      <span className="mt-0.5 w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                        <svg className="text-purple-400" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                       </span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-800">Direct Bank Transfer</span>
-                          <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">Manual</span>
+                          <span className="font-semibold text-slate-500">Pay with Crypto</span>
+                          <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">Coming Soon</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">Transfer to our bank account and upload receipt. Activates within 24 hours of admin review.</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Bitcoin, USDT, and other cryptocurrencies. Coming soon.</p>
                       </div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2 — bank transfer form */}
-              {paymentMethod === 'bank_transfer' && !transferDone && (
-                <div className="p-6">
-                  <button onClick={() => setPaymentMethod(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-4 flex items-center gap-1">← Back</button>
-                  <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Bank Transfer Details</h2>
-                  <p className="text-sm text-slate-500 mb-5">
-                    Transfer <span className="font-semibold text-slate-800">₦{Number(getPendingPlanPrice()).toLocaleString('en-NG')}</span> to the account below, then upload your receipt.
-                  </p>
-
-                  {bankSettingsLoading && <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700" /></div>}
-
-                  {!bankSettingsLoading && bankSettings?.is_active === false && (
-                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Direct bank transfer is temporarily unavailable. Please contact support@qs.solnuv.com.</p>
-                  )}
-
-                  {!bankSettingsLoading && bankSettings?.is_active !== false && bankSettings && (
-                    <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-2 text-sm border border-slate-200">
-                      {bankSettings.bank_name && (
-                        <div className="flex justify-between"><span className="text-slate-500">Bank</span><span className="font-semibold text-slate-800">{bankSettings.bank_name}</span></div>
-                      )}
-                      {bankSettings.account_number && (
-                        <div className="flex justify-between"><span className="text-slate-500">Account No.</span><span className="font-mono font-semibold text-slate-800 text-base tracking-widest">{bankSettings.account_number}</span></div>
-                      )}
-                      {bankSettings.account_name && (
-                        <div className="flex justify-between"><span className="text-slate-500">Account Name</span><span className="font-semibold text-slate-800">{bankSettings.account_name}</span></div>
-                      )}
-                      {bankSettings.additional_instructions && (
-                        <p className="text-slate-500 pt-2 border-t border-slate-200 text-xs">{bankSettings.additional_instructions}</p>
-                      )}
                     </div>
-                  )}
-
-                  {!bankSettingsLoading && !bankSettings && (
-                    <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 mb-5">Bank account details are not configured yet. Please contact support@qs.solnuv.com.</p>
-                  )}
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Transaction Reference / Narration <span className="text-red-500">*</span></label>
-                      <input
-                        value={transferRef}
-                        onChange={e => setTransferRef(e.target.value)}
-                        placeholder="e.g. Bank teller ID or transfer narration"
-                        className="input w-full"
-                      />
-                      <p className="text-xs text-slate-400 mt-1">Enter the reference or narration from your bank receipt to help us match the payment.</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Payment Receipt <span className="text-slate-400 font-normal">(optional)</span></label>
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-300 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-primary-700 transition-colors"
-                      >
-                        <svg className="text-slate-400" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
-                        {transferFile
-                          ? <span className="text-sm text-slate-700 font-medium">{transferFile.name}</span>
-                          : <><span className="text-sm text-slate-500">Click to upload receipt</span><span className="text-xs text-slate-400">PNG, JPG, or PDF — max 5 MB</span></>}
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp,application/pdf"
-                        className="hidden"
-                        onChange={e => {
-                          const f = e.target.files?.[0];
-                          if (f && f.size > 5 * 1024 * 1024) { toast.error('File must be under 5 MB'); e.target.value = ''; return; }
-                          setTransferFile(f || null);
-                        }}
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleBankTransferSubmit}
-                      disabled={submittingTransfer || bankSettings?.is_active === false}
-                      className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {submittingTransfer ? 'Submitting...' : 'Submit for Verification'}
-                    </button>
                   </div>
-                </div>
-              )}
-
-              {/* Step 3 — success */}
-              {paymentMethod === 'bank_transfer' && transferDone && (
-                <div className="p-6 text-center">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-                    <svg className="text-emerald-600" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  </div>
-                  <h2 className="font-display font-bold text-xl text-primary-800 mb-2">Submission Received!</h2>
-                  <p className="text-sm text-slate-600 mb-6">Your payment proof has been submitted. An admin will review and activate your <span className="font-semibold capitalize">{pendingPlan}</span> plan within 24 hours.</p>
-                  <button onClick={closePaymentModal} className="btn-primary w-full py-3">Done</button>
                 </div>
               )}
             </div>

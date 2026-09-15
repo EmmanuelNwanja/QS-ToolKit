@@ -610,7 +610,9 @@ async function activateSubscription(userId, planId, billingCycle, options = {}) 
 exports.verify = async (req, res, next) => {
   try {
     const { reference, tx_ref, gateway } = req.query;
-    const actualRef = reference || tx_ref;
+    // Sanitize: Flutterwave may redirect with duplicate refs (e.g. "ref1,ref1") — take the first
+    const rawRef = reference || tx_ref;
+    const actualRef = rawRef ? rawRef.split(',')[0].trim() : rawRef;
 
     let verification;
     if (gateway === 'flutterwave' || tx_ref) {
