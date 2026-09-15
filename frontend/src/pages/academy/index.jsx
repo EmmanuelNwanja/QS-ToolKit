@@ -47,12 +47,11 @@ export default function AcademyDashboard() {
   // Verify Flutterwave payment after redirect
   useEffect(() => {
     if (!router.isReady) return;
-    const txRef = router.query.tx_ref;
-    const ref = router.query.reference || router.query.trxref;
-    if (!txRef && !ref) return;
+    const rawRef = String(router.query.tx_ref || router.query.reference || router.query.trxref || '');
+    if (!rawRef) return;
 
-    const verifyRef = (txRef || ref).split(',')[0].trim();
-    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
+    const verifyRef = rawRef.split(',')[0].trim();
+    subscriptionAPI.verify(verifyRef, router.query.tx_ref ? 'flutterwave' : undefined).then(async () => {
       toast.success('Academy subscription activated!');
       await academyAPI.getStatus().then(r => setStatus(r.data));
       router.replace('/academy');

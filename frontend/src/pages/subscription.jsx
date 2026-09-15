@@ -81,12 +81,11 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    const reference = router.query.reference || router.query.trxref;
-    const txRef = router.query.tx_ref;
-    if (!reference && !txRef) return;
+    const rawRef = String(router.query.tx_ref || router.query.reference || router.query.trxref || '');
+    if (!rawRef) return;
 
-    const verifyRef = (txRef || reference).split(',')[0].trim();
-    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
+    const verifyRef = rawRef.split(',')[0].trim();
+    subscriptionAPI.verify(verifyRef, router.query.tx_ref ? 'flutterwave' : undefined).then(async () => {
       toast.success('Subscription activated!');
       await refreshUser();
       await fetchMySub();

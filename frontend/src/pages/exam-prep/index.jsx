@@ -56,12 +56,11 @@ export default function ExamPrepDashboard() {
   // Verify Flutterwave payment after redirect
   useEffect(() => {
     if (!router.isReady) return;
-    const txRef = router.query.tx_ref;
-    const ref = router.query.reference || router.query.trxref;
-    if (!txRef && !ref) return;
+    const rawRef = String(router.query.tx_ref || router.query.reference || router.query.trxref || '');
+    if (!rawRef) return;
 
-    const verifyRef = (txRef || ref).split(',')[0].trim();
-    subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
+    const verifyRef = rawRef.split(',')[0].trim();
+    subscriptionAPI.verify(verifyRef, router.query.tx_ref ? 'flutterwave' : undefined).then(async () => {
       toast.success('Exam Prep subscription activated!');
       const res = await examAPI.getStatus();
       setStatus(res.data);
