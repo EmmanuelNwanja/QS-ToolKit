@@ -617,7 +617,17 @@ exports.verify = async (req, res, next) => {
     let verification;
     if (gateway === 'flutterwave' || tx_ref) {
       // Flutterwave verification by tx_ref
-      verification = await flutterwaveVerifyByReference(actualRef);
+      try {
+        verification = await flutterwaveVerifyByReference(actualRef);
+      } catch (flwErr) {
+        const status = flwErr?.response?.data?.status || flwErr?.response?.status;
+        const msg = flwErr?.response?.data?.message || flwErr.message;
+        // Flutterwave returns "error" status with 400 when tx_ref not found (payment not completed)
+        if (status === 'error' || status === 400 || status === 404) {
+          return res.status(400).json(error('Payment not found. The transaction may not have been completed. Please try again.'));
+        }
+        throw flwErr;
+      }
     } else {
       // Try Flutterwave first (primary), fall back to Paystack (legacy)
       try {

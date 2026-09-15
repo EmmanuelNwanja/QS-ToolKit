@@ -85,7 +85,7 @@ export default function SubscriptionPage() {
     const txRef = router.query.tx_ref;
     if (!reference && !txRef) return;
 
-    const verifyRef = txRef || reference;
+    const verifyRef = (txRef || reference).split(',')[0].trim();
     subscriptionAPI.verify(verifyRef, txRef ? 'flutterwave' : undefined).then(async () => {
       toast.success('Subscription activated!');
       await refreshUser();
