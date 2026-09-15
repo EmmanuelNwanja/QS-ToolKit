@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd frontend && npm install --omit=optional && npm run build",
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm start",
     "lint": "cd frontend && npm run lint"
