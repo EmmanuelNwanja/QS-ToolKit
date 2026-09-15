@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
-import AiChatWidget from './AiChatWidget';
-import GlobalSearch from './GlobalSearch';
+import AiChatWidget from './ui/ai-chat';
+import Search from './ui/Search';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/engine',        icon: '🤖', label: 'AI Engine' },
   { href: '/projects',      icon: '📁', label: 'Projects' },
   { href: '/calculators',   icon: '🧮', label: 'Calculators' },
+  { href: '/classroom',     icon: '🏫', label: 'Classroom' },
   { href: '/academy',       icon: '🎓', label: 'QS Academy' },
   { href: '/exam-prep',     icon: '📝', label: 'Exam Prep' },
   { href: '/qs-flow',       icon: '🚀', label: 'QS Flow' },
@@ -196,7 +197,7 @@ export default function Layout({ children, title }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <GlobalSearch />
+            <Search />
             {installPrompt && (
               <button
                 onClick={handleInstall}

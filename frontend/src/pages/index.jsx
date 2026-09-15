@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
+import FadeUp from '../components/ui/amicro/entrance/fade-up';
+import BlurText from '../components/ui/amicro/text/blur-text';
+import MagneticButton from '../components/ui/amicro/hover/magnetic-button';
+import TiltCard from '../components/ui/amicro/hover/tilt-card';
 
 /* ═══════════════════════════════════════════════════════════
    ANIMATION VARIANTS
@@ -20,15 +24,6 @@ const staggerContainer = {
   hidden: {},
   visible: {
     transition: { staggerChildren: 0.1, delayChildren: 0.15 }
-  }
-};
-
-const scaleIn = {
-  hidden: { opacity: 0.2, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
   }
 };
 
@@ -360,17 +355,12 @@ export default function LandingPage() {
           </div>
 
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.h1
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              custom={0.1}
+            <BlurText
+              text="Quantity Surveying. Without the spreadsheets."
               className="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] mb-8 tracking-tight"
-            >
-              Quantity Surveying.
-              <br />
-              <span className="text-gold-400">Without the spreadsheets.</span>
-            </motion.h1>
+              highlight="Without the spreadsheets."
+              highlightClassName="text-gold-400"
+            />
 
             <motion.p
               variants={fadeUp}
@@ -383,20 +373,18 @@ export default function LandingPage() {
               No installs. No lock-in. No wasted weekends.
             </motion.p>
 
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              custom={0.3}
-              className="flex flex-col sm:flex-row gap-3 justify-center"
-            >
-              <Link href="/auth/register" className="btn-gold text-base px-8 py-3">
-                Start Free — No Card
-              </Link>
-              <Link href="/calculators" className="btn-ghost text-base px-8 py-3">
-                Try a Calculator →
-              </Link>
-            </motion.div>
+            <FadeUp delay={0.3}>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <MagneticButton>
+                  <Link href="/auth/register" className="btn-gold text-base px-8 py-3 inline-block">
+                    Start Free — No Card
+                  </Link>
+                </MagneticButton>
+                <Link href="/calculators" className="btn-ghost text-base px-8 py-3">
+                  Try a Calculator →
+                </Link>
+              </div>
+            </FadeUp>
           </div>
 
           {/* Marquee */}
@@ -437,21 +425,19 @@ export default function LandingPage() {
               className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5"
             >
               {PROBLEMS.map((p, i) => (
-                <motion.div
-                  key={i}
-                  variants={scaleIn}
-                  className="bg-primary-900 p-8 md:p-10 card-shine group hover:bg-primary-800/50 transition-colors duration-500"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5 group-hover:bg-gold-500/20 transition-colors">
-                    <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
+                <TiltCard key={i}>
+                  <div className="bg-primary-900 p-8 md:p-10 card-shine group hover:bg-primary-800/50 transition-colors duration-500">
+                    <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5 group-hover:bg-gold-500/20 transition-colors">
+                      <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
+                    </div>
+                    <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-3">
+                      {p.title}
+                    </h3>
+                    <p className="text-sm md:text-base text-white/40 leading-relaxed">
+                      {p.body}
+                    </p>
                   </div>
-                  <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-3">
-                    {p.title}
-                  </h3>
-                  <p className="text-sm md:text-base text-white/40 leading-relaxed">
-                    {p.body}
-                  </p>
-                </motion.div>
+                </TiltCard>
               ))}
             </motion.div>
           </div>

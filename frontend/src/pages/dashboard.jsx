@@ -7,6 +7,8 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
 import { projectAPI, leaderboardAPI, userAPI } from '../services/api';
 import { formatNaira, formatCompact, CALCULATORS } from '../utils/helpers';
+import FadeIn from '../components/ui/amicro/entrance/fade-in';
+import ScaleIn from '../components/ui/amicro/entrance/scale-in';
 
 const STAT_CONFIG = [
   { key: 'total',     label: 'Total Projects',  color: 'bg-primary-600',  getValue: (s) => s?.total || 0 },
@@ -81,13 +83,15 @@ export default function DashboardPage() {
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {STAT_CONFIG.map(s => (
-              <div key={s.key} className="stat-card">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2 h-2 rounded-full ${s.color}`} />
-                  <span className="stat-label">{s.label}</span>
+              <FadeIn key={s.key}>
+                <div className="stat-card">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                    <span className="stat-label">{s.label}</span>
+                  </div>
+                  <p className="stat-value">{loading ? '--' : s.getValue(stats)}</p>
                 </div>
-                <p className="stat-value">{loading ? '--' : s.getValue(stats)}</p>
-              </div>
+              </FadeIn>
             ))}
           </div>
 
@@ -171,26 +175,28 @@ export default function DashboardPage() {
             {/* Right Sidebar */}
             <div className="lg:col-span-2 space-y-4">
               {/* Dr. Q Assistant */}
-              <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
-                <h2 className="section-title text-white mb-2">Dr. Q Assistant</h2>
-                <p className="text-sm text-primary-200 mb-4">
-                  Ask about standards, calculations, or get help with BOQs.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['How many blocks for 100m2?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => {
-                        const event = new CustomEvent('qst-ai-ask', { detail: q });
-                        window.dispatchEvent(event);
-                      }}
-                      className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
-                    >
-                      {q}
-                    </button>
-                  ))}
+              <ScaleIn>
+                <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
+                  <h2 className="section-title text-white mb-2">Dr. Q Assistant</h2>
+                  <p className="text-sm text-primary-200 mb-4">
+                    Ask about standards, calculations, or get help with BOQs.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['How many blocks for 100m2?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => {
+                          const event = new CustomEvent('qst-ai-ask', { detail: q });
+                          window.dispatchEvent(event);
+                        }}
+                        className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </ScaleIn>
 
               {/* Quick Tools */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

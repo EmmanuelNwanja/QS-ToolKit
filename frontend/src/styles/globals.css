@@ -274,3 +274,345 @@
 .prose p:last-child {
   margin-bottom: 0;
 }
+
+/* ══ Bencho Components ═══════════════════════════════════════
+   MIT-licensed components from Bencho, adapted for QSToolkit.
+   All custom properties are scoped to component roots via
+   inline styles — no globals leaked.
+   QSToolkit: tokens mapped to tailwind gray scale + font-body.
+   See Assignees.jsx, SlideToConfirm.jsx, DraggingBall.jsx,
+   Search.jsx for the inline token definitions. */
+
+/* ══ Assignees (.pik) ══════════════════════════════════════ */
+.pik {
+  position: relative;
+  box-sizing: border-box;
+  font-family: var(--font-ui, var(--font-body));
+  color: var(--fill-on, #111827);}
+
+.pik-pill {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  background: var(--fill-slab, #ffffff);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;}
+
+[data-stroke="on"] .pik-pill { box-shadow: 0 0 0 1px var(--pane-edge, #e5e7eb); }
+
+.pik-pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--fill-on-rgb, 17, 24, 39), 0.45);}
+
+.pik-rail {
+  position: relative;
+  flex: none;
+  height: 28px;
+  transition: width 300ms cubic-bezier(0.33, 0.55, 0.2, 1);}
+
+.pik-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--fill-slab, #ffffff);}
+
+.pik-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.pik-say { margin-left: -6px; color: var(--fill-on, #111827); }
+
+.pik-chev {
+  flex: none;
+  margin-left: -2px;
+  color: rgba(var(--fill-on-rgb, 17, 24, 39), 0.4);
+  transition: rotate 240ms cubic-bezier(0.33, 0.55, 0.2, 1), color 150ms ease;}
+
+.pik-pill:hover .pik-chev { color: rgba(var(--fill-on-rgb, 17, 24, 39), 0.75); }
+
+.pik-pill[aria-expanded="true"] .pik-chev { rotate: 180deg; }
+
+.pik-card {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--fill-slab, #ffffff);
+  transform-origin: 0 0;}
+
+[data-stroke="on"] .pik-card { box-shadow: 0 0 0 1px var(--pane-edge, #e5e7eb); }
+
+.pik-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--pik-row-r, 16px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease;}
+
+.pik-row:hover { background: rgba(var(--fill-on-rgb, 17, 24, 39), 0.05); }
+
+.pik-row:focus-visible {
+  outline: none;
+  background: rgba(var(--fill-on-rgb, 17, 24, 39), 0.07);}
+
+.pik-av {
+  flex: none;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;}
+
+.pik-who { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+
+.pik-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;}
+
+.pik-role {
+  font-size: 11.5px;
+  color: rgba(var(--fill-on-rgb, 17, 24, 39), 0.45);}
+
+.pik-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px; height: 18px;
+  border-radius: 5.5px;
+  box-shadow: inset 0 0 0 1.5px rgba(var(--fill-on-rgb, 17, 24, 39), 0.22);
+  transition: background 160ms ease, box-shadow 160ms ease;}
+
+.pik-row[data-on] .pik-mark {
+  background: var(--fill-on, #111827);
+  box-shadow: inset 0 0 0 1.5px var(--fill-on, #111827);}
+
+.pik-tick {
+  display: grid;
+  place-items: center;
+  color: var(--fill-slab, #ffffff);}
+
+@media (prefers-reduced-motion: reduce) {
+  .pik-rail, .pik-chev { transition-duration: 1ms; }
+}
+
+/* ══ Slide to confirm (.sld) ═══════════════════════════════ */
+.sld {
+  box-sizing: border-box;
+  font-family: var(--font-ui, var(--font-body));
+  color: var(--fill-on, #111827);}
+
+.sld-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--fill-slab, #ffffff);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;}
+
+[data-stroke="on"] .sld-track {
+  box-shadow: inset 0 0 0 1px var(--pane-edge, #e5e7eb);}
+
+.sld-wash {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  background: var(--fill-on, #111827);
+  z-index: 1;
+  pointer-events: none;}
+
+.sld-say {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  color: rgba(var(--fill-on-rgb, 17, 24, 39), 0.45);
+  pointer-events: none;
+  white-space: nowrap;}
+
+.sld-grip {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: var(--fill-on, #111827);
+  color: var(--fill-slab, #ffffff);
+  cursor: grab;
+  pointer-events: auto;
+  transform-origin: 0% 50%;
+  transition: none;
+  z-index: 2;}
+
+.sld-track[data-held] .sld-grip { cursor: grabbing; }
+
+.sld-arrow,
+.sld-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  pointer-events: none;}
+
+@media (prefers-reduced-motion: reduce) {
+  .sld-done { transition-duration: 1ms; }
+}
+
+/* ══ Dragging ball (.drg) ══════════════════════════════════ */
+.drg-well {
+  position: relative;
+  display: grid;
+  place-items: center;}
+
+.drg-goo > svg {
+  transform: scale(calc(1 / var(--k, 1)));
+  transform-origin: 0 0;}
+
+.drg-goo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;}
+
+.drg-ball {
+  grid-area: 1 / 1;
+  border-radius: 999px;
+  background: var(--fill-slab, #ffffff);
+  cursor: grab;
+  touch-action: none;
+  will-change: transform;}
+
+.drg-ball:active { cursor: grabbing; }
+
+/* ══ Search (.sek) ═════════════════════════════════════════ */
+.sek {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--frame, 380px);
+  height: var(--frameh, 96px);
+  font-family: var(--font-ui, var(--font-body));}
+
+.sek-skin {
+  position: relative;
+  width: var(--w);
+  height: var(--shut);
+  border-radius: var(--sek-r, 999px);
+  background: var(--pane, #f9fafb);
+  -webkit-backdrop-filter:
+    blur(2px) saturate(150%) brightness(100%);
+  backdrop-filter:
+    blur(2px) saturate(150%) brightness(100%);
+  isolation: isolate;
+  transform: translate(var(--lx), var(--ly)) scale(var(--sk, 1));
+  transition:
+    transform 260ms cubic-bezier(0.22, 0.9, 0.28, 1),
+    background 220ms ease;
+  overflow: hidden;}
+
+.sek-skin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  pointer-events: none;
+  z-index: 2;}
+
+.sek:not([data-open="true"]) .sek-skin:hover {
+  --sk: 1.045;
+  --g-bright: 104%;}
+
+.sek[data-press="true"] .sek-skin {
+  --sk: 0.93;
+  transition: transform 90ms cubic-bezier(0.4, 0, 0.6, 1);}
+
+.sek[data-open="true"] .sek-skin { cursor: text; }
+
+.sek-lens {
+  position: absolute;
+  left: var(--inset);
+  top: 50%;
+  width: var(--lens);
+  height: var(--lens);
+  margin-top: calc(var(--lens) / -2);
+  fill: none;
+  stroke: var(--ink-3, #6b7280);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
+  transition: stroke 200ms ease, stroke-width 200ms ease;}
+
+.sek-skin:hover .sek-lens { stroke: var(--ink, #111827); }
+
+.sek[data-open="true"] .sek-lens { stroke: var(--ink-4, #9ca3af); }
+
+.sek[data-busy="true"] .sek-lens { stroke: var(--ink-2, #374151); stroke-width: 1.8; }
+
+.sek-field {
+  position: absolute;
+  left: calc(var(--inset) + var(--lens) + 11px);
+  right: 14px;
+  top: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  letter-spacing: -0.005em;
+  color: var(--ink, #111827);
+  outline: none;
+  opacity: var(--say);
+  transform: translateX(calc((1 - var(--say)) * -6px));
+  pointer-events: var(--say-hit, none);}
+
+.sek[data-open="true"] .sek-field { --say-hit: auto; }
+
+.sek-field::placeholder { color: var(--ink-5, #d1d5db); }
+
+.sek-hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;}
+
+.sek-hit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg, #f9fafb), 0 0 0 4px rgba(var(--ink-rgb, 17, 24, 39), 0.4);}

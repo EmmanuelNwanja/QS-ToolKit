@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import TiltCard from '../components/ui/amicro/hover/tilt-card';
+import MagneticButton from '../components/ui/amicro/hover/magnetic-button';
 
 const fadeUp = {
   hidden: { opacity: 0.15, y: 24 },
@@ -16,15 +18,6 @@ const staggerContainer = {
   hidden: {},
   visible: {
     transition: { staggerChildren: 0.1, delayChildren: 0.15 }
-  }
-};
-
-const scaleIn = {
-  hidden: { opacity: 0.2, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
   }
 };
 
@@ -308,48 +301,50 @@ export default function PricingPage() {
                 const period = billing === 'yearly' ? '/year' : plan.period;
 
                 return (
-                  <motion.div
-                    key={plan.name}
-                    variants={scaleIn}
-                    className={`relative rounded-2xl border p-8 flex flex-col ${
-                      plan.popular
-                        ? 'border-gold-500 bg-gold-500/[0.02]'
-                        : 'border-gray-100 bg-white'
-                    }`}
-                  >
-                    {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="bg-gold-500 text-white text-xs font-bold px-4 py-1 rounded-full">
-                          Most Popular
-                        </span>
-                      </div>
-                    )}
-                    <div className="mb-6">
-                      <h3 className="font-display text-xl font-bold text-primary-800">{plan.name}</h3>
-                      <p className="text-xs text-gray-400 mt-1">{plan.desc}</p>
-                      <div className="flex items-end gap-1 mt-4">
-                        <span className="text-3xl font-bold text-primary-700">{price}</span>
-                        <span className="text-gray-400 text-sm mb-1">{period}</span>
-                      </div>
-                    </div>
-                    <ul className="space-y-3 flex-1 mb-8">
-                      {plan.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
-                          <span className="text-gold-500 font-bold mt-0.5 flex-shrink-0">✓</span>
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <Link
-                      href="/auth/register"
-                      className={plan.popular
-                        ? 'btn-gold w-full text-center justify-center'
-                        : 'btn-secondary w-full text-center justify-center'
-                      }
+                  <TiltCard key={plan.name}>
+                    <div
+                      className={`relative rounded-2xl border p-8 flex flex-col h-full ${
+                        plan.popular
+                          ? 'border-gold-500 bg-gold-500/[0.02]'
+                          : 'border-gray-100 bg-white'
+                      }`}
                     >
-                      Get {plan.name}
-                    </Link>
-                  </motion.div>
+                      {plan.popular && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="bg-gold-500 text-white text-xs font-bold px-4 py-1 rounded-full">
+                            Most Popular
+                          </span>
+                        </div>
+                      )}
+                      <div className="mb-6">
+                        <h3 className="font-display text-xl font-bold text-primary-800">{plan.name}</h3>
+                        <p className="text-xs text-gray-400 mt-1">{plan.desc}</p>
+                        <div className="flex items-end gap-1 mt-4">
+                          <span className="text-3xl font-bold text-primary-700">{price}</span>
+                          <span className="text-gray-400 text-sm mb-1">{period}</span>
+                        </div>
+                      </div>
+                      <ul className="space-y-3 flex-1 mb-8">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
+                            <span className="text-gold-500 font-bold mt-0.5 flex-shrink-0">✓</span>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <MagneticButton>
+                        <Link
+                          href="/auth/register"
+                          className={plan.popular
+                            ? 'btn-gold w-full text-center justify-center inline-block'
+                            : 'btn-secondary w-full text-center justify-center inline-block'
+                          }
+                        >
+                          Get {plan.name}
+                        </Link>
+                      </MagneticButton>
+                    </div>
+                  </TiltCard>
                 );
               })}
             </motion.div>
