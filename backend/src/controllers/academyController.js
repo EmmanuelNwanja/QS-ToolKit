@@ -80,7 +80,7 @@ exports.getStatus = async (req, res, next) => {
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { payment_method, billing_cycle = 'weekly' } = req.body;
+    const { payment_method = 'card', billing_cycle = 'weekly' } = req.body;
     const cycleAmountNgn = ACADEMY_BILLING_NGN[billing_cycle] || 2000;
 
     // Check if already has active subscription

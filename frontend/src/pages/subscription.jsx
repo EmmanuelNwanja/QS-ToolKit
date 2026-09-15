@@ -119,7 +119,7 @@ export default function SubscriptionPage() {
     setAddOnPaying(addOnType);
     try {
       const api = addOnType === 'academy' ? academyAPI : examAPI;
-      const { data } = await api.subscribe({ billing_cycle: billingCycle });
+      const { data } = await api.subscribe({ billing_cycle: billingCycle, payment_method: 'card' });
       if (data.authorization_url) {
         window.location.href = data.authorization_url;
         return;

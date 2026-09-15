@@ -435,7 +435,7 @@ exports.getSubscriptionStatus = async (req, res, next) => {
 
 exports.subscribe = async (req, res, next) => {
   try {
-    const { payment_method, billing_cycle = 'weekly' } = req.body;
+    const { payment_method = 'card', billing_cycle = 'weekly' } = req.body;
     const cycleAmountNgn = RESEARCH_BILLING_NGN[billing_cycle] || 3000;
 
     const hasAccess = await exports.checkResearchAccess(req.user.id);
