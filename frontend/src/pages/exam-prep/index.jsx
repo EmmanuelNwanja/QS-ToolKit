@@ -81,6 +81,13 @@ export default function ExamPrepDashboard() {
             <span>←</span> Back to Dashboard
           </Link>
 
+          {/* Classroom migration banner */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-blue-800">
+              We&apos;ve launched a new learning experience! <Link href="/classroom" className="font-semibold underline">Try the Classroom →</Link>
+            </p>
+          </div>
+
           {/* Subscription banner */}
           {subExpired && (
             <motion.div

@@ -92,6 +92,13 @@ export default function AcademyDashboard() {
       <Layout title="🎓 QS Academy">
         <div className="max-w-7xl space-y-6">
 
+          {/* Classroom migration banner */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-blue-800">
+              The Academy has been upgraded to the Classroom! <Link href="/classroom" className="font-semibold underline">Try it now →</Link>
+            </p>
+          </div>
+
           {/* Subscription banner */}
           {!isActive && (
             <motion.div {...fadeUp} className="bg-gradient-to-r from-gold-500 to-gold-600 rounded-2xl p-6 text-white flex items-center justify-between flex-wrap gap-4">

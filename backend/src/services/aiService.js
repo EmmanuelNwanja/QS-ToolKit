@@ -346,11 +346,10 @@ async function callOpenRouterVision(prompt, imageBase64, options = {}) {
   const { jsonMode = true, temperature = 0.3 } = options;
 
   const modelsToTry = [
-    'google/gemini-2.0-flash-exp:free',
-    'google/gemini-2.0-flash-001',
-    'google/gemini-1.5-flash',
+    'openrouter/free',
     'meta-llama/llama-4-scout:free',
-    'qwen/qwen2.5-vl-72b-instruct:free'
+    'nvidia/nemotron-nano-12b-v2-vl:free',
+    'google/gemma-4-31b-it:free'
   ];
 
   const messages = [
@@ -414,8 +413,8 @@ async function callGroq(prompt, options = {}) {
   if (!GROQ_API_KEY) return null;
   const { jsonMode = true, temperature = 0.3 } = options;
 
-  // Fallback models if primary is unavailable
-  const modelsToTry = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
+  // Fallback models — updated Sep 2026: llama-3.1-70b and mixtral-8x7b decommissioned
+  const modelsToTry = ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'];
 
   const messages = [];
   const systemMatch = prompt.match(/^([\s\S]*?)\n\nConversation history:/);
@@ -464,7 +463,7 @@ async function callGroq(prompt, options = {}) {
 // ─── Fallback: OpenRouter ─────────────────────────────────────
 async function callOpenRouter(prompt, options = {}) {
   if (!OPENROUTER_API_KEY) return null;
-  const { model = 'google/gemini-2.0-flash-exp:free', jsonMode = true } = options;
+  const { model = 'openrouter/free', jsonMode = true } = options;
 
   try {
     const { data } = await axios.post(
@@ -1575,4 +1574,5 @@ Output ONLY valid JSON (no markdown fences):
     };
   }
 }
+exports.generateExamQuestions = generateExamQuestions;
 exports.SYSTEM_PROMPTS = SYSTEM_PROMPTS;

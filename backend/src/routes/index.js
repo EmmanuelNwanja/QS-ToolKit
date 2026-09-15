@@ -20,6 +20,8 @@ router.use('/integrity',     require('./integrityRoutes'));
 router.use('/academy',       require('./academyRoutes'));
 router.use('/exam-prep',     require('./examPrepRoutes'));
 router.use('/research',      require('./researchRoutes'));
+router.use('/classroom/migrate', require('./migrationRoutes'));
+router.use('/classroom',     require('./classroomRoutes'));
 router.use('/',              require('./boqRevisionRoutes'));
 
 module.exports = router;
