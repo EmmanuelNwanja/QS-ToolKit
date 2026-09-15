@@ -9,7 +9,6 @@
     "lint": "eslint src/ --ext .js,.jsx"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^14.1.0",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
