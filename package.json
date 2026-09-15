@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "cd frontend && rm -rf node_modules && npx npm@9 install --force && npm run build",
+    "build": "cd frontend && rm -rf node_modules package-lock.json && NPM_CONFIG_FORCE=true npm install && npm run build",
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm start",
     "lint": "cd frontend && npm run lint"
