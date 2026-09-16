@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../utils/cn";
 import { Check, Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -149,9 +149,9 @@ const AIMessage = ({
           className={cn(
             "w-fit max-w-prose text-sm leading-relaxed",
             bubble && "rounded-2xl px-3.5 py-2.5",
-            bubble && isUser && "rounded-br-md bg-foreground text-background",
-            bubble && !isUser && "rounded-bl-md bg-muted text-foreground",
-            !bubble && "text-foreground"
+            bubble && isUser && "rounded-br-md bg-primary-700 text-white",
+            bubble && !isUser && "rounded-bl-md bg-gray-100 text-gray-900",
+            !bubble && "text-gray-900"
           )}
         >
           {children}
@@ -164,7 +164,7 @@ const AIMessage = ({
           )}
         >
           {timestamp ? (
-            <span className="text-muted-foreground text-xs tabular-nums">
+            <span className="text-gray-400 text-xs tabular-nums">
               {timestamp}
             </span>
           ) : null}
@@ -179,8 +179,8 @@ const AIMessage = ({
                   "ai-message-action cursor-pointer rounded-lg p-1.5",
                   isUser ? "ai-message-action-user" : "ai-message-action-agent",
                   action.active
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "text-gray-900"
+                    : "text-gray-400 hover:bg-gray-100 hover:text-gray-900"
                 )}
                 key={action.key}
                 onClick={action.onClick}
