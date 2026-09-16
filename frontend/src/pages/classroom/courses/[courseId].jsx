@@ -3,9 +3,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import Layout from '../../components/Layout';
-import ProtectedRoute from '../../components/ProtectedRoute';
-import { classroomAPI } from '../../services/classroomAPI';
+import Layout from '../../../components/Layout';
+import ProtectedRoute from '../../../components/ProtectedRoute';
+import { classroomAPI } from '../../../services/classroomAPI';
 import toast from 'react-hot-toast';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced'];

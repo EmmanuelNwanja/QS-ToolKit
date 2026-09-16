@@ -104,7 +104,7 @@ export default function LessonPlayer() {
       <Head><title>{lesson?.title || lesson?.topic || 'Lesson'} — QSToolkit</title></Head>
       <Layout title={lesson?.title || lesson?.topic || 'Lesson'}>
         <div className="max-w-5xl">
-          <Link href={isCourseLesson ? `/classroom/${lesson.course_id}` : '/classroom'} className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1 mb-4">
+          <Link href={isCourseLesson ? `/classroom/courses/${lesson.course_id}` : '/classroom'} className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1 mb-4">
             &larr; {isCourseLesson ? 'Back to Course' : 'Back to Classroom'}
           </Link>
 
@@ -186,9 +186,9 @@ export default function LessonPlayer() {
                 <span className="text-xs text-gray-500">{activeIdx + 1} / {scenes.length}</span>
                 {activeIdx < scenes.length - 1 ? (
                   <button onClick={handleNext} className="btn-primary text-sm px-4 py-2">Next →</button>
-                ) : isCourseLesson ? (
+                  ) : isCourseLesson ? (
                   <Link
-                    href={`/classroom/${lesson.course_id}`}
+                    href={`/classroom/courses/${lesson.course_id}`}
                     className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700"
                   >
                     Check Level Progress →
