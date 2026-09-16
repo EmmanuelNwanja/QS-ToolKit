@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const { generateLessonOutline } = require('../services/outlineGenerator');
 const { generateSceneContent } = require('../services/sceneGenerator');
