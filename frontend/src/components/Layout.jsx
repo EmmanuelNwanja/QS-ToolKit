@@ -135,12 +135,12 @@ export default function Layout({ children, title }) {
             <span className="text-[9px] font-semibold bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full ml-auto">Soon</span>
           </span>
         ) : locked ? (
-          <Link href="/subscription" className="flex items-center gap-1">
+          <Link href="/subscription" scroll={false} className="flex items-center gap-1">
             {item.label}
             <span className="text-[9px] font-semibold bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded-full ml-auto">Locked</span>
           </Link>
         ) : (
-          <Link href={item.href}>{item.label}</Link>
+          <Link href={item.href} scroll={false}>{item.label}</Link>
         ),
         disabled: item.disabled,
       };
@@ -157,7 +157,7 @@ export default function Layout({ children, title }) {
       )}
 
       <aside className={clsx(
-        'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+        'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="h-16 flex items-center px-5 border-b border-gray-100">
@@ -192,7 +192,7 @@ export default function Layout({ children, title }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <button className="lg:hidden text-gray-500 hover:text-primary-700 p-1" onClick={() => setSidebarOpen(true)}>

@@ -100,7 +100,7 @@ export default function AdminLayout({ children }) {
         .map(item => ({
           key: item.key,
           icon: item.icon,
-          label: <Link href={item.href}>{item.label}</Link>,
+          label: <Link href={item.href} scroll={false}>{item.label}</Link>,
         })),
     }))
     .filter(group => group.children.length > 0);
@@ -117,7 +117,7 @@ export default function AdminLayout({ children }) {
       <aside className={[
         'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 flex flex-col',
         'transition-transform duration-300',
-        'lg:translate-x-0 lg:static lg:z-auto',
+        'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
       ].join(' ')}>
         <div className="h-16 flex items-center px-5 border-b border-gray-200">
@@ -153,7 +153,7 @@ export default function AdminLayout({ children }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-3">
             <button className="lg:hidden text-gray-500 hover:text-primary-700 p-1" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
