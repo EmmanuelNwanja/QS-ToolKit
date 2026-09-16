@@ -18,7 +18,7 @@ function nextLevel(level) {
 
 // ─── List Courses with User Progress ─────────────────────────
 
-exports.getCourses = async (req, res, next) => {
+const getCourses = async (req, res, next) => {
   try {
     const { data: courses, error: courseErr } = await supabase
       .from('classroom_courses')
@@ -47,7 +47,7 @@ exports.getCourses = async (req, res, next) => {
 
 // ─── Start a Course ──────────────────────────────────────────
 
-exports.startCourse = async (req, res, next) => {
+const startCourse = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
@@ -101,7 +101,7 @@ exports.startCourse = async (req, res, next) => {
 
 // ─── Get Next Lesson for a Course ────────────────────────────
 
-exports.getNextLesson = async (req, res, next) => {
+const getNextLesson = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
@@ -138,7 +138,7 @@ exports.getNextLesson = async (req, res, next) => {
 
 // ─── Complete Level → Check Score & Advance ──────────────────
 
-exports.completeLevel = async (req, res, next) => {
+const completeLevel = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
@@ -221,7 +221,7 @@ exports.completeLevel = async (req, res, next) => {
 
 // ─── Course Progress ─────────────────────────────────────────
 
-exports.getCourseProgress = async (req, res, next) => {
+const getCourseProgress = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
@@ -267,7 +267,7 @@ exports.getCourseProgress = async (req, res, next) => {
 
 // ─── Generate Custom Lesson (no course) ──────────────────────
 
-exports.generateCustomLesson = async (req, res, next) => {
+const generateCustomLesson = async (req, res, next) => {
   try {
     const { topic, difficulty } = req.body;
 
