@@ -1,9 +1,14 @@
 import { api } from './api';
 
 export const classroomAPI = {
-  getSceneTypes:     ()                       => api.get('/classroom/scene-types'),
-  generateOutline:   (data)                   => api.post('/classroom/outline/generate', data),
-  acceptOutline:     (outlineId)              => api.post(`/classroom/outline/${outlineId}/accept`),
+  // ── Curriculum ──────────────────────────────────────────────
+  getCourses:        ()                       => api.get('/classroom/curriculum/courses'),
+  getCourseProgress: (courseId)               => api.get(`/classroom/curriculum/courses/${courseId}/progress`),
+  startCourse:       (courseId)               => api.post(`/classroom/curriculum/courses/${courseId}/start`),
+  getNextLesson:     (courseId)               => api.get(`/classroom/curriculum/courses/${courseId}/next-lesson`),
+  completeLevel:     (courseId)               => api.post(`/classroom/curriculum/courses/${courseId}/complete-level`),
+  generateCustomLesson: (data)                => api.post('/classroom/curriculum/lessons/generate-custom', data),
+  // ── Lessons & Scenes ────────────────────────────────────────
   getLessons:        (params)                 => api.get('/classroom/lessons', { params }),
   getLesson:         (lessonId)               => api.get(`/classroom/lessons/${lessonId}`),
   generateSceneContent: (sceneId)             => api.post(`/classroom/scenes/${sceneId}/generate`),
