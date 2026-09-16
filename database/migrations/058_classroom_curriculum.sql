@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS classroom_courses (
 -- 2. classroom_user_progress — per-user, per-course advancement
 CREATE TABLE IF NOT EXISTS classroom_user_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES classroom_courses(id) ON DELETE CASCADE,
   current_level TEXT DEFAULT 'beginner' CHECK (current_level IN ('beginner','intermediate','advanced')),
   completed_lessons INT DEFAULT 0,
