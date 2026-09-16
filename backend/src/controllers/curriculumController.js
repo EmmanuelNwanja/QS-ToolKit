@@ -287,7 +287,7 @@ const generateCustomLesson = async (req, res, next) => {
       .insert({
         user_id: req.user.id,
         topic: topic.trim(),
-        outline_data: outline,
+        outline: outline,
         difficulty: diff,
         created_at: new Date().toISOString(),
       })
@@ -374,7 +374,7 @@ async function generateCourseLesson(course, progress, userId) {
     .insert({
       user_id: userId,
       topic: course.title,
-      outline_data: outline,
+      outline: outline,
       difficulty: progress.current_level,
       created_at: new Date().toISOString(),
     })

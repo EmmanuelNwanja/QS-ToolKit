@@ -36,7 +36,7 @@ exports.generateOutline = async (req, res, next) => {
       .insert({
         user_id: req.user.id,
         topic: topic.trim(),
-        outline_data: outline,
+        outline: outline,
         difficulty: difficulty || 'intermediate',
         created_at: new Date().toISOString(),
       })
@@ -66,7 +66,7 @@ exports.acceptOutline = async (req, res, next) => {
       return res.status(404).json(error('Outline not found'));
     }
 
-    const outlineData = outline.outline_data;
+    const outlineData = outline.outline;
     const scenes = outlineData.scenes || [];
 
     const { data: lesson, error: lessonErr } = await supabase
