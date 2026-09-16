@@ -410,7 +410,6 @@ async function generateCourseLesson(course, progress, userId) {
       lesson_id: lesson.id,
       scene_type: s.scene_type,
       title: s.title,
-      description: s.description || '',
       order_index: idx,
       content: null,
       user_responses: null,
