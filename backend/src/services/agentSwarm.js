@@ -32,7 +32,7 @@ const AGENTS = {
     name: 'BoqAgent',
     role: 'BOQ validator & optimizer',
     capabilities: ['validate_math', 'check_compliance', 'suggest_alternatives', 'detect_duplicates'],
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     costTier: 'low'
   },
 
@@ -40,7 +40,7 @@ const AGENTS = {
     name: 'RateAgent',
     role: 'Rate intelligence updater',
     capabilities: ['aggregate_rates', 'detect_market_shifts', 'update_weights', 'flag_anomalies'],
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     costTier: 'low'
   },
 
@@ -48,7 +48,7 @@ const AGENTS = {
     name: 'ForecastAgent',
     role: 'Forecast accuracy monitor',
     capabilities: ['compare_predicted_actual', 'flag_bias', 'suggest_coefficients', 'backtest'],
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     costTier: 'low'
   },
 
@@ -56,7 +56,7 @@ const AGENTS = {
     name: 'SupportAgent',
     role: 'Chat classifier & responder',
     capabilities: ['classify_topic', 'suggest_faq', 'escalate', 'log_patterns'],
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     costTier: 'low'
   },
 

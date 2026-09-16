@@ -1,8 +1,7 @@
 /**
  * aiService.js
  * Unified AI interface for QSToolkit V1.10
- * Providers: Google Gemini (primary), Jina AI (embeddings), OpenRouter (fallback)
- * All free-tier only.
+ * Providers: Google Gemini (primary), Groq (fallback), Jina AI (embeddings)
  */
 
 const axios = require('axios');
@@ -21,7 +20,6 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const GROQ_API_KEY_RAW = process.env.GROQ_API_KEY || '';
 const GROQ_API_KEY = GROQ_API_KEY_RAW.replace(/^["']|["']$/g, '').trim();
 const JINA_API_KEY = process.env.JINA_API_KEY;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MOCK_AI_MODE = process.env.MOCK_AI_MODE === 'true';
 
 // ─── Thinking States for Structured Responses ─────────────────
@@ -222,7 +220,7 @@ Generate at least 2 questions from different topic categories per 10 questions.`
 
 // ─── Generic Gemini Call ──────────────────────────────────────
 async function callGemini(prompt, options = {}) {
-  const { model = 'gemini-2.0-flash', imageBase64, jsonMode = true, temperature = 0.3 } = options;
+  const { model = 'gemini-2.5-flash', imageBase64, jsonMode = true, temperature = 0.3 } = options;
 
   if (!GEMINI_API_KEY) {
     logger.warn('GEMINI_API_KEY not set; AI features degraded');
@@ -232,7 +230,7 @@ async function callGemini(prompt, options = {}) {
   // Valid model names for the Generative Language API v1beta.
   // NOTE: Do NOT use '-latest' aliases — they return 404 on this endpoint.
   // Ordered by capability: prefer fast models, fall back to stable releases.
-  const modelsToTry = [model, 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  const modelsToTry = [model, 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
 
   const parts = [{ text: prompt }];
   if (imageBase64) {
@@ -340,81 +338,12 @@ async function preprocessImage(base64Image) {
   }
 }
 
-// ─── Fallback: OpenRouter (with Vision support) ───────────────
-async function callOpenRouterVision(prompt, imageBase64, options = {}) {
-  if (!OPENROUTER_API_KEY) return null;
-  const { jsonMode = true, temperature = 0.3 } = options;
-
-  const modelsToTry = [
-    'openrouter/free',
-    'meta-llama/llama-4-scout:free',
-    'nvidia/nemotron-nano-12b-v2-vl:free',
-    'google/gemma-4-31b-it:free'
-  ];
-
-  const messages = [
-    { role: 'system', content: 'You are a helpful assistant that analyzes architectural drawings.' },
-    {
-      role: 'user',
-      content: [
-        { type: 'text', text: prompt },
-        {
-          type: 'image_url',
-          image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
-        }
-      ]
-    }
-  ];
-
-  for (const model of modelsToTry) {
-    try {
-      const payload = {
-        model,
-        messages,
-        temperature,
-        max_tokens: 8192
-      };
-      if (jsonMode) {
-        payload.response_format = { type: 'json_object' };
-      }
-
-      const { data } = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
-            'X-Title': 'QSToolkit'
-          },
-          timeout: 90000
-        }
-      );
-
-      const content = data?.choices?.[0]?.message?.content || '';
-      if (content) {
-        logger.info(`OpenRouter vision success (model=${model})`);
-        return content;
-      }
-    } catch (err) {
-      const status = err.response?.status;
-      const resData = err.response?.data;
-      logger.error(`OpenRouter vision error (model=${model}, status=${status}):`, JSON.stringify(resData)?.slice(0, 500), err.message);
-      if (status === 401 || status === 403) break;
-      continue;
-    }
-  }
-  return null;
-}
-
-// ─── Fallback: GROQ ───────────────────────────────────────────
+// ─── Fallback: Groq ──────────────────────────────────────────
 async function callGroq(prompt, options = {}) {
   if (!GROQ_API_KEY) return null;
   const { jsonMode = true, temperature = 0.3 } = options;
 
-  // Fallback models — updated Sep 2026: llama-3.1-70b and mixtral-8x7b decommissioned
-  const modelsToTry = ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'];
+  const modelsToTry = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'];
 
   const messages = [];
   const systemMatch = prompt.match(/^([\s\S]*?)\n\nConversation history:/);
@@ -460,51 +389,12 @@ async function callGroq(prompt, options = {}) {
   return null;
 }
 
-// ─── Fallback: OpenRouter ─────────────────────────────────────
-async function callOpenRouter(prompt, options = {}) {
-  if (!OPENROUTER_API_KEY) return null;
-  const { model = 'openrouter/free', jsonMode = true } = options;
-
-  try {
-    const { data } = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model,
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        response_format: jsonMode ? { type: 'json_object' } : undefined
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
-          'X-Title': 'QSToolkit'
-        },
-        timeout: 60000
-      }
-    );
-    return data?.choices?.[0]?.message?.content || '';
-  } catch (err) {
-    const status = err.response?.status;
-    const resData = err.response?.data;
-    const dataStr = typeof resData === 'string' ? resData.slice(0, 500) : JSON.stringify(resData)?.slice(0, 500);
-    logger.error(`OpenRouter error status=${status} code=${err.code} msg=${err.message} data=${dataStr}`);
-    return null;
-  }
-}
-
 // ─── Unified AI Call (with fallback chain) ────────────────────
 async function callAI(prompt, options = {}) {
   let result = await callGemini(prompt, options);
   if (!result && GROQ_API_KEY) {
-    logger.info('Falling back to GROQ');
+    logger.info('Falling back to Groq');
     result = await callGroq(prompt, options);
-  }
-  if (!result && OPENROUTER_API_KEY) {
-    logger.info('Falling back to OpenRouter');
-    result = await callOpenRouter(prompt, options);
   }
   return result;
 }
@@ -697,7 +587,7 @@ exports.chat = async (userId, sessionId, message, context = {}) => {
   let responseText = await callAI(prompt, { temperature: 0.4, jsonMode: false });
 
   // Graceful fallback: if no external AI is configured, use knowledge-base mock responses
-  if (!responseText && !GEMINI_API_KEY && !GROQ_API_KEY && !OPENROUTER_API_KEY) {
+  if (!responseText && !GEMINI_API_KEY && !GROQ_API_KEY) {
     responseText = await mockDrQResponse(message, context);
   }
 
@@ -834,16 +724,15 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
     providerLog.push({ provider: 'gemini', status: 'success' });
   } else {
     providerLog.push({ provider: 'gemini', status: 'failed' });
-    logger.info('Gemini failed — trying OpenRouter vision fallback');
   }
 
-  // 3. Fallback to OpenRouter vision (often more reliable for free-tier)
-  if (!result && OPENROUTER_API_KEY) {
-    result = await callOpenRouterVision(prompt, processedImage, { jsonMode: true, temperature: 0.2 });
+  // 3. Fallback to Groq (text-only, no vision support)
+  if (!result && GROQ_API_KEY) {
+    result = await callGroq(prompt, { jsonMode: true, temperature: 0.2 });
     if (result) {
-      providerLog.push({ provider: 'openrouter', status: 'success' });
+      providerLog.push({ provider: 'groq', status: 'success' });
     } else {
-      providerLog.push({ provider: 'openrouter', status: 'failed' });
+      providerLog.push({ provider: 'groq', status: 'failed' });
     }
   }
 
@@ -857,7 +746,7 @@ exports.analyzeDrawing = async (userId, imageBase64, projectId = null) => {
       data: generateDrawingFallback(),
       confidence: 'low',
       warnings: ['AI analysis temporarily unavailable. A template BOQ has been generated. Please review and edit all quantities and rates.'],
-      _diagnostics: { providerLog, imageSizeKb, geminiKeyPresent: !!GEMINI_API_KEY, openrouterKeyPresent: !!OPENROUTER_API_KEY }
+      _diagnostics: { providerLog, imageSizeKb, geminiKeyPresent: !!GEMINI_API_KEY, groqKeyPresent: !!GROQ_API_KEY }
     };
   }
 
@@ -1254,14 +1143,13 @@ exports.healthCheck = async () => {
     groq_key_present: !!GROQ_API_KEY,
     groq_key_preview: GROQ_API_KEY ? `${GROQ_API_KEY.slice(0, 4)}...${GROQ_API_KEY.slice(-4)}` : null,
     groq_key_length: GROQ_API_KEY.length,
-    openrouter_key_present: !!OPENROUTER_API_KEY,
     jina_key_present: !!JINA_API_KEY,
     mock_mode: MOCK_AI_MODE
   };
 
   // Try a minimal Gemini ping
   if (GEMINI_API_KEY) {
-    const url = `${GEMINI_BASE_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `${GEMINI_BASE_URL}/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     try {
       const { data } = await axios.post(url, {
         contents: [{ role: 'user', parts: [{ text: 'Say "OK"' }] }],
@@ -1284,7 +1172,7 @@ exports.healthCheck = async () => {
       const { data } = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [{ role: 'user', content: 'Say OK' }],
           max_tokens: 5
         },
@@ -1303,36 +1191,6 @@ exports.healthCheck = async () => {
     }
   } else {
     checks.groq_ping = 'skipped_no_key';
-  }
-
-  // Try a minimal OpenRouter ping
-  if (OPENROUTER_API_KEY) {
-    try {
-      const { data } = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model: 'google/gemini-2.0-flash-exp:free',
-          messages: [{ role: 'user', content: 'Say OK' }],
-          max_tokens: 5
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            'HTTP-Referer': process.env.FRONTEND_URL || 'https://qs.solnuv.com',
-            'X-Title': 'QSToolkit'
-          },
-          timeout: 20000
-        }
-      );
-      checks.openrouter_ping = 'success';
-      checks.openrouter_ping_response = data?.choices?.[0]?.message?.content?.substring(0, 50) || 'empty';
-    } catch (err) {
-      checks.openrouter_ping = 'failed';
-      checks.openrouter_ping_status = err.response?.status;
-      checks.openrouter_ping_error = typeof err.response?.data === 'string' ? err.response.data.slice(0, 300) : JSON.stringify(err.response?.data)?.slice(0, 300) || err.message;
-    }
-  } else {
-    checks.openrouter_ping = 'skipped_no_key';
   }
 
   return checks;

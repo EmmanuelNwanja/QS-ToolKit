@@ -114,7 +114,7 @@ function createQSVisualEngine(options = {}) {
       const prompt = buildPrompt(query, context);
 
       // Try primary model, then fall back to stable models
-      const modelsToTry = [model, 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+      const modelsToTry = [model, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
       let lastError = null;
 
       for (const m of modelsToTry) {
