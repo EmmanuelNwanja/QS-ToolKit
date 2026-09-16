@@ -3,8 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const Sentry = require('./config/sentry');
 const { generalLimiter } = require('./middlewares/rateLimiter');
 const errorHandler = require('./middlewares/errorHandler');
+const analyticsTrack = require('./services/analyticsTrackService');
 const routes = require('./routes');
 
 const app = express();
@@ -15,6 +17,12 @@ app.set('trust proxy', 1);
 
 // ── Security ──────────────────────────────────────────────────
 app.use(helmet());
+
+// ── PostHog Analytics Middleware ──────────────────────────────
+app.use((req, res, next) => {
+  req.analytics = { track: analyticsTrack.trackEvent };
+  next();
+});
 
 // Build allowed origins from env + hardcoded production domains
 const ALLOWED_ORIGINS = [

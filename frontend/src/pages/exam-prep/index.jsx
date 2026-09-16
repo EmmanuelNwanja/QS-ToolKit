@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import ComingSoonGate from '../../components/ComingSoonGate';
 import { examAPI, subscriptionAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/helpers';
@@ -74,7 +75,8 @@ export default function ExamPrepDashboard() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Exam Prep — QSToolkit</title></Head>
+      <ComingSoonGate>
+        <Head><title>Exam Prep — QSToolkit</title></Head>
       <Layout title="📝 Exam Prep">
         <div className="max-w-6xl space-y-6">
           <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -266,6 +268,7 @@ export default function ExamPrepDashboard() {
           </div>
         </div>
       </Layout>
+      </ComingSoonGate>
     </ProtectedRoute>
   );
 }

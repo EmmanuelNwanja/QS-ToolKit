@@ -12,6 +12,8 @@ router.use('/leaderboard',  require('./leaderboardRoutes'));
 router.use('/subscriptions',require('./subscriptionRoutes'));
 router.use('/cron',         require('./cronRoutes'));
 router.use('/admin',        require('./adminRoutes'));
+router.use('/admin/quotas', require('./quotaRoutes'));
+router.use('/feature-flags', require('./featureFlagRoutes'));
 router.use('/push-notifications', require('./pushRoutes'));
 router.use('/billing',      require('./billingRoutes'));
 router.use('/analytics',    require('./analyticsRoutes'));

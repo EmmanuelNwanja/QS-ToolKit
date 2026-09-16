@@ -236,6 +236,16 @@ export const adminAPI = {
   getAnalytics:          (params) => api.get('/admin/analytics', { params }),
   getAcademyStats:       ()       => api.get('/admin/academy/stats'),
   getExamPrepStats:      ()       => api.get('/admin/exam-prep/stats'),
+  getQuotaUsage:         (params) => api.get('/admin/quotas/usage', { params }),
+  getQuotaUserUsage:     (userId) => api.get(`/admin/quotas/usage/${userId}`),
+  getQuotaFeatures:      ()       => api.get('/admin/quotas/features'),
+  getQuotaConfigs:       ()       => api.get('/admin/quotas/config'),
+  createQuotaConfig:     (data)   => api.post('/admin/quotas/config', data),
+  updateQuotaConfig:     (id, data) => api.patch(`/admin/quotas/config/${id}`, data),
+  getFeatureFlags:       ()       => api.get('/feature-flags'),
+  createFeatureFlag:     (data)   => api.post('/feature-flags', data),
+  updateFeatureFlag:     (id, data) => api.patch(`/feature-flags/${id}`, data),
+  deleteFeatureFlag:     (id)     => api.delete(`/feature-flags/${id}`),
 };
 
 // ─── Push Notifications ────────────────────────────────────────

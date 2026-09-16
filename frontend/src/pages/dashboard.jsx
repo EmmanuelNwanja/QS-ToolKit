@@ -2,32 +2,90 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { Row, Col, Card, Statistic, Progress, Table, Tag, Button, Space, Skeleton } from 'antd';
+import {
+  FolderOutlined, ThunderboltOutlined, CheckCircleOutlined,
+  DollarOutlined, RobotOutlined, RocketOutlined, CalculatorOutlined,
+} from '@ant-design/icons';
 import Layout from '../components/Layout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import useAuthStore from '../context/authStore';
 import { projectAPI, leaderboardAPI, userAPI } from '../services/api';
-import { formatNaira, formatCompact, CALCULATORS } from '../utils/helpers';
-import FadeIn from '../components/ui/amicro/entrance/fade-in';
-import ScaleIn from '../components/ui/amicro/entrance/scale-in';
+import { formatNaira, CALCULATORS } from '../utils/helpers';
 
-const STAT_CONFIG = [
-  { key: 'total',     label: 'Total Projects',  color: 'bg-primary-600',  getValue: (s) => s?.total || 0 },
-  { key: 'active',    label: 'Active Projects',  color: 'bg-blue-500',     getValue: (s) => s?.active || 0 },
-  { key: 'completed', label: 'Completed',         color: 'bg-emerald-500',  getValue: (s) => s?.completed || 0 },
-  { key: 'value',     label: 'Total Value',       color: 'bg-gold-500',     getValue: (s) => formatCompact(s?.total_value || 0) },
+const STAT_CARDS = [
+  { key: 'total',     label: 'Total Projects',  icon: <FolderOutlined />,     color: '#1a3c5e', getValue: (s) => s?.total || 0 },
+  { key: 'active',    label: 'Active Projects',  icon: <ThunderboltOutlined />, color: '#3b82f6', getValue: (s) => s?.active || 0 },
+  { key: 'completed', label: 'Completed',         icon: <CheckCircleOutlined />, color: '#10b981', getValue: (s) => s?.completed || 0 },
+  { key: 'value',     label: 'Total Value',       icon: <DollarOutlined />,    color: '#f59e0b', getValue: (s) => formatNaira(s?.total_value || 0), isText: true },
 ];
+
+const PROJECT_COLUMNS = [
+  {
+    title: 'Project',
+    dataIndex: 'title',
+    key: 'title',
+    render: (text, record) => (
+      <Link href={`/projects/${record.id}`} className="font-medium text-primary-700 hover:underline">
+        {text}
+      </Link>
+    ),
+  },
+  {
+    title: 'Client',
+    dataIndex: 'client_name',
+    key: 'client_name',
+    render: (v) => v || '--',
+  },
+  {
+    title: 'Value',
+    dataIndex: 'estimated_value',
+    key: 'value',
+    align: 'right',
+    render: (v) => formatNaira(v),
+  },
+  {
+    title: 'Status',
+    dataIndex: 'status',
+    key: 'status',
+    width: 100,
+    render: (s) => {
+      const map = { active: 'blue', completed: 'green', paused: 'gold' };
+      return <Tag color={map[s] || 'default'}>{s}</Tag>;
+    },
+  },
+];
+
+const QUICK_TOOLS = [
+  { href: '/engine?tool=forecast', title: 'Cost Forecasting', desc: 'Predict overruns before they happen.', color: '#7c3aed', icon: '$' },
+  { href: '/engine?tool=variance', title: 'Variance Detection', desc: 'Compare BOQ revisions side-by-side.', color: '#3b82f6', icon: '~' },
+];
+
+const AI_PROMPTS = [
+  'How many blocks for 100m2?',
+  'Explain SMM7 rules',
+  'Suggest concrete mix ratio',
+  'Calculate steel for beam',
+];
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, planName } = useAuthStore();
   const [stats, setStats] = useState(null);
-  const [rank, setRank]   = useState(null);
+  const [rank, setRank] = useState(null);
   const [usage, setUsage] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_APP_VERSION !== 'dev' && user && user.is_admin) {
+    if (process.env.NEXT_PUBLIC_APP_VERSION !== 'dev' && user?.is_admin) {
       router.replace('/admin');
     }
   }, [user?.id, router]);
@@ -52,7 +110,10 @@ export default function DashboardPage() {
   }, []);
 
   const isProUser = ['pro', 'enterprise'].includes(planName());
-  const greeting  = getGreeting();
+  const greeting = getGreeting();
+
+  const calcUsage = usage?.calculator;
+  const projUsage = usage?.projects;
 
   return (
     <ProtectedRoute>
@@ -60,217 +121,205 @@ export default function DashboardPage() {
       <Layout title="Dashboard">
         <div className="space-y-6 max-w-7xl">
 
-          {/* Welcome banner */}
-          <div className="bg-gradient-to-r from-primary-800 to-primary-700 rounded-2xl p-6 text-white flex items-center justify-between">
-            <div>
-              <p className="text-primary-300 text-sm">{greeting}</p>
-              <h1 className="font-display text-2xl font-bold mt-1">
-                Welcome back, {user?.name?.split(' ')[0]}
-              </h1>
-              <p className="text-primary-200 text-sm mt-1 capitalize">
-                {user?.company_name || user?.university_name || 'QSToolkit Professional'} · {planName()} plan
-              </p>
-            </div>
-            {rank && (
-              <div className="hidden md:flex flex-col items-center bg-white/10 rounded-xl px-6 py-4 text-center">
-                <span className="text-3xl font-bold font-display text-gold-400">#{rank.rank_by_rating}</span>
-                <span className="text-xs text-primary-200 mt-1">Leaderboard Rank</span>
-                <span className="text-sm text-white mt-0.5">{rank.avg_rating}/10</span>
-              </div>
-            )}
-          </div>
-
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {STAT_CONFIG.map(s => (
-              <FadeIn key={s.key}>
-                <div className="stat-card">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${s.color}`} />
-                    <span className="stat-label">{s.label}</span>
+          {/* Welcome Banner */}
+          <Card
+            bordered={false}
+            style={{ background: 'linear-gradient(135deg, #1a3c5e 0%, #0f2744 100%)' }}
+            className="!rounded-2xl"
+          >
+            <Row justify="space-between" align="middle">
+              <Col>
+                <p className="text-primary-300 text-sm m-0">{greeting}</p>
+                <h1 className="font-display text-2xl font-bold mt-1 text-white">
+                  Welcome back, {user?.name?.split(' ')[0]}
+                </h1>
+                <p className="text-primary-200 text-sm mt-1 capitalize m-0">
+                  {user?.company_name || user?.university_name || 'QSToolkit Professional'} · {planName()} plan
+                </p>
+              </Col>
+              {rank && (
+                <Col className="hidden md:block">
+                  <div className="bg-white/10 rounded-xl px-6 py-4 text-center">
+                    <span className="text-3xl font-bold font-display text-gold-400">#{rank.rank_by_rating}</span>
+                    <p className="text-xs text-primary-200 mt-1 m-0">Leaderboard Rank</p>
+                    <p className="text-sm text-white mt-0.5 m-0">{rank.avg_rating}/10</p>
                   </div>
-                  <p className="stat-value">{loading ? '--' : s.getValue(stats)}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+                </Col>
+              )}
+            </Row>
+          </Card>
 
-          {/* Usage meter */}
+          {/* Stat Cards */}
+          <Row gutter={[16, 16]}>
+            {STAT_CARDS.map(s => (
+              <Col xs={12} lg={6} key={s.key}>
+                <Card bordered={false} className="!rounded-xl shadow-sm">
+                  <Statistic
+                    title={s.label}
+                    value={loading ? '--' : s.getValue(stats)}
+                    prefix={!s.isText && s.icon}
+                    valueStyle={{ color: s.color, fontWeight: 700 }}
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+
+          {/* Usage */}
           {usage && (
-            <div className="card">
-              <h2 className="section-title mb-4">Monthly Usage</h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                {[
-                  { label: 'Calculator Uses', used: usage.calculator?.used_this_month, limit: usage.calculator?.limit },
-                  { label: 'Projects Logged', used: usage.projects?.used,              limit: usage.projects?.limit },
-                ].map(u => {
-                  const pct = u.limit ? Math.min((u.used / u.limit) * 100, 100) : 0;
-                  const unlimited = u.limit === null;
+            <Card title="Monthly Usage" bordered={false} className="!rounded-xl shadow-sm">
+              <Row gutter={48}>
+                {[{ label: 'Calculator Uses', data: calcUsage }, { label: 'Projects Logged', data: projUsage }].map(u => {
+                  if (!u.data) return null;
+                  const pct = u.data.limit ? Math.min((u.data.used_this_month ?? u.data.used / u.data.limit) * 100, 100) : 0;
+                  const used = u.data.used_this_month ?? u.data.used;
+                  const unlimited = u.data.limit === null;
                   return (
-                    <div key={u.label}>
+                    <Col xs={24} md={12} key={u.label}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">{u.label}</span>
                         <span className="text-sm text-gray-500">
-                          {u.used} / {unlimited ? 'Unlimited' : u.limit}
+                          {used} / {unlimited ? 'Unlimited' : u.data.limit}
                         </span>
                       </div>
                       {!unlimited && (
-                        <div className="w-full bg-gray-100 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full transition-all ${pct > 80 ? 'bg-red-500' : pct > 60 ? 'bg-gold-500' : 'bg-primary-600'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                        <Progress
+                          percent={pct}
+                          strokeColor={pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#1a3c5e'}
+                          showInfo={false}
+                          size="small"
+                        />
                       )}
-                    </div>
+                    </Col>
                   );
                 })}
-              </div>
+              </Row>
               {!isProUser && (
-                <div className="mt-4 p-3 bg-gold-50 border border-gold-200 rounded-lg flex items-center justify-between">
-                  <p className="text-sm text-gold-800">Upgrade for more calculator uses, BOQs & invoices</p>
-                  <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5">Upgrade</Link>
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-amber-800 m-0">Upgrade for more calculator uses, BOQs & invoices</p>
+                  <Link href="/subscription">
+                    <Button type="primary" size="small" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>
+                      Upgrade
+                    </Button>
+                  </Link>
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
-          <div className="grid lg:grid-cols-5 gap-6">
-            {/* Recent projects */}
-            <div className="lg:col-span-3 card">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">Recent Projects</h2>
-                <Link href="/projects" className="text-sm text-primary-600 hover:underline">View all</Link>
-              </div>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />)}
-                </div>
-              ) : recentProjects.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-sm">No projects yet</p>
-                  <Link href="/projects/new" className="btn-primary text-sm mt-3 inline-flex">Add First Project</Link>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {recentProjects.map(p => (
-                    <Link key={p.id} href={`/projects/${p.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-700">{p.title}</p>
-                        <p className="text-xs text-gray-500">{p.client_name || 'No client'} · {p.state || p.location || '--'}</p>
-                      </div>
-                      <div className="flex items-center gap-3 ml-3">
-                        <span className="text-xs font-medium text-gray-700">{formatNaira(p.estimated_value)}</span>
-                        <span className={`badge ${p.status === 'active' ? 'badge-blue' : p.status === 'completed' ? 'badge-green' : 'badge-amber'}`}>
-                          {p.status}
-                        </span>
-                      </div>
+          <Row gutter={[16, 16]}>
+            {/* Recent Projects */}
+            <Col xs={24} lg={15}>
+              <Card
+                title="Recent Projects"
+                bordered={false}
+                className="!rounded-xl shadow-sm"
+                extra={<Link href="/projects" className="text-sm text-primary-600">View all</Link>}
+              >
+                {loading ? (
+                  <Skeleton active paragraph={{ rows: 4 }} />
+                ) : recentProjects.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p className="text-sm">No projects yet</p>
+                    <Link href="/projects/new">
+                      <Button type="primary" className="mt-3">Add First Project</Button>
                     </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ) : (
+                  <Table
+                    dataSource={recentProjects}
+                    columns={PROJECT_COLUMNS}
+                    rowKey="id"
+                    pagination={false}
+                    size="small"
+                  />
+                )}
+              </Card>
+            </Col>
 
             {/* Right Sidebar */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Dr. Q Assistant */}
-              <ScaleIn>
-                <div className="card bg-gradient-to-br from-primary-800 to-primary-700 text-white">
-                  <h2 className="section-title text-white mb-2">Dr. Q Assistant</h2>
-                  <p className="text-sm text-primary-200 mb-4">
+            <Col xs={24} lg={9}>
+              <Space direction="vertical" size={16} className="w-full">
+
+                {/* Dr. Q Assistant */}
+                <Card
+                  bordered={false}
+                  className="!rounded-xl shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #1a3c5e 0%, #0f2744 100%)' }}
+                >
+                  <h2 className="text-white text-base font-semibold mb-2">Dr. Q Assistant</h2>
+                  <p className="text-primary-200 text-sm mb-4">
                     Ask about standards, calculations, or get help with BOQs.
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['How many blocks for 100m2?', 'Explain SMM7 rules', 'Suggest concrete mix ratio', 'Calculate steel for beam'].map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => {
-                          const event = new CustomEvent('qst-ai-ask', { detail: q });
-                          window.dispatchEvent(event);
-                        }}
-                        className="text-left text-xs bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
-                      >
-                        {q}
-                      </button>
+                  <Row gutter={[8, 8]}>
+                    {AI_PROMPTS.map(q => (
+                      <Col span={12} key={q}>
+                        <Button
+                          block
+                          size="small"
+                          style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'transparent', color: '#fff', textAlign: 'left', height: 'auto', padding: '8px' }}
+                          onClick={() => window.dispatchEvent(new CustomEvent('qst-ai-ask', { detail: q }))}
+                          className="!text-xs"
+                        >
+                          {q}
+                        </Button>
+                      </Col>
                     ))}
-                  </div>
-                </div>
-              </ScaleIn>
+                  </Row>
+                </Card>
 
-              {/* Quick Tools */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Link href="/engine?tool=forecast" className="card hover:shadow-md transition-shadow border-l-4 border-l-purple-400 min-w-0">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-purple-600 text-sm font-bold">$</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-sm truncate">Cost Forecasting</h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Predict overruns before they happen.</p>
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/engine?tool=variance" className="card hover:shadow-md transition-shadow border-l-4 border-l-blue-400 min-w-0">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 text-sm font-bold">~</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-sm truncate">Variance Detection</h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">Compare BOQ revisions side-by-side.</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-
-              {/* QS Research */}
-              <Link href="/research" className="card hover:shadow-md transition-all border-l-4 border-l-indigo-500 group">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-indigo-600 text-sm font-bold">📚</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-sm group-hover:text-primary-700">QS Research</h3>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">10-stage research pipeline, literature sources, cost data analysis.</p>
-                    <span className="text-xs font-semibold text-indigo-600 group-hover:text-indigo-700 flex items-center gap-1 mt-2">
-                      Open Research <span>&rarr;</span>
-                    </span>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Quick calculators */}
-              <div className="card">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="section-title">Calculators</h2>
-                  <Link href="/calculators" className="text-sm text-primary-600 hover:underline">All</Link>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {CALCULATORS.slice(0, 6).map(c => (
-                    <Link key={c.id} href={`/calculators/${c.id}`}
-                      className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-all text-center group">
-                      <span className="text-xl mb-1">{c.icon}</span>
-                      <span className="text-xs font-medium text-gray-700 group-hover:text-primary-700 leading-tight">{c.label.split(' ').slice(0, 2).join(' ')}</span>
-                    </Link>
+                {/* Quick Tools */}
+                <Row gutter={[12, 12]}>
+                  {QUICK_TOOLS.map(t => (
+                    <Col span={12} key={t.href}>
+                      <Link href={t.href}>
+                        <Card bordered={false} className="!rounded-xl shadow-sm hover:shadow-md transition-shadow" style={{ borderLeft: `4px solid ${t.color}` }}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: `${t.color}15` }}>
+                              <span style={{ color: t.color }} className="text-sm font-bold">{t.icon}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 text-sm m-0">{t.title}</h3>
+                              <p className="text-xs text-gray-500 mt-1 m-0">{t.desc}</p>
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    </Col>
                   ))}
-                </div>
-                <Link href="/calculators" className="btn-secondary w-full text-center mt-3 text-sm">
-                  View All Calculators
-                </Link>
-              </div>
-            </div>
-          </div>
+                </Row>
 
+                {/* Quick Calculators */}
+                <Card
+                  title="Calculators"
+                  bordered={false}
+                  className="!rounded-xl shadow-sm"
+                  extra={<Link href="/calculators" className="text-sm text-primary-600">All</Link>}
+                >
+                  <Row gutter={[8, 8]}>
+                    {CALCULATORS.slice(0, 6).map(c => (
+                      <Col span={8} key={c.id}>
+                        <Link href={`/calculators/${c.id}`}>
+                          <div className="flex flex-col items-center p-2 rounded-lg border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-all text-center">
+                            <span className="text-lg mb-1">{c.icon}</span>
+                            <span className="text-[10px] font-medium text-gray-700 leading-tight">
+                              {c.label.split(' ').slice(0, 2).join(' ')}
+                            </span>
+                          </div>
+                        </Link>
+                      </Col>
+                    ))}
+                  </Row>
+                  <Link href="/calculators">
+                    <Button block className="mt-3">View All Calculators</Button>
+                  </Link>
+                </Card>
+              </Space>
+            </Col>
+          </Row>
         </div>
       </Layout>
     </ProtectedRoute>
   );
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
 }

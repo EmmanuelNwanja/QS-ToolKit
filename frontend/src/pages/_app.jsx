@@ -1,8 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { Toaster } from 'react-hot-toast';
 import { DM_Sans, DM_Serif_Display } from 'next/font/google';
+import { ConfigProvider } from 'antd';
+import * as Sentry from '@sentry/nextjs';
+import ErrorBoundary from '../components/ErrorBoundary';
 import useAuthStore from '../context/authStore';
 import pushNotificationService from '../services/pushNotificationService';
+import posthog from '../services/posthog';
+import useFeatureFlags from '../services/featureFlags';
 import '../styles/globals.css';
 
 const dmSans = DM_Sans({
@@ -27,10 +33,34 @@ export default function App({ Component, pageProps }) {
   const user = useAuthStore((s) => s.user);
   const [updateReady, setUpdateReady] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     init();
   }, [init]);
+
+  // PostHog pageview tracking
+  useEffect(() => {
+    if (!router.isReady) return;
+    const handleRouteChange = (url) => {
+      posthog.capture('$pageview', { $current_url: url });
+    };
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => router.events.off('routeChangeComplete', handleRouteChange);
+  }, [router.isReady]);
+
+  // PostHog identify user on login
+  useEffect(() => {
+    if (user?.id && posthog) {
+      posthog.identify(user.id, { name: user.name, email: user.email, plan: user.subscription_plan });
+    }
+  }, [user?.id]);
+
+  // Fetch feature flags on user login
+  const fetchFlags = useFeatureFlags((s) => s.fetchFlags);
+  useEffect(() => {
+    if (user?.id) fetchFlags();
+  }, [user?.id, fetchFlags]);
 
   // Register service worker and detect updates
   useEffect(() => {
@@ -110,6 +140,20 @@ export default function App({ Component, pageProps }) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
+    <ErrorBoundary>
+    <Sentry.ErrorBoundary>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#1a3c5e',
+          colorSuccess: '#10b981',
+          colorWarning: '#f59e0b',
+          colorError: '#ef4444',
+          borderRadius: 8,
+          fontFamily: 'var(--font-body)',
+        },
+      }}
+    >
     <div className={`${dmSans.variable} ${dmSerif.variable}`}>
       {getLayout(<Component {...pageProps} />)}
 
@@ -149,5 +193,8 @@ export default function App({ Component, pageProps }) {
         }}
       />
     </div>
+    </ConfigProvider>
+    </Sentry.ErrorBoundary>
+    </ErrorBoundary>
   );
 }

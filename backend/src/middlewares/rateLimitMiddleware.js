@@ -89,6 +89,21 @@ async function recordUsage(userId, feature, metadata = {}) {
   }
 }
 
+function setRateLimitHeaders(res, config, usage, tier) {
+  if (!config) return;
+  const limit = config.max_uses_per_day;
+  const remaining = limit ? Math.max(0, limit - usage.daily) : null;
+  const reset = new Date();
+  reset.setHours(23, 59, 59, 999);
+
+  if (limit) {
+    res.set('X-RateLimit-Limit', String(limit));
+    res.set('X-RateLimit-Remaining', String(remaining));
+    res.set('X-RateLimit-Reset', String(Math.floor(reset.getTime() / 1000)));
+    res.set('X-RateLimit-Tier', tier);
+  }
+}
+
 function rateLimit(feature) {
   return async (req, res, next) => {
     const userId = req.user?.id;
@@ -100,6 +115,8 @@ function rateLimit(feature) {
     if (!config) return next();
 
     const usage = await getUsageCounts(userId, feature);
+
+    setRateLimitHeaders(res, config, usage, tier);
 
     const exceeded =
       (config.max_uses_per_day && usage.daily >= config.max_uses_per_day) ||
@@ -154,4 +171,10 @@ function getRemainingUsage(tier, feature, usage) {
   };
 }
 
-module.exports = { rateLimit, recordUsage, getUserTier, getUsageCounts, getRemainingUsage };
+function clearTierCache(userId) {
+  if (userId) tierCache.delete(userId);
+  else tierCache.clear();
+  configCache.clear();
+}
+
+module.exports = { rateLimit, recordUsage, getUserTier, getUsageCounts, getRemainingUsage, clearTierCache };

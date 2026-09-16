@@ -5,6 +5,8 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 const { emitDrawingEvent } = require('../services/sensorHub');
+const analyticsTrack = require('../services/analyticsTrackService');
+const featureFlagService = require('../services/featureFlagService');
 
 // ─── AI Health / Diagnostics ──────────────────────────────────
 exports.health = async (req, res) => {
@@ -65,15 +67,13 @@ async function checkFeature(userId, featureKey) {
     planName = 'free';
   }
 
-  const { data: flag } = await supabase
-    .from('feature_flags')
-    .select('*')
-    .eq('feature_key', featureKey)
-    .single();
+  const allowed = await featureFlagService.isEnabled(featureKey, {
+    id: userId,
+    subscription_plan: planName,
+    is_admin: isAdmin,
+  });
 
-  if (!flag) return { allowed: false, reason: 'Feature not found' };
-  if (flag.enabled_globally) return { allowed: true };
-  if (flag.enabled_for_plans?.includes(planName)) return { allowed: true };
+  if (allowed) return { allowed: true };
   return { allowed: false, reason: 'Upgrade your plan to access this feature' };
 }
 
@@ -133,6 +133,7 @@ exports.chat = async (req, res, next) => {
     }
 
     const result = await aiService.chat(req.user.id, session_id, message, context);
+    analyticsTrack.trackEvent(req.user.id, 'ai_chat_sent', { session_id, message_length: message.length });
     return res.json(success('AI response', { reply: result.reply, limit: limitCheck }));
   } catch (err) {
     logger.error('AI chat error:', err.message);

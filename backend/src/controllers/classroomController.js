@@ -4,6 +4,7 @@ const { generateLessonOutline } = require('../services/outlineGenerator');
 const { generateSceneContent } = require('../services/sceneGenerator');
 const { getSceneType, getAllSceneTypes } = require('../services/sceneRegistry');
 const { createSession, orchestrateDiscussion } = require('../services/agentOrchestrator');
+const analyticsTrack = require('../services/analyticsTrackService');
 
 // ─── Scene Types ─────────────────────────────────────────────
 
@@ -335,6 +336,7 @@ exports.submitSceneResponse = async (req, res, next) => {
       ai_feedback: aiFeedback,
       status,
     }));
+    analyticsTrack.trackEvent(req.user.id, 'classroom_scene_completed', { scene_type: scene.scene_type, score });
   } catch (err) { next(err); }
 };
 

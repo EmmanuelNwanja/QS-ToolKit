@@ -2,12 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { Row, Col, Card, Statistic, Table, Tag, Button, Space, Descriptions, Spin, Alert, Typography } from 'antd';
+import {
+  UserOutlined, CreditCardOutlined, DollarOutlined, TagsOutlined,
+  ThunderboltOutlined, CalendarOutlined, RobotOutlined, BankOutlined,
+  BellOutlined, BarChartOutlined, TeamOutlined, SafetyOutlined,
+} from '@ant-design/icons';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI, aiAPI } from '../../services/api';
 import useAuthStore from '../../context/authStore';
 
-// ─── Sub-component: Admin AI Grant Manager ──────────────────────
+const { Title, Text, Paragraph } = Typography;
+
+const formatCurrency = (value) => new Intl.NumberFormat('en-NG', {
+  style: 'currency', currency: 'NGN', maximumFractionDigits: 0,
+}).format(Number(value || 0));
+
 function AdminAIGrantManager() {
   const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,14 +30,10 @@ function AdminAIGrantManager() {
       setGrants(data?.data?.grants || []);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load grants');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchGrants();
-  }, []);
+  useEffect(() => { fetchGrants(); }, []);
 
   const handleRevoke = async (userId) => {
     if (!confirm('Revoke Admin AI access for this user?')) return;
@@ -39,36 +46,48 @@ function AdminAIGrantManager() {
     }
   };
 
+  const columns = [
+    {
+      title: 'Admin',
+      key: 'name',
+      render: (_, r) => (
+        <div>
+          <Text strong>{r.users?.name || 'Unknown'}</Text>
+          <br />
+          <Text type="secondary" className="text-xs">{r.users?.email}</Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Role',
+      dataIndex: ['users', 'user_type'],
+      key: 'role',
+      render: (v) => <Tag>{v}</Tag>,
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 80,
+      render: (_, r) => (
+        <Button danger size="small" onClick={() => handleRevoke(r.user_id)}>Revoke</Button>
+      ),
+    },
+  ];
+
   return (
     <div>
-      <h4 className="text-sm font-semibold text-gray-700 mb-2">Granted Admins ({grants.length})</h4>
-      {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
-      ) : grants.length === 0 ? (
-        <p className="text-sm text-gray-500">No grants yet. Super admins have automatic access.</p>
-      ) : (
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {grants.map((g) => (
-            <div key={g.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-              <div>
-                <span className="font-medium">{g.users?.name || 'Unknown'}</span>
-                <span className="text-gray-500 ml-2">{g.users?.email}</span>
-                <span className="text-gray-400 ml-2 text-xs">({g.users?.user_type})</span>
-              </div>
-              <button
-                onClick={() => handleRevoke(g.user_id)}
-                className="text-red-600 hover:text-red-800 text-xs font-medium"
-              >
-                Revoke
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <p className="text-xs text-gray-400 mt-2">
+      <Table
+        dataSource={grants}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={false}
+        size="small"
+        locale={{ emptyText: 'No grants yet. Super admins have automatic access.' }}
+      />
+      <Paragraph type="secondary" className="text-xs mt-3">
         To grant access, add a row to the <code>admin_ai_grants</code> table with the admin&apos;s user_id.
-        A full grant UI is coming in the next release.
-      </p>
+      </Paragraph>
     </div>
   );
 }
@@ -94,491 +113,282 @@ export default function AdminDashboard() {
       setStats(response.data?.data || response.data);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const fetchSecurityAlerts = async () => {
     try {
       setAlertsLoading(true);
-      const response = await adminAPI.getActivityLogs({
-        action: 'generated_one_time_password',
-        limit: 8
-      });
+      const response = await adminAPI.getActivityLogs({ action: 'generated_one_time_password', limit: 8 });
       setSecurityAlerts(response.data?.logs || []);
-    } catch (err) {
-      setSecurityAlerts([]);
-      console.error('Failed to load security alerts', err);
-    } finally {
-      setAlertsLoading(false);
-    }
+    } catch { setSecurityAlerts([]); }
+    finally { setAlertsLoading(false); }
   };
 
   const lastUpdated = stats?.generated_at
     ? new Date(stats.generated_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
     : '';
   const financial = stats?.financialModel;
-  const formatCurrency = (value) => new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    maximumFractionDigits: 0
-  }).format(Number(value || 0));
+
+  const statCards = [
+    { title: 'Total Users', value: stats?.totalUsers || 0, icon: <UserOutlined />, color: '#1a3c5e', onClick: () => router.push('/admin/users') },
+    { title: 'Active Subscriptions', value: stats?.activeSubscriptions || 0, icon: <CreditCardOutlined />, color: '#3b82f6', onClick: () => router.push('/admin/subscriptions') },
+    { title: 'Actual Revenue', value: formatCurrency(stats?.totalRevenue || 0), icon: <DollarOutlined />, color: '#10b981', isText: true, onClick: () => router.push('/admin/billing') },
+    { title: 'Discounts Granted', value: formatCurrency(financial?.discountedPaymentsValue || 0), icon: <TagsOutlined />, color: '#f59e0b', isText: true, onClick: () => router.push('/admin/promo-codes') },
+    { title: 'MRR Projection', value: formatCurrency(financial?.monthlyRecurringRevenue || 0), icon: <ThunderboltOutlined />, color: '#8b5cf6', isText: true },
+    { title: 'Next 30 Days', value: formatCurrency(financial?.next30DayProjection || 0), icon: <CalendarOutlined />, color: '#06b6d4', isText: true },
+    { title: 'Active Promo Codes', value: stats?.activePromoCodes || 0, icon: <TagsOutlined />, color: '#ec4899', onClick: () => router.push('/admin/promo-codes') },
+  ];
+
+  const quickActions = [
+    { href: '/admin/ai-engine', icon: <RobotOutlined />, title: 'AI Engine', desc: 'Dr. Q Admin — platform analytics, user insights, revenue', color: '#1a3c5e' },
+    { href: '/admin/promo-codes', icon: <TagsOutlined />, title: 'Manage Promo Codes', desc: 'Create and manage discount codes', color: '#3b82f6' },
+    { href: '/admin/users', icon: <TeamOutlined />, title: 'Manage Users', desc: 'View and manage user accounts', color: '#10b981' },
+    { href: '/admin/direct-payments', icon: <BankOutlined />, title: 'Direct Payments', desc: 'Review bank transfer submissions', color: '#f59e0b' },
+    { href: '/admin/bank-transfer-settings', icon: <BankOutlined />, title: 'Bank Transfer Settings', desc: 'Configure bank account details', color: '#06b6d4' },
+    { href: '/admin/notifications', icon: <BellOutlined />, title: 'Send Notifications', desc: 'Push notifications to users', color: '#8b5cf6' },
+    ...(user?.admin_role === 'super_admin' ? [{ href: '/admin/paystack-plans', icon: <SafetyOutlined />, title: 'Paystack Plan Mapping', desc: 'Manage recurring billing plan codes', color: '#ec4899' }] : []),
+  ];
+
+  const planColumns = [
+    { title: 'Plan', dataIndex: 'plan_name', key: 'plan', render: (v) => <Text strong className="capitalize">{v}</Text> },
+    { title: 'Active', dataIndex: 'active_subscribers', key: 'active' },
+    { title: 'Gross', dataIndex: 'gross_revenue', key: 'gross', render: (v) => formatCurrency(v) },
+    { title: 'Discounts', dataIndex: 'discounted_revenue', key: 'discount', render: (v) => <Text type="warning">{formatCurrency(v)}</Text> },
+    { title: 'Actual', dataIndex: 'actual_revenue', key: 'actual', render: (v) => <Text type="success" strong>{formatCurrency(v)}</Text> },
+    { title: 'MRR', dataIndex: 'projected_monthly_revenue', key: 'mrr', render: (v) => formatCurrency(v) },
+  ];
+
+  const txColumns = [
+    {
+      title: 'Customer',
+      key: 'customer',
+      render: (_, r) => (
+        <div>
+          <Text strong>{r.customer_name}</Text>
+          <br />
+          <Text type="secondary" className="text-xs">{r.customer_email || 'No email'} · {r.plan_name} · {r.billing_cycle}</Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Date',
+      dataIndex: 'transaction_date',
+      key: 'date',
+      width: 120,
+      render: (v) => new Date(v).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }),
+    },
+    { title: 'Gross', dataIndex: 'gross_amount', key: 'gross', render: (v) => formatCurrency(v) },
+    { title: 'Discount', dataIndex: 'discount_amount', key: 'discount', render: (v) => <Text type="warning">{formatCurrency(v)}</Text> },
+    { title: 'Paid', dataIndex: 'net_amount', key: 'net', render: (v) => <Text type="success" strong>{formatCurrency(v)}</Text> },
+  ];
 
   return (
     <ProtectedAdminRoute>
       <AdminLayout>
         <div className="space-y-6">
-          {/* Page Title */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">Welcome to Admin Dashboard</h2>
-              <p className="text-gray-600 mt-1">Manage promo codes, users, subscriptions, and more</p>
-            </div>
-            <button
-              type="button"
-              onClick={fetchDashboardStats}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-primary-700 text-white hover:bg-primary-800 disabled:opacity-60"
-              disabled={loading}
-            >
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </button>
-          </div>
 
-          {/* Quick Stats */}
+          {/* Header */}
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Title level={3} className="!mb-0">Admin Dashboard</Title>
+              <Text type="secondary">Manage promo codes, users, subscriptions, and more</Text>
+            </Col>
+            <Col>
+              <Button type="primary" onClick={fetchDashboardStats} loading={loading}>Refresh</Button>
+            </Col>
+          </Row>
+
+          {lastUpdated && <Text type="secondary" className="text-xs">Last refreshed: {lastUpdated}</Text>}
+
           {loading ? (
-            <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
+            <div className="text-center py-12"><Spin size="large" /></div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-              {error}
-            </div>
+            <Alert type="error" message={error} showIcon />
           ) : (
             <>
-              {lastUpdated && (
-                <p className="text-xs text-gray-500">Last refreshed: {lastUpdated}</p>
+              {/* Stat Cards */}
+              <Row gutter={[16, 16]}>
+                {statCards.map((s, i) => (
+                  <Col xs={12} md={8} xl={6} key={i}>
+                    <Card
+                      bordered={false}
+                      className={`!rounded-xl shadow-sm ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+                      onClick={s.onClick}
+                    >
+                      <Statistic
+                        title={s.title}
+                        value={s.value}
+                        prefix={s.icon}
+                        valueStyle={{ color: s.color, fontWeight: 700, fontSize: s.isText ? 20 : 28 }}
+                      />
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+
+              {/* Financial Model - Super Admin */}
+              {user?.admin_role === 'super_admin' && financial && (
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} xl={14}>
+                    <Card bordered={false} className="!rounded-2xl overflow-hidden" bodyStyle={{ padding: 0 }}>
+                      <div className="px-6 py-5 border-b border-white/10"
+                        style={{ background: 'radial-gradient(circle at top left, rgba(56,189,248,0.28), transparent 45%), linear-gradient(135deg, #0f172a, rgba(30,41,59,0.92))' }}>
+                        <Text className="!text-xs !uppercase" style={{ letterSpacing: '0.24em', color: 'rgba(186,230,253,0.8)' }}>
+                          Financial Model
+                        </Text>
+                        <Title level={4} className="!text-white !mt-1 !mb-0">Subscription economics at a glance</Title>
+                      </div>
+                      <div className="p-6">
+                        <Row gutter={[16, 16]}>
+                          {[
+                            { label: 'List Price Value', value: formatCurrency(financial.grossSubscriptionValue), desc: 'Booked subscription value before promo discounts.' },
+                            { label: 'Collected Cash', value: formatCurrency(financial.collectedRevenue), desc: 'Successful subscription payments before refunds.', color: '#10b981' },
+                            { label: 'ARR Projection', value: formatCurrency(financial.annualRecurringRevenue), desc: "Annualized recurring revenue from today's active paid subscribers.", color: '#f59e0b' },
+                            { label: 'Realization Rate', value: `${Number(financial.revenueRealizationRate || 0).toFixed(1)}%`, desc: 'Share of list-price value converted into collected cash.', color: '#a855f7' },
+                          ].map((item, i) => (
+                            <Col xs={12} key={i}>
+                              <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+                                <Text type="secondary" className="text-xs uppercase" style={{ letterSpacing: '0.18em' }}>{item.label}</Text>
+                                <div className="text-2xl font-bold mt-2" style={{ color: item.color || '#111827' }}>{item.value}</div>
+                                <Text type="secondary" className="text-xs mt-2 block">{item.desc}</Text>
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      </div>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} xl={10}>
+                    <Card title="Finance Signals" bordered={false} className="!rounded-2xl shadow"
+                      extra={<Tag>{financial.activePaidSubscribers || 0} active paid users</Tag>}>
+                      <Descriptions column={1} size="small" bordered>
+                        <Descriptions.Item label="Discounted payments">
+                          {financial.discountedTransactionsCount || 0}
+                          <Text type="secondary" className="block text-xs">
+                            Captured cash: {formatCurrency(financial.discountedCollections || 0)}
+                          </Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Average payment value">
+                          {formatCurrency(financial.averageTransactionValue || 0)}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Refunded revenue">
+                          {formatCurrency(financial.refundedRevenue || 0)}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Current MRR">
+                          {formatCurrency(financial.monthlyRecurringRevenue || 0)}
+                        </Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+                  </Col>
+                </Row>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {/* Total Users */}
-              <button
-                onClick={() => router.push('/admin/users')}
-                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
+
+              {/* Plan Performance + Recent Transactions */}
+              {user?.admin_role === 'super_admin' && financial && (
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} xl={14}>
+                    <Card title="Plan Performance" bordered={false} className="!rounded-2xl shadow">
+                      <Table
+                        dataSource={financial.planPerformance || []}
+                        columns={planColumns}
+                        rowKey="plan_name"
+                        pagination={false}
+                        size="small"
+                        scroll={{ x: 600 }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={24} xl={10}>
+                    <Card title="Recent Subscription Payments" bordered={false} className="!rounded-2xl shadow">
+                      <Table
+                        dataSource={financial.recentTransactions || []}
+                        columns={txColumns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        scroll={{ x: 500 }}
+                        locale={{ emptyText: 'No subscription payments recorded yet.' }}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
+              )}
+
+              {/* Admin AI Engine */}
+              {user?.admin_role === 'super_admin' && (
+                <Card
+                  title={<span><RobotOutlined /> Admin AI Engine</span>}
+                  bordered={false}
+                  className="!rounded-xl shadow-sm"
+                  extra={<Link href="/admin/ai-engine"><Button type="primary">Open AI Engine →</Button></Link>}
+                >
+                  <Paragraph type="secondary">
+                    Dr. Q Admin has real-time access to platform analytics. Only super admins and explicitly granted admins can use it.
+                  </Paragraph>
+                  <AdminAIGrantManager />
+                </Card>
+              )}
+
+              {/* Quick Actions */}
+              <Card title="Quick Actions" bordered={false} className="!rounded-xl shadow-sm">
+                <Row gutter={[16, 16]}>
+                  {quickActions.map((a) => (
+                    <Col xs={24} md={8} key={a.href}>
+                      <Link href={a.href}>
+                        <Card bordered hoverable className="!rounded-lg" style={{ borderLeft: `4px solid ${a.color}` }}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: `${a.color}15`, color: a.color, fontSize: 20 }}>
+                              {a.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <Text strong>{a.title}</Text>
+                              <br />
+                              <Text type="secondary" className="text-xs">{a.desc}</Text>
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    </Col>
+                  ))}
+                </Row>
+              </Card>
+
+              {/* Security Notifications */}
+              <Card
+                title="Security Notifications"
+                bordered={false}
+                className="!rounded-xl shadow-sm"
+                extra={<Button size="small" onClick={fetchSecurityAlerts} loading={alertsLoading}>Refresh</Button>}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Total Users</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats?.totalUsers || 0}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">Click to view all users</p>
-                  </div>
-                  <div className="text-4xl">👥</div>
-                </div>
-              </button>
-
-              {/* Active Subscriptions */}
-              <button
-                onClick={() => router.push('/admin/subscriptions')}
-                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Active Subscriptions</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats?.activeSubscriptions || 0}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">Click to search & filter</p>
-                  </div>
-                  <div className="text-4xl">💳</div>
-                </div>
-              </button>
-
-              {/* Total Revenue */}
-              <button
-                onClick={() => router.push('/admin/billing')}
-                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Actual Revenue</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {formatCurrency(stats?.totalRevenue || 0)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">Click to view billing reports</p>
-                  </div>
-                  <div className="text-4xl">💰</div>
-                </div>
-              </button>
-
-              {/* Discounts Granted */}
-              <button
-                onClick={() => router.push('/admin/promo-codes')}
-                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Discounts Granted</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {formatCurrency(financial?.discountedPaymentsValue || 0)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">Click to manage promo codes</p>
-                  </div>
-                  <div className="text-4xl">🏷️</div>
-                </div>
-              </button>
-
-              {/* MRR */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">MRR Projection</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {formatCurrency(financial?.monthlyRecurringRevenue || 0)}
-                    </p>
-                  </div>
-                  <div className="text-4xl">📈</div>
-                </div>
-              </div>
-
-              {/* Next 30 days */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Next 30 Days</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {formatCurrency(financial?.next30DayProjection || 0)}
-                    </p>
-                  </div>
-                  <div className="text-4xl">🗓️</div>
-                </div>
-              </div>
-
-              {/* Active Promo Codes */}
-              <button
-                onClick={() => router.push('/admin/promo-codes')}
-                className="bg-white rounded-lg shadow p-6 text-left hover:shadow-lg transition-shadow cursor-pointer hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Active Promo Codes</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats?.activePromoCodes || 0}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">Click to manage codes</p>
-                  </div>
-                  <div className="text-4xl">🎟️</div>
-                </div>
-              </button>
-            </div>
-
-            {user?.admin_role === 'super_admin' && financial && (
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.45fr,1fr]">
-                <section className="bg-slate-950 text-white rounded-2xl shadow-xl overflow-hidden">
-                  <div className="px-6 py-5 border-b border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.28),_transparent_45%),linear-gradient(135deg,_rgba(15,23,42,1),_rgba(30,41,59,0.92))]">
-                    <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">Financial Model</p>
-                    <h3 className="text-2xl font-bold mt-2">Subscription economics at a glance</h3>
-                    <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-                      Tracks list-price billings, discounts granted, realized cash, and forward recurring value from active subscriptions.
-                    </p>
-                  </div>
-
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">List Price Value</p>
-                      <p className="text-3xl font-bold mt-2">{formatCurrency(financial.grossSubscriptionValue)}</p>
-                      <p className="text-sm text-slate-300 mt-2">Booked subscription value before promo discounts.</p>
-                    </div>
-                    <div className="rounded-2xl bg-emerald-400/10 border border-emerald-300/20 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-200">Collected Cash</p>
-                      <p className="text-3xl font-bold mt-2 text-emerald-100">{formatCurrency(financial.collectedRevenue)}</p>
-                      <p className="text-sm text-emerald-50/80 mt-2">Successful subscription payments before refunds.</p>
-                    </div>
-                    <div className="rounded-2xl bg-amber-400/10 border border-amber-300/20 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-amber-200">ARR Projection</p>
-                      <p className="text-3xl font-bold mt-2 text-amber-50">{formatCurrency(financial.annualRecurringRevenue)}</p>
-                      <p className="text-sm text-amber-50/80 mt-2">Annualized recurring revenue from today&apos;s active paid subscribers.</p>
-                    </div>
-                    <div className="rounded-2xl bg-fuchsia-400/10 border border-fuchsia-300/20 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-fuchsia-200">Realization Rate</p>
-                      <p className="text-3xl font-bold mt-2 text-fuchsia-50">{Number(financial.revenueRealizationRate || 0).toFixed(1)}%</p>
-                      <p className="text-sm text-fuchsia-50/80 mt-2">Share of list-price value converted into collected cash.</p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="bg-white rounded-2xl shadow p-6 border border-gray-200">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Finance Signals</p>
-                      <h3 className="text-xl font-bold text-gray-900 mt-1">Operational summary</h3>
-                    </div>
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                      {financial.activePaidSubscribers || 0} active paid users
-                    </span>
-                  </div>
-
-                  <div className="mt-6 space-y-4">
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-gray-600">Discounted payments</span>
-                        <span className="text-lg font-semibold text-gray-900">{financial.discountedTransactionsCount || 0}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Captured cash from discounted transactions: {formatCurrency(financial.discountedCollections || 0)}</p>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-gray-600">Average payment value</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(financial.averageTransactionValue || 0)}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Average collected amount per completed subscription payment.</p>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-gray-600">Refunded revenue</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(financial.refundedRevenue || 0)}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Processed refunds already deducted from actual revenue.</p>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-gray-600">Current MRR</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(financial.monthlyRecurringRevenue || 0)}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Monthlyized value of active paid subscriptions across billing cycles.</p>
-                    </div>
-                  </div>
-                </section>
-              </div>
-            )}
-
-            {user?.admin_role === 'super_admin' && financial && (
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr,0.9fr]">
-                <section className="bg-white rounded-2xl shadow p-6 border border-gray-200 overflow-hidden">
-                  <div className="flex items-center justify-between gap-4 mb-5">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Plan performance</h3>
-                      <p className="text-sm text-gray-500">Gross billings, discounts, realized revenue, and projected monthly value per plan.</p>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-500 border-b border-gray-200">
-                          <th className="py-3 pr-4 font-medium">Plan</th>
-                          <th className="py-3 pr-4 font-medium">Active</th>
-                          <th className="py-3 pr-4 font-medium">Gross</th>
-                          <th className="py-3 pr-4 font-medium">Discounts</th>
-                          <th className="py-3 pr-4 font-medium">Actual</th>
-                          <th className="py-3 font-medium">MRR</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(financial.planPerformance || []).map((plan) => (
-                          <tr key={plan.plan_name} className="border-b border-gray-100 last:border-0">
-                            <td className="py-3 pr-4 font-semibold text-gray-900 capitalize">{plan.plan_name}</td>
-                            <td className="py-3 pr-4 text-gray-700">{plan.active_subscribers}</td>
-                            <td className="py-3 pr-4 text-gray-700">{formatCurrency(plan.gross_revenue)}</td>
-                            <td className="py-3 pr-4 text-amber-700">{formatCurrency(plan.discounted_revenue)}</td>
-                            <td className="py-3 pr-4 text-emerald-700 font-semibold">{formatCurrency(plan.actual_revenue)}</td>
-                            <td className="py-3 text-gray-700">{formatCurrency(plan.projected_monthly_revenue)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-
-                <section className="bg-white rounded-2xl shadow p-6 border border-gray-200 overflow-hidden">
-                  <div className="flex items-center justify-between gap-4 mb-5">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Recent subscription payments</h3>
-                      <p className="text-sm text-gray-500">Latest recorded charges with gross, discount, and realized payment values.</p>
-                    </div>
-                  </div>
-
+                {alertsLoading ? (
+                  <div className="text-center py-8"><Spin /></div>
+                ) : securityAlerts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No OTP notifications yet</div>
+                ) : (
                   <div className="space-y-3">
-                    {(financial.recentTransactions || []).length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500">
-                        No subscription payments recorded yet.
-                      </div>
-                    ) : (
-                      (financial.recentTransactions || []).map((payment) => (
-                        <div key={payment.id} className="rounded-xl border border-gray-200 px-4 py-3 bg-gray-50">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-gray-900">{payment.customer_name}</p>
-                              <p className="text-xs text-gray-500">{payment.customer_email || 'No email available'} · {payment.plan_name} · {payment.billing_cycle}</p>
-                            </div>
-                            <span className="text-xs rounded-full bg-white border border-gray-200 px-2.5 py-1 text-gray-600">
-                              {new Date(payment.transaction_date).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
-                            <div>
-                              <p className="text-gray-500">Gross</p>
-                              <p className="font-semibold text-gray-900">{formatCurrency(payment.gross_amount)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Discount</p>
-                              <p className="font-semibold text-amber-700">{formatCurrency(payment.discount_amount)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Paid</p>
-                              <p className="font-semibold text-emerald-700">{formatCurrency(payment.net_amount)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                    {securityAlerts.map((log) => (
+                      <Alert
+                        key={log.id}
+                        type="warning"
+                        showIcon
+                        message={`OTP created for ${log.details?.user_email || 'a user'}`}
+                        description={
+                          <>
+                            Expires {log.details?.expires_at ? new Date(log.details.expires_at).toLocaleString() : 'soon'}
+                            <br />
+                            Logged {new Date(log.created_at).toLocaleString()}
+                          </>
+                        }
+                      />
+                    ))}
                   </div>
-                </section>
-              </div>
-            )}
+                )}
+              </Card>
             </>
           )}
-
-          {/* Admin AI Engine + Grant Management */}
-          {user?.admin_role === 'super_admin' && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">🧠 Admin AI Engine</h3>
-                <Link href="/admin/ai-engine"
-                  className="text-sm bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-primary-800 transition-colors"
-                >
-                  Open AI Engine →
-                </Link>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                Dr. Q Admin has real-time access to platform analytics. Only super admins and explicitly granted admins can use it.
-              </p>
-              <AdminAIGrantManager />
-            </div>
-          )}
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link href="/admin/ai-engine"
-                className="flex items-center gap-3 p-4 border-2 border-primary-200 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                <span className="text-2xl">🤖</span>
-                <div>
-                  <p className="font-medium text-gray-900">AI Engine</p>
-                  <p className="text-sm text-gray-600">Dr. Q Admin — platform analytics, user insights, revenue</p>
-                </div>
-              </Link>
-
-              <Link href="/admin/promo-codes"
-                className="flex items-center gap-3 p-4 border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <span className="text-2xl">🎟️</span>
-                <div>
-                  <p className="font-medium text-gray-900">Manage Promo Codes</p>
-                  <p className="text-sm text-gray-600">Create and manage discount codes</p>
-                </div>
-              </Link>
-
-              <Link href="/admin/users"
-                className="flex items-center gap-3 p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors"
-              >
-                <span className="text-2xl">👥</span>
-                <div>
-                  <p className="font-medium text-gray-900">Manage Users</p>
-                  <p className="text-sm text-gray-600">View and manage user accounts</p>
-                </div>
-              </Link>
-
-              <Link href="/admin/direct-payments"
-                className="flex items-center gap-3 p-4 border-2 border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
-              >
-                <span className="text-2xl">🏦</span>
-                <div>
-                  <p className="font-medium text-gray-900">Direct Payments</p>
-                  <p className="text-sm text-gray-600">Review bank transfer submissions</p>
-                </div>
-              </Link>
-
-              <Link href="/admin/bank-transfer-settings"
-                className="flex items-center gap-3 p-4 border-2 border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
-              >
-                <span className="text-2xl">🏧</span>
-                <div>
-                  <p className="font-medium text-gray-900">Bank Transfer Settings</p>
-                  <p className="text-sm text-gray-600">Configure bank account details</p>
-                </div>
-              </Link>
-
-              <Link href="/admin/notifications"
-                className="flex items-center gap-3 p-4 border-2 border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
-              >
-                <span className="text-2xl">🔔</span>
-                <div>
-                  <p className="font-medium text-gray-900">Send Notifications</p>
-                  <p className="text-sm text-gray-600">Push notifications to users</p>
-                </div>
-              </Link>
-
-              {user?.admin_role === 'super_admin' && (
-                <Link href="/admin/paystack-plans"
-                  className="flex items-center gap-3 p-4 border-2 border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
-                >
-                  <span className="text-2xl">🧩</span>
-                  <div>
-                    <p className="font-medium text-gray-900">Paystack Plan Mapping</p>
-                    <p className="text-sm text-gray-600">Manage recurring billing plan codes</p>
-                  </div>
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Security Notifications</h3>
-              <button
-                type="button"
-                onClick={fetchSecurityAlerts}
-                className="text-sm font-medium text-primary-700 hover:text-primary-800"
-                disabled={alertsLoading}
-              >
-                {alertsLoading ? 'Refreshing...' : 'Refresh'}
-              </button>
-            </div>
-
-            {alertsLoading ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>Loading security notifications...</p>
-              </div>
-            ) : securityAlerts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>No OTP notifications yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {securityAlerts.map((log) => (
-                  <div key={log.id} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                    <p className="text-sm font-semibold text-amber-900">
-                      One-time password created for {log.details?.user_email || 'a user'}
-                    </p>
-                    <p className="text-xs text-amber-800 mt-1">
-                      Expires {log.details?.expires_at ? new Date(log.details.expires_at).toLocaleString() : 'soon'}
-                    </p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Logged {new Date(log.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </AdminLayout>
     </ProtectedAdminRoute>

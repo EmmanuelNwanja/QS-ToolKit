@@ -1,27 +1,68 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { Menu } from 'antd';
+import {
+  DashboardOutlined, RobotOutlined, FolderOutlined, CalculatorOutlined,
+  ReadOutlined, TrophyOutlined, SettingOutlined, FileTextOutlined,
+  ReconciliationOutlined, StarOutlined, RocketOutlined, BrainOutlined,
+} from '@ant-design/icons';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
 import AiChatWidget from './ui/ai-chat';
 import Search from './ui/Search';
 import { clsx } from 'clsx';
 
-const NAV_ITEMS = [
-  { href: '/dashboard',     icon: '📊', label: 'Dashboard' },
-  { href: '/engine',        icon: '🤖', label: 'AI Engine' },
-  { href: '/projects',      icon: '📁', label: 'Projects' },
-  { href: '/calculators',   icon: '🧮', label: 'Calculators' },
-  { href: '/classroom',     icon: '🏫', label: 'Classroom' },
-  { href: '/academy',       icon: '🎓', label: 'QS Academy' },
-  { href: '/exam-prep',     icon: '📝', label: 'Exam Prep' },
-  { href: '/qs-flow',       icon: '🚀', label: 'QS Flow' },
-  { href: '/parametric',    icon: '🧠', label: 'Smart Parametric', comingSoon: true },
-  { href: '/boq',           icon: '📋', label: 'Bill of Quantities' },
-  { href: '/invoices',      icon: '🧾', label: 'Invoices & Quotes' },
-  { href: '/feedback',      icon: '⭐', label: 'Client Feedback' },
-  { href: '/leaderboard',   icon: '🏆', label: 'Leaderboard' },
-  { href: '/settings',      icon: '⚙️', label: 'Settings' }
+const NAV_GROUPS = [
+  {
+    label: 'Overview',
+    items: [
+      { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', href: '/dashboard' },
+    ],
+  },
+  {
+    label: 'AI Tools',
+    items: [
+      { key: '/engine', icon: <RobotOutlined />, label: 'AI Engine', href: '/engine' },
+      { key: '/qs-flow', icon: <RocketOutlined />, label: 'QS Flow', href: '/qs-flow' },
+      { key: '/parametric', icon: <BrainOutlined />, label: 'Smart Parametric', href: '/parametric', disabled: true, comingSoon: true },
+    ],
+  },
+  {
+    label: 'Learning',
+    items: [
+      { key: '/classroom', icon: <ReadOutlined />, label: 'Classroom', href: '/classroom', disabled: true, comingSoon: true },
+      { key: '/academy', icon: <ReadOutlined />, label: 'QS Academy', href: '/academy', disabled: true, comingSoon: true },
+      { key: '/exam-prep', icon: <ReadOutlined />, label: 'Exam Prep', href: '/exam-prep', disabled: true, comingSoon: true },
+    ],
+  },
+  {
+    label: 'Projects',
+    items: [
+      { key: '/projects', icon: <FolderOutlined />, label: 'Projects', href: '/projects' },
+      { key: '/boq', icon: <FileTextOutlined />, label: 'Bill of Quantities', href: '/boq' },
+      { key: '/calculators', icon: <CalculatorOutlined />, label: 'Calculators', href: '/calculators' },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { key: '/invoices', icon: <ReconciliationOutlined />, label: 'Invoices & Quotes', href: '/invoices' },
+      { key: '/feedback', icon: <StarOutlined />, label: 'Client Feedback', href: '/feedback' },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
+      { key: '/leaderboard', icon: <TrophyOutlined />, label: 'Leaderboard', href: '/leaderboard' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { key: '/settings', icon: <SettingOutlined />, label: 'Settings', href: '/settings' },
+    ],
+  },
 ];
 
 export default function Layout({ children, title }) {
@@ -33,12 +74,8 @@ export default function Layout({ children, title }) {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [router.pathname]);
+  useEffect(() => { setSidebarOpen(false); }, [router.pathname]);
 
-  // PWA install prompt
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
@@ -48,15 +85,11 @@ export default function Layout({ children, title }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-
     const updateViewportMode = () => {
       const mobile = window.innerWidth < 1024;
       setIsMobileViewport(mobile);
-      if (!mobile) {
-        setSidebarOpen(false);
-      }
+      if (!mobile) setSidebarOpen(false);
     };
-
     updateViewportMode();
     window.addEventListener('resize', updateViewportMode);
     return () => window.removeEventListener('resize', updateViewportMode);
@@ -64,12 +97,7 @@ export default function Layout({ children, title }) {
 
   useEffect(() => {
     if (!sidebarOpen) return undefined;
-
-    const onEsc = (event) => {
-      if (event.key !== 'Escape') return;
-      setSidebarOpen(false);
-    };
-
+    const onEsc = (event) => { if (event.key === 'Escape') setSidebarOpen(false); };
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
   }, [sidebarOpen, router.pathname]);
@@ -87,77 +115,67 @@ export default function Layout({ children, title }) {
     return raw === 'student' ? 'basic' : raw;
   };
 
+  const currentPlan = normalizePlan(planName());
+  const activeKey = router.pathname === '/dashboard' ? '/dashboard'
+    : NAV_GROUPS.flatMap(g => g.items).find(i => i.key !== '/dashboard' && router.pathname.startsWith(i.key))?.key
+    || '/dashboard';
+
+  const menuItems = NAV_GROUPS.map(group => ({
+    type: 'group',
+    label: <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{group.label}</span>,
+    children: group.items.map(item => {
+      const locked = item.plans && !item.plans.map(normalizePlan).includes(currentPlan);
+      const isComingSoon = item.disabled && item.comingSoon;
+      return {
+        key: item.key,
+        icon: item.icon,
+        label: isComingSoon ? (
+          <span className="flex items-center gap-1 text-gray-400 cursor-not-allowed">
+            {item.label}
+            <span className="text-[9px] font-semibold bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full ml-auto">Soon</span>
+          </span>
+        ) : locked ? (
+          <Link href="/subscription" className="flex items-center gap-1">
+            {item.label}
+            <span className="text-[9px] font-semibold bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded-full ml-auto">Locked</span>
+          </Link>
+        ) : (
+          <Link href={item.href}>{item.label}</Link>
+        ),
+        disabled: item.disabled,
+      };
+    }),
+  }));
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile overlay */}
       {sidebarOpen && isMobileViewport && (
-        <button
-          type="button"
-          aria-label="Close menu"
+        <button type="button" aria-label="Close menu"
           className="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-pointer border-0 p-0"
-          onClick={() => {
-            setSidebarOpen(false);
-          }}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside className={clsx(
         'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
-        {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-100">
+        <div className="h-16 flex items-center px-5 border-b border-gray-100">
           <Link href="/dashboard">
-            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-[51px] w-auto max-w-[190px]" />
+            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-[44px] w-auto max-w-[180px]" />
           </Link>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const currentPlan = normalizePlan(planName());
-            const allowedPlans = (item.plans || []).map(normalizePlan);
-            const locked = item.plans && !allowedPlans.includes(currentPlan);
-            const active = router.pathname.startsWith(item.href);
-            const comingSoon = item.comingSoon;
-
-            if (comingSoon) {
-              return (
-                <span
-                  key={item.href}
-                  className="nav-link opacity-50 cursor-not-allowed select-none"
-                  title="Coming soon"
-                >
-                  <span className="text-lg leading-none">{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
-                  <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full uppercase">
-                    Soon
-                  </span>
-                </span>
-              );
-            }
-
-            return (
-              <Link
-                key={item.href}
-                href={locked ? '/subscription' : item.href}
-                className={clsx('nav-link', active && 'active', locked && 'opacity-60')}
-                title={locked ? `Requires ${item.plans?.[0]} plan` : ''}
-              >
-                <span className="text-lg leading-none">{item.icon}</span>
-                <span className="flex-1">{item.label}</span>
-                {locked && (
-                  <span className="text-[10px] font-semibold bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded-full uppercase">
-                    Locked
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          <Menu
+            mode="inline"
+            selectedKeys={[activeKey]}
+            items={menuItems}
+            className="border-none bg-transparent"
+            style={{ background: 'transparent' }}
+          />
         </nav>
 
-        {/* User info at bottom */}
         <div className="p-4 border-t border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
@@ -167,28 +185,17 @@ export default function Layout({ children, title }) {
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
               <p className="text-xs text-gray-500">{PLAN_DISPLAY_NAMES[planName()] || planName()} plan</p>
             </div>
-            <button
-              onClick={logout}
-              className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
-              title="Logout"
-            >
+            <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded" title="Logout">
               ↩
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top bar */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden text-gray-500 hover:text-primary-700 p-1"
-              onClick={() => {
-                setSidebarOpen(true);
-              }}
-            >
+            <button className="lg:hidden text-gray-500 hover:text-primary-700 p-1" onClick={() => setSidebarOpen(true)}>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
@@ -199,8 +206,7 @@ export default function Layout({ children, title }) {
           <div className="flex items-center gap-2">
             <Search />
             {installPrompt && (
-              <button
-                onClick={handleInstall}
+              <button onClick={handleInstall}
                 className="hidden sm:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
                 title="Install QSToolkit as an app"
               >
@@ -214,13 +220,11 @@ export default function Layout({ children, title }) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>
 
-      {/* Global AI Chat */}
       <AiChatWidget />
     </div>
   );

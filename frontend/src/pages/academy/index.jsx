@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import ComingSoonGate from '../../components/ComingSoonGate';
 import StrengthsWeaknessesModal from '../../components/academy/StrengthsWeaknessesModal';
 import AdmissionTestModal from '../../components/academy/AdmissionTestModal';
 import { academyAPI, subscriptionAPI } from '../../services/api';
@@ -88,8 +89,9 @@ export default function AcademyDashboard() {
 
   return (
     <ProtectedRoute>
-      <Head><title>QS Academy — QSToolkit</title></Head>
-      <Layout title="🎓 QS Academy">
+      <ComingSoonGate>
+        <Head><title>QS Academy — QSToolkit</title></Head>
+        <Layout title="🎓 QS Academy">
         <div className="max-w-7xl space-y-6">
 
           {/* Classroom migration banner */}
@@ -254,6 +256,7 @@ export default function AcademyDashboard() {
         />
         <AdmissionTestModal open={showAdmission} onComplete={handleAdmissionComplete} />
       </Layout>
+      </ComingSoonGate>
     </ProtectedRoute>
   );
 }

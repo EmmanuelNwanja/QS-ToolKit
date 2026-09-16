@@ -9,7 +9,9 @@
     "lint": "eslint src/ --ext .js,.jsx"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
     "@supabase/supabase-js": "^2.39.0",
+    "antd": "^6.6.4",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",

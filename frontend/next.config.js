@@ -59,7 +59,7 @@ const nextConfig = {
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com`,
+            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com https://*.ingest.sentry.io https://browser.sentry-cdn.com`,
             "frame-src 'self' https://js.paystack.co",
           ].join('; ') },
         ]
@@ -68,4 +68,14 @@ const nextConfig = {
   }
 };
 
-module.exports = nextConfig;
+// Sentry source maps (only in production builds with DSN set)
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  const { withSentryConfig } = require('@sentry/nextjs');
+  module.exports = withSentryConfig(nextConfig, {
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+  });
+} else {
+  module.exports = nextConfig;
+}

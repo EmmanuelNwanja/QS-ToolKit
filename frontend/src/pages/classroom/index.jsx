@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import ComingSoonGate from '../../components/ComingSoonGate';
 import { classroomAPI } from '../../services/classroomAPI';
 import toast from 'react-hot-toast';
 
@@ -64,8 +65,9 @@ export default function ClassroomDashboard() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Classroom — QSToolkit</title></Head>
-      <Layout title="🎓 Classroom">
+      <ComingSoonGate>
+        <Head><title>Classroom — QSToolkit</title></Head>
+        <Layout title="🎓 Classroom">
         <div className="max-w-5xl space-y-8">
 
           {/* ── Course Catalog ──────────────────────────────── */}
@@ -190,6 +192,7 @@ export default function ClassroomDashboard() {
           </div>
         </div>
       </Layout>
+      </ComingSoonGate>
     </ProtectedRoute>
   );
 }
