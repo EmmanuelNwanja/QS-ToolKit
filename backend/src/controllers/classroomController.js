@@ -75,12 +75,11 @@ exports.acceptOutline = async (req, res, next) => {
         user_id: req.user.id,
         title: outlineData.title || outline.topic,
         description: outlineData.description || '',
-        topic: outline.topic,
+        outline: outlineData,
         difficulty: outline.difficulty,
-        outline_id: outline.id,
         total_scenes: scenes.length,
         completed_scenes: 0,
-        overall_score: null,
+        score: null,
         status: 'active',
         created_at: new Date().toISOString(),
       })
@@ -325,7 +324,7 @@ exports.submitSceneResponse = async (req, res, next) => {
         .from('classroom_lessons')
         .update({
           completed_scenes: completedCount,
-          overall_score: avgScore,
+          score: avgScore,
           updated_at: new Date().toISOString(),
         })
         .eq('id', lessonId);
@@ -459,7 +458,7 @@ exports.getLessonProgress = async (req, res, next) => {
       total_scenes: totalScenes,
       completed_scenes: completed.length,
       progress_percent: totalScenes > 0 ? Math.round((completed.length / totalScenes) * 100) : 0,
-      overall_score: avgScore,
+      score: avgScore,
       time_spent_minutes: timeSpentMinutes,
       scenes: scenes || [],
     }));
@@ -506,7 +505,7 @@ exports.getAnalytics = async (req, res, next) => {
   try {
     const { data: lessons } = await supabase
       .from('classroom_lessons')
-      .select('id, overall_score, completed_scenes, total_scenes, created_at')
+      .select('id, score, completed_scenes, total_scenes, created_at')
       .eq('user_id', req.user.id)
       .neq('status', 'archived');
 
@@ -521,7 +520,7 @@ exports.getAnalytics = async (req, res, next) => {
     }
 
     const totalLessons = (lessons || []).length;
-    const scores = (lessons || []).map(l => l.overall_score).filter(s => s !== null);
+    const scores = (lessons || []).map(l => l.score).filter(s => s !== null);
     const avgScore = scores.length > 0
       ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
       : null;
