@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@sentry/nextjs": "^10.75.0",
     "@supabase/supabase-js": "^2.39.0",
     "antd": "^6.6.4",
     "axios": "^1.6.5",
@@ -19,6 +20,7 @@
     "liquid-gooey": "^0.2.1",
     "lucide-react": "^1.46.0",
     "next": "14.1.0",
+    "posthog-js": "^1.433.6",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.50.0",
