@@ -5,7 +5,7 @@ import { Menu } from 'antd';
 import {
   DashboardOutlined, RobotOutlined, FolderOutlined, CalculatorOutlined,
   ReadOutlined, TrophyOutlined, SettingOutlined, FileTextOutlined,
-  ReconciliationOutlined, StarOutlined, RocketOutlined, BrainOutlined,
+  ReconciliationOutlined, StarOutlined, RocketOutlined, ApartmentOutlined,
 } from '@ant-design/icons';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
@@ -25,7 +25,7 @@ const NAV_GROUPS = [
     items: [
       { key: '/engine', icon: <RobotOutlined />, label: 'AI Engine', href: '/engine' },
       { key: '/qs-flow', icon: <RocketOutlined />, label: 'QS Flow', href: '/qs-flow' },
-      { key: '/parametric', icon: <BrainOutlined />, label: 'Smart Parametric', href: '/parametric', disabled: true, comingSoon: true },
+      { key: '/parametric', icon: <ApartmentOutlined />, label: 'Smart Parametric', href: '/parametric', disabled: true, comingSoon: true },
     ],
   },
   {
