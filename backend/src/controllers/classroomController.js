@@ -95,7 +95,7 @@ exports.acceptOutline = async (req, res, next) => {
         scene_type: s.scene_type,
         title: s.title,
         description: s.description || '',
-        sort_order: idx,
+        order_index: idx,
         content: null,
         user_responses: null,
         score: null,
@@ -169,7 +169,7 @@ exports.getLesson = async (req, res, next) => {
       .from('classroom_scenes')
       .select('*')
       .eq('lesson_id', lessonId)
-      .order('sort_order');
+      .order('order_index');
 
     if (sceneErr) throw sceneErr;
 
@@ -202,14 +202,12 @@ exports.generateSceneContent = async (req, res, next) => {
       return res.status(400).json(error(`Unknown scene type: ${scene.scene_type}`));
     }
 
-    const content = await generateSceneContent({
-      scene_type: scene.scene_type,
-      title: scene.title,
-      description: scene.description,
-      topic: scene.lesson?.topic,
-      difficulty: scene.lesson?.difficulty,
-      scene_config: sceneType.config,
-    });
+    const content = await generateSceneContent(
+      scene.scene_type,
+      scene.lesson?.topic || scene.title,
+      scene.lesson?.difficulty || 'medium',
+      { count: 5 }
+    );
 
     const { data: updated, error: updateErr } = await supabase
       .from('classroom_scenes')
@@ -429,9 +427,9 @@ exports.getLessonProgress = async (req, res, next) => {
 
     const { data: scenes, error: sceneErr } = await supabase
       .from('classroom_scenes')
-      .select('id, scene_type, title, status, score, sort_order, submitted_at')
+      .select('id, scene_type, title, status, score, order_index, submitted_at')
       .eq('lesson_id', lessonId)
-      .order('sort_order');
+      .order('order_index');
 
     if (sceneErr) throw sceneErr;
 

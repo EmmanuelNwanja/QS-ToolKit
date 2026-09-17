@@ -24,7 +24,7 @@ const getCourses = async (req, res, next) => {
       .from('classroom_courses')
       .select('*')
       .eq('is_active', true)
-      .order('sort_order');
+      .order('order_index');
 
     if (courseErr) throw courseErr;
 
@@ -406,18 +406,26 @@ async function generateCourseLesson(course, progress, userId) {
   // Create scenes
   const scenes = outline.scenes || [];
   if (scenes.length > 0) {
-    const sceneRows = scenes.map((s, idx) => ({
-      lesson_id: lesson.id,
-      scene_type: s.scene_type,
-      title: s.title,
-      order_index: idx,
-      content: null,
-      user_responses: null,
-      score: null,
-      ai_feedback: null,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    }));
+    const sceneRows = [];
+    for (let idx = 0; idx < scenes.length; idx++) {
+      const s = scenes[idx];
+      let content = null;
+      try {
+        content = await generateSceneContent(s.scene_type, `${course.title} — ${topicHint}`, progress.current_level, { count: s.scene_type === 'quiz' ? 5 : undefined });
+      } catch (_) { /* content stays null, user can regenerate */ }
+      sceneRows.push({
+        lesson_id: lesson.id,
+        scene_type: s.scene_type,
+        title: s.title,
+        order_index: idx,
+        content,
+        user_responses: null,
+        score: null,
+        ai_feedback: null,
+        status: content ? 'ready' : 'pending',
+        created_at: new Date().toISOString(),
+      });
+    }
 
     const { error: sceneErr } = await supabase
       .from('classroom_scenes')
