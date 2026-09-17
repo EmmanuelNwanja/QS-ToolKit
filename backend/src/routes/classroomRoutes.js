@@ -47,7 +47,7 @@ router.post('/scenes/:sceneId/generate', [
 
 router.post('/scenes/:sceneId/submit', [
   param('sceneId').isString().isLength({ min: 1, max: 100 }).withMessage('Valid scene ID required'),
-  body('response').trim().notEmpty().withMessage('response is required'),
+  body('responses').notEmpty().withMessage('responses is required'),
   validate
 ], ctrl.submitSceneResponse);
 
@@ -59,7 +59,8 @@ router.post('/scenes/:sceneId/discussion/start', [
 
 router.post('/scenes/:sceneId/discussion/continue', [
   param('sceneId').isString().isLength({ min: 1, max: 100 }).withMessage('Valid scene ID required'),
-  body('message').trim().notEmpty().withMessage('message is required'),
+  body('session_id').trim().notEmpty().withMessage('session_id is required'),
+  body('user_message').trim().notEmpty().withMessage('user_message is required'),
   validate
 ], ctrl.continueDiscussion);
 

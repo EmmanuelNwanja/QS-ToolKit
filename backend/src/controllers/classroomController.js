@@ -25,12 +25,12 @@ exports.generateOutline = async (req, res, next) => {
       return res.status(400).json(error('topic is required'));
     }
 
-    const outline = await generateLessonOutline({
-      topic: topic.trim(),
-      target_scene_types: target_scene_types || [],
-      difficulty: difficulty || 'intermediate',
-      scene_count: scene_count || 5,
-    });
+    const outline = await generateLessonOutline(
+      topic.trim(),
+      target_scene_types || ['lecture', 'quiz'],
+      difficulty || 'intermediate',
+      scene_count || 5
+    );
 
     const { data: saved, error: insertErr } = await supabase
       .from('classroom_outlines')
@@ -329,12 +329,13 @@ exports.submitSceneResponse = async (req, res, next) => {
         .eq('id', lessonId);
     }
 
+    analyticsTrack.trackEvent(req.user.id, 'classroom_scene_completed', { scene_type: scene.scene_type, score });
+
     return res.json(success('Response submitted', {
       score,
       ai_feedback: aiFeedback,
       status,
     }));
-    analyticsTrack.trackEvent(req.user.id, 'classroom_scene_completed', { scene_type: scene.scene_type, score });
   } catch (err) { next(err); }
 };
 
@@ -358,14 +359,15 @@ exports.startDiscussion = async (req, res, next) => {
       return res.status(403).json(error('Access denied'));
     }
 
-    const session = await createSession({
-      scene_id: sceneId,
-      user_id: req.user.id,
-      topic: scene.lesson?.topic || scene.title,
-      scene_type: scene.scene_type,
-    });
+    const topic = scene.lesson?.topic || scene.title;
 
-    const initialMessages = await orchestrateDiscussion(session.id, null);
+    const session = await createSession(
+      scene.lesson?.id || null,
+      sceneId,
+      req.user.id
+    );
+
+    const initialMessages = await orchestrateDiscussion(session.id, topic);
 
     return res.status(201).json(success('Discussion started', {
       session,
@@ -386,7 +388,7 @@ exports.continueDiscussion = async (req, res, next) => {
     }
 
     const { data: session, error: sessErr } = await supabase
-      .from('classroom_discussion_sessions')
+      .from('classroom_sessions')
       .select('*')
       .eq('id', session_id)
       .eq('scene_id', sceneId)
@@ -400,7 +402,7 @@ exports.continueDiscussion = async (req, res, next) => {
       return res.status(403).json(error('Access denied'));
     }
 
-    const agentMessages = await orchestrateDiscussion(session_id, user_message);
+    const agentMessages = await orchestrateDiscussion(session_id, user_message, 1);
 
     return res.json(success('Discussion continued', {
       messages: agentMessages,

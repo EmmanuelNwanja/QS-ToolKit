@@ -24,7 +24,7 @@ const getCourses = async (req, res, next) => {
       .from('classroom_courses')
       .select('*')
       .eq('is_active', true)
-      .order('order_index');
+      .order('sort_order');
 
     if (courseErr) throw courseErr;
 
