@@ -59,7 +59,7 @@ const nextConfig = {
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com https://*.ingest.sentry.io https://browser.sentry-cdn.com`,
+            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://browser.sentry-cdn.com`,
             "frame-src 'self' https://js.paystack.co",
           ].join('; ') },
         ]

@@ -229,8 +229,8 @@ async function callGemini(prompt, options = {}) {
 
   // Valid model names for the Generative Language API v1beta.
   // NOTE: Do NOT use '-latest' aliases — they return 404 on this endpoint.
-  // Ordered by capability: prefer fast models, fall back to stable releases.
-  const modelsToTry = [model, 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+  // gemini-2.5-flash-lite and gemini-3.1-flash-lite are dead (404). Removed.
+  const modelsToTry = [...new Set([model, 'gemini-3.5-flash', 'gemini-2.5-flash'])];
 
   const parts = [{ text: prompt }];
   if (imageBase64) {
