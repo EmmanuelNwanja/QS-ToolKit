@@ -130,6 +130,36 @@ const getNextLesson = async (req, res, next) => {
       return res.status(400).json(error('Course already completed'));
     }
 
+    // Check for existing active lesson at this level (idempotency)
+    const { data: existingLesson } = await supabase
+      .from('classroom_lessons')
+      .select('id, title, total_scenes, completed_scenes')
+      .eq('user_id', req.user.id)
+      .eq('course_id', courseId)
+      .eq('level', progress.current_level)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // If an active lesson exists with scenes, resume it
+    if (existingLesson) {
+      const { data: existingScenes } = await supabase
+        .from('classroom_scenes')
+        .select('id')
+        .eq('lesson_id', existingLesson.id);
+
+      if (existingScenes && existingScenes.length > 0) {
+        return res.status(200).json(success('Resuming existing lesson', {
+          lesson_id: existingLesson.id,
+          title: existingLesson.title,
+          total_scenes: existingLesson.total_scenes,
+          completed_scenes: existingLesson.completed_scenes,
+          level: progress.current_level,
+        }));
+      }
+    }
+
     const lesson = await generateCourseLesson(course, progress, req.user.id);
 
     return res.status(201).json(success('Next lesson generated', { lesson }));
@@ -403,29 +433,40 @@ async function generateCourseLesson(course, progress, userId) {
 
   if (lessonErr) throw lessonErr;
 
-  // Create scenes
+  // Create scenes — parallelize AI calls (~80s → ~20s)
   const scenes = outline.scenes || [];
   if (scenes.length > 0) {
-    const sceneRows = [];
-    for (let idx = 0; idx < scenes.length; idx++) {
-      const s = scenes[idx];
-      let content = null;
-      try {
-        content = await generateSceneContent(s.scene_type, `${course.title} — ${topicHint}`, progress.current_level, { count: s.scene_type === 'quiz' ? 5 : undefined });
-      } catch (_) { /* content stays null, user can regenerate */ }
-      sceneRows.push({
-        lesson_id: lesson.id,
-        scene_type: s.scene_type,
-        title: s.title,
-        order_index: idx,
-        content,
-        user_responses: null,
-        score: null,
-        ai_feedback: null,
-        status: content ? 'ready' : 'pending',
-        created_at: new Date().toISOString(),
-      });
-    }
+    const settled = await Promise.allSettled(
+      scenes.map((s, idx) =>
+        generateSceneContent(s.scene_type, `${course.title} — ${topicHint}`, progress.current_level, { count: s.scene_type === 'quiz' ? 5 : undefined })
+          .then(content => ({
+            lesson_id: lesson.id,
+            scene_type: s.scene_type,
+            title: s.title,
+            order_index: idx,
+            content,
+            user_responses: null,
+            score: null,
+            ai_feedback: null,
+            status: 'ready',
+            created_at: new Date().toISOString(),
+          }))
+          .catch(() => ({
+            lesson_id: lesson.id,
+            scene_type: s.scene_type,
+            title: s.title,
+            order_index: idx,
+            content: null,
+            user_responses: null,
+            score: null,
+            ai_feedback: null,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          }))
+      )
+    );
+
+    const sceneRows = settled.map(r => r.status === 'fulfilled' ? r.value : r.reason);
 
     const { error: sceneErr } = await supabase
       .from('classroom_scenes')

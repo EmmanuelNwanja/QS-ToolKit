@@ -5,7 +5,7 @@ export const classroomAPI = {
   getCourses:        ()                       => api.get('/classroom/curriculum/courses'),
   getCourseProgress: (courseId)               => api.get(`/classroom/curriculum/courses/${courseId}/progress`),
   startCourse:       (courseId)               => api.post(`/classroom/curriculum/courses/${courseId}/start`),
-  getNextLesson:     (courseId)               => api.get(`/classroom/curriculum/courses/${courseId}/next-lesson`),
+  getNextLesson:     (courseId)               => api.get(`/classroom/curriculum/courses/${courseId}/next-lesson`, { timeout: 120000 }),
   completeLevel:     (courseId)               => api.post(`/classroom/curriculum/courses/${courseId}/complete-level`),
   generateCustomLesson: (data)                => api.post('/classroom/curriculum/lessons/generate-custom', data),
   // ── Lessons & Scenes ────────────────────────────────────────
