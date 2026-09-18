@@ -1,6 +1,9 @@
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const { singleOrNull } = require('../utils/supabaseQuery');
+const logger = require('../utils/logger');
+
+const TRACKED_FIELDS = ['title', 'client_name', 'client_email', 'project_type', 'location', 'state', 'description', 'start_date', 'end_date', 'estimated_value', 'final_value', 'status'];
 
 exports.list = async (req, res, next) => {
   try {
@@ -59,6 +62,34 @@ exports.get = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    // Fetch current state before update
+    const current = await singleOrNull(
+      supabase.from('projects').select('*').eq('id', req.params.id).eq('user_id', req.user.id)
+    );
+
+    if (!current) return res.status(404).json(error('Project not found', { code: 'PROJECT_NOT_FOUND' }));
+
+    // Capture diff for tracked fields
+    const historyRows = [];
+    for (const field of TRACKED_FIELDS) {
+      if (req.body[field] !== undefined && String(req.body[field]) !== String(current[field])) {
+        historyRows.push({
+          project_id: current.id,
+          user_id: req.user.id,
+          field_name: field,
+          old_value: current[field] != null ? String(current[field]) : null,
+          new_value: req.body[field] != null ? String(req.body[field]) : null
+        });
+      }
+    }
+
+    // Insert history records
+    if (historyRows.length > 0) {
+      const { error: histErr } = await supabase.from('project_edit_history').insert(historyRows);
+      if (histErr) logger.warn('Failed to record project edit history:', histErr.message);
+    }
+
+    // Perform update
     const data = await singleOrNull(
       supabase
       .from('projects')
@@ -68,8 +99,22 @@ exports.update = async (req, res, next) => {
       .select()
     );
 
-    if (!data) return res.status(404).json(error('Project not found', { code: 'PROJECT_NOT_FOUND' }));
     return res.json(success('Project updated', { project: data }));
+  } catch (err) { next(err); }
+};
+
+exports.history = async (req, res, next) => {
+  try {
+    const { data, error: err } = await supabase
+      .from('project_edit_history')
+      .select('*')
+      .eq('project_id', req.params.id)
+      .eq('user_id', req.user.id)
+      .order('edited_at', { ascending: false })
+      .limit(100);
+
+    if (err) throw err;
+    return res.json(success('Edit history', { history: data }));
   } catch (err) { next(err); }
 };
 

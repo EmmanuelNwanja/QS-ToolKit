@@ -53,22 +53,28 @@ async function isEnabled(featureKey, user) {
   const flag = flags.find(f => f.feature_key === featureKey);
 
   if (!flag) return false;
-  if (!flag.enabled_globally) return false;
   if (!isEnvironmentMatch(flag)) return false;
+
+  // enabled_globally=false = kill switch (feature disabled for everyone)
+  if (!flag.enabled_globally) return false;
+
+  // No plan/user restrictions = open to all authenticated users
+  const hasUserRestrictions = flag.enabled_for_users?.length > 0;
+  const hasPlanRestrictions = flag.enabled_for_plans?.length > 0;
+  if (!hasUserRestrictions && !hasPlanRestrictions) return true;
 
   // Admin bypass
   if (user?.is_admin) return true;
 
   // Per-user check
-  if (flag.enabled_for_users && flag.enabled_for_users.length > 0) {
-    if (flag.enabled_for_users.includes(user?.id)) return true;
-    return false;
+  if (hasUserRestrictions) {
+    return flag.enabled_for_users.includes(user?.id);
   }
 
   // Plan-based check
-  if (flag.enabled_for_plans && flag.enabled_for_plans.length > 0) {
+  if (hasPlanRestrictions) {
     const userPlan = (user?.subscription_plan || 'free').toLowerCase();
-    if (!flag.enabled_for_plans.includes(userPlan)) return false;
+    return flag.enabled_for_plans.includes(userPlan);
   }
 
   // Percentage rollout
@@ -82,13 +88,20 @@ async function getAllFlagsForUser(user) {
 
   for (const flag of flags) {
     if (!isEnvironmentMatch(flag)) continue;
-    if (flag.enabled_for_users?.length > 0) {
-      result[flag.feature_key] = flag.enabled_for_users.includes(user?.id);
-    } else if (flag.enabled_for_plans?.length > 0) {
-      const userPlan = (user?.subscription_plan || 'free').toLowerCase();
-      result[flag.feature_key] = flag.enabled_for_plans.includes(userPlan);
+    if (!flag.enabled_globally) { result[flag.feature_key] = false; continue; }
+
+    const hasUserRestrictions = flag.enabled_for_users?.length > 0;
+    const hasPlanRestrictions = flag.enabled_for_plans?.length > 0;
+
+    if (!hasUserRestrictions && !hasPlanRestrictions) {
+      result[flag.feature_key] = true;
     } else if (user?.is_admin) {
       result[flag.feature_key] = true;
+    } else if (hasUserRestrictions) {
+      result[flag.feature_key] = flag.enabled_for_users.includes(user?.id);
+    } else if (hasPlanRestrictions) {
+      const userPlan = (user?.subscription_plan || 'free').toLowerCase();
+      result[flag.feature_key] = flag.enabled_for_plans.includes(userPlan);
     } else {
       result[flag.feature_key] = evaluateRollout(flag, user?.id);
     }

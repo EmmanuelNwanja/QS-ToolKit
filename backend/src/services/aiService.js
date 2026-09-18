@@ -108,8 +108,16 @@ Use Nigerian construction standards. Estimate quantities where dimensions are in
 Given a description and unit, suggest a fair rate in NGN based on Nigerian construction market conditions.
 Output JSON: {"suggested_rate": 0, "rate_low": 0, "rate_high": 0, "confidence": "high|medium|low", "reasoning": "..."}`,
 
-  varianceSummary: `Compare two BOQ versions and summarize changes.
-Output JSON: {"summary": "...", "changes": [{"type": "added|removed|modified", "section": "...", "description": "...", "before": "...", "after": "..."}], "impact": "..."}`,
+  varianceSummary: `You are a Nigerian quantity surveying expert comparing two BOQ revisions.
+Analyze the changes and provide a concise summary focused on cost impact and scope changes.
+Use Nigerian Naira (₦) for all monetary values. Reference NRM2/SMM7 measurement standards where relevant.
+
+Output JSON: {
+  "summary": "1-3 sentence overview of key changes and cost impact",
+  "cost_impact": "net cost difference and whether it is within typical contingency",
+  "risk_notes": "any concerning changes (e.g. large quantity increases, new items, scope creep)",
+  "changes": [{"type": "added|removed|modified", "section": "...", "description": "...", "before": "...", "after": "..."}]
+}`,
 
   forecast: `You are a project cost forecasting expert. Given project data, predict final cost and risk.
 Output JSON: {"predicted_final_value": 0, "confidence_score": 0-100, "risk_level": "low|medium|high|critical", "factors": [{"name": "...", "impact": "..."}], "recommendation": "..."}`,
@@ -930,8 +938,35 @@ exports.generateForecast = async (projectData, boqData, historicalProjects = [])
 };
 
 // ─── Summarize BOQ Variance ───────────────────────────────────
+function extractVariancePayload(snapshot) {
+  // For large BOQs, send only metadata + sections (skip individual item details)
+  const sections = (snapshot.boq_sections || []).map((s) => ({
+    title: s.title,
+    section_no: s.section_no,
+    items: (s.boq_items || []).map((i) => ({
+      item_no: i.item_no,
+      description: i.description,
+      unit: i.unit,
+      quantity: i.quantity,
+      rate: i.rate,
+      amount: i.amount
+    }))
+  }));
+  return {
+    title: snapshot.title,
+    client_name: snapshot.client_name,
+    total_amount: snapshot.total_amount,
+    status: snapshot.status,
+    section_count: sections.length,
+    total_items: sections.reduce((sum, s) => sum + s.items.length, 0),
+    sections
+  };
+}
+
 exports.summarizeVariance = async (oldSnapshot, newSnapshot) => {
-  const prompt = `${SYSTEM_PROMPTS.varianceSummary}\n\nOLD VERSION:\n${JSON.stringify(oldSnapshot, null, 2)}\n\nNEW VERSION:\n${JSON.stringify(newSnapshot, null, 2)}\n\nProvide variance JSON:`;
+  const oldPayload = extractVariancePayload(oldSnapshot);
+  const newPayload = extractVariancePayload(newSnapshot);
+  const prompt = `${SYSTEM_PROMPTS.varianceSummary}\n\nOLD VERSION:\n${JSON.stringify(oldPayload)}\n\nNEW VERSION:\n${JSON.stringify(newPayload)}\n\nProvide variance JSON:`;
 
   const result = await callAI(prompt, { jsonMode: true, temperature: 0.2 });
   if (!result) return null;

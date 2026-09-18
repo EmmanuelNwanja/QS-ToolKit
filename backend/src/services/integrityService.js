@@ -33,11 +33,12 @@ function hashDocument(canonicalJsonString) {
  * Get the previous hash in the chain for a given user.
  * Creates a continuous chain of trust per user.
  */
-async function getPreviousHash(userId) {
+async function getPreviousHash(userId, documentType) {
   const { data } = await supabase
     .from('document_hashes')
     .select('document_hash')
     .eq('user_id', userId)
+    .eq('document_type', documentType)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -52,7 +53,7 @@ exports.certifyDocument = async (documentType, documentId, userId, documentData)
   try {
     const canonicalJson = JSON.stringify(canonicalize(documentData));
     const docHash = hashDocument(canonicalJson);
-    const previousHash = await getPreviousHash(userId);
+    const previousHash = await getPreviousHash(userId, documentType);
     const certToken = crypto.randomBytes(32).toString('hex');
 
     const { data, error } = await supabase
@@ -105,15 +106,20 @@ exports.verifyDocument = async (certToken) => {
     const recomputedHash = hashDocument(record.canonical_json);
     const hashMatch = recomputedHash === record.document_hash;
 
-    // Check chain integrity (previous hash exists and is valid in chain)
+    // Check chain integrity — walk backwards to verify each link
     let chainValid = true;
     if (record.previous_hash) {
+      // Verify the previous record exists, belongs to same user, and its hash matches
       const { data: prev } = await supabase
         .from('document_hashes')
-        .select('document_hash')
+        .select('document_hash, user_id')
         .eq('document_hash', record.previous_hash)
+        .eq('user_id', record.user_id)
         .single();
-      chainValid = !!prev;
+
+      if (!prev) {
+        chainValid = false;
+      }
     }
 
     // Parse the stored JSON for summary
@@ -125,9 +131,11 @@ exports.verifyDocument = async (certToken) => {
     }
 
     return {
-      valid: hashMatch && chainValid,
+      valid: hashMatch && chainValid && !record.is_revoked,
       hashMatch,
       chainValid,
+      isRevoked: !!record.is_revoked,
+      revokedAt: record.revoked_at || null,
       documentType: record.document_type,
       documentId: record.document_id,
       hash: record.document_hash,
@@ -179,13 +187,14 @@ exports.getDocumentHistory = async (documentType, documentId, userId) => {
  */
 exports.generateCertificateText = (certToken, verifyResult) => {
   const status = verifyResult.valid ? 'VALID ✓' : 'INVALID ✗';
+  const revoked = verifyResult.isRevoked ? '\n  ** THIS CERTIFICATE HAS BEEN REVOKED **' : '';
   return `
 ================================================================================
                     QSTOOLKIT DOCUMENT CERTIFICATE OF INTEGRITY
 ================================================================================
 
 Certificate Token: ${certToken}
-Verification Status: ${status}
+Verification Status: ${status}${revoked}
 Document Type: ${verifyResult.documentType?.toUpperCase()}
 Document Title: ${verifyResult.summary?.title || 'N/A'}
 
@@ -206,6 +215,43 @@ QSToolkit uses a blockchain-lite hash chain stored in a tamper-evident database.
                     Fudo Greentech Ltd · qs.solnuv.com
 ================================================================================
   `.trim();
+};
+
+/**
+ * Revoke a document certificate.
+ */
+exports.revokeDocument = async (certToken, userId) => {
+  try {
+    const { data: record, error: fetchErr } = await supabase
+      .from('document_hashes')
+      .select('id, user_id, is_revoked')
+      .eq('cert_token', certToken)
+      .single();
+
+    if (fetchErr || !record) {
+      return { success: false, message: 'Certificate not found' };
+    }
+
+    if (record.user_id !== userId) {
+      return { success: false, message: 'Not authorized to revoke this certificate' };
+    }
+
+    if (record.is_revoked) {
+      return { success: false, message: 'Certificate is already revoked' };
+    }
+
+    const { error: updateErr } = await supabase
+      .from('document_hashes')
+      .update({ is_revoked: true, revoked_at: new Date().toISOString() })
+      .eq('id', record.id);
+
+    if (updateErr) throw updateErr;
+
+    return { success: true, message: 'Certificate revoked' };
+  } catch (err) {
+    logger.error('Revoke document error:', err.message);
+    return { success: false, message: 'Failed to revoke certificate' };
+  }
 };
 
 exports.hashDocument = hashDocument;

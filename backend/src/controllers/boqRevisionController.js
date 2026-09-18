@@ -26,7 +26,7 @@ exports.createRevision = async (boqId, userId) => {
     // Get next revision number
     const { data: lastRev } = await supabase
       .from('boq_revisions')
-      .select('revision_number')
+      .select('revision_number, snapshot')
       .eq('boq_id', boqId)
       .order('revision_number', { ascending: false })
       .limit(1)
@@ -34,13 +34,31 @@ exports.createRevision = async (boqId, userId) => {
 
     const nextNumber = (lastRev?.revision_number || 0) + 1;
 
+    // Generate brief change_summary from previous revision
+    let changeSummary = null;
+    if (lastRev?.snapshot) {
+      const diff = computeStructuredDiff(lastRev.snapshot, boq);
+      const parts = [];
+      if (diff.summary.items_added > 0) parts.push(`+${diff.summary.items_added} items`);
+      if (diff.summary.items_removed > 0) parts.push(`-${diff.summary.items_removed} items`);
+      if (diff.summary.items_modified > 0) parts.push(`~${diff.summary.items_modified} modified`);
+      if (diff.summary.total_difference !== 0) {
+        const sign = diff.summary.total_difference > 0 ? '+' : '';
+        parts.push(`${sign}₦${diff.summary.total_difference.toLocaleString()}`);
+      }
+      changeSummary = parts.length > 0 ? parts.join(', ') : 'No changes';
+    } else {
+      changeSummary = 'Initial revision';
+    }
+
     const { data, error: err } = await supabase
       .from('boq_revisions')
       .insert({
         boq_id: boqId,
         user_id: userId,
         revision_number: nextNumber,
-        snapshot: boq
+        snapshot: boq,
+        change_summary: changeSummary
       })
       .select()
       .single();
@@ -248,3 +266,6 @@ function computeStructuredDiff(oldBoq, newBoq) {
 
   return { summary, changes };
 }
+
+// Export for testing
+exports._computeStructuredDiff = computeStructuredDiff;

@@ -97,6 +97,7 @@ export const projectAPI = {
   create:         (data)   => api.post('/projects', data),
   update:         (id, d)  => api.put(`/projects/${id}`, d),
   remove:         (id)     => api.delete(`/projects/${id}`),
+  history:        (id)     => api.get(`/projects/${id}/history`),
   listMilestones: (id)     => api.get(`/projects/${id}/milestones`),
   createMilestone:(id, d)  => api.post(`/projects/${id}/milestones`, d),
   updateMilestone:(id, milestoneId, d) => api.patch(`/projects/${id}/milestones/${milestoneId}`, d),
@@ -409,6 +410,17 @@ export const researchAPI = {
   getSubscriptionStatus: () => api.get('/research/subscription/status'),
   subscribe: (data) => api.post('/research/subscription/subscribe', data),
   cancelSubscription: () => api.post('/research/subscription/cancel'),
+};
+
+// ─── Referrals ─────────────────────────────────────────────────
+export const referralAPI = {
+  getMyLink:         ()       => api.get('/referrals/my-link'),
+  getMyStats:        ()       => api.get('/referrals/my-stats'),
+  adminListDiscounts:(params) => api.get('/referrals/admin/discounts', { params }),
+  adminStats:        ()       => api.get('/referrals/admin/stats'),
+  adminAssignDiscount:(data)  => api.post('/referrals/admin/discounts', data),
+  adminUpdateDiscount:(id, d) => api.patch(`/referrals/admin/discounts/${id}`, d),
+  adminRevokeDiscount:(id)    => api.delete(`/referrals/admin/discounts/${id}`)
 };
 
 export default api;

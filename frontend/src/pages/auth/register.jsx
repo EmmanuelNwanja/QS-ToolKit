@@ -19,7 +19,8 @@ export default function RegisterPage() {
   const [emailIssueAlert, setEmailIssueAlert] = useState(false);
   const [form, setForm]   = useState({
     user_type: '', name: '', email: '', phone: '', password: '', confirmPassword: '',
-    university_name: '', company_name: '', qs_cert_no: '', company_address: '', business_reg_no: ''
+    university_name: '', company_name: '', qs_cert_no: '', company_address: '', business_reg_no: '',
+    ref: router.query.ref || ''
   });
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -39,6 +40,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...payload } = form;
+      if (router.query.ref) payload.ref = router.query.ref;
       const result = await register(payload);
 
       if (result?.requires_verification) {

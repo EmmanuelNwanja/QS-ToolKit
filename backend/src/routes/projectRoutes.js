@@ -9,6 +9,7 @@ router.use(protect);
 router.get('/',          ctrl.list);
 router.get('/stats',     ctrl.stats);
 router.get('/:id/milestones', milestoneCtrl.list);
+router.get('/:id/history', ctrl.history);
 router.get('/:id',       ctrl.get);
 router.post('/',         checkProjectLimit, ctrl.create);
 router.post('/:id/milestones', milestoneCtrl.create);

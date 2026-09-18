@@ -285,6 +285,26 @@ exports.initiate = async (req, res, next) => {
       }
     }
 
+    // ─── Referral discount (first paid subscription only) ────
+    if (!promoId && basePrice > 0) {
+      try {
+        const referralCtrl = require('./referralController');
+        const refInfo = await referralCtrl.getReferralInfoForUser(req.user.id);
+        if (refInfo?.referred_by) {
+          const refDiscount = await referralCtrl.getReferralDiscount(refInfo.referred_by);
+          if (refDiscount) {
+            const referralDiscountAmt = (basePrice * refDiscount.discount_percent) / 100;
+            discountApplied += referralDiscountAmt;
+            basePrice -= referralDiscountAmt;
+            // Mark discount as used
+            await referralCtrl.markDiscountUsed(req.user.id);
+          }
+        }
+      } catch (refErr) {
+        logger.warn({ message: 'Referral discount lookup failed', error: refErr.message });
+      }
+    }
+
     basePrice = Math.max(0, Number(basePrice) || 0);
     discountApplied = roundMoney(discountApplied);
     const discountedCharge = discountApplied > 0 && basePrice > 0;

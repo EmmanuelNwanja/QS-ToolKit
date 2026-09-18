@@ -17,7 +17,7 @@ exports.register = async (req, res, next) => {
     const {
       user_type, name, email, phone, password,
       university_name, company_name, qs_cert_no,
-      company_address, business_reg_no
+      company_address, business_reg_no, ref
     } = req.body;
 
     const normalizedEmail = String(email || '').toLowerCase().trim();
@@ -147,6 +147,20 @@ exports.register = async (req, res, next) => {
         user_id: user.id,
         error: signalError.message
       });
+    }
+
+    // ─── Referral capture ────────────────────────────────────
+    if (ref) {
+      try {
+        const referralCtrl = require('./referralController');
+        const referrerUserId = await referralCtrl.lookupReferralCode(ref);
+        if (referrerUserId && referrerUserId !== user.id) {
+          await supabase.from('users').update({ referred_by: referrerUserId }).eq('id', user.id);
+          await referralCtrl.recordReferralSignup(referrerUserId, user.id);
+        }
+      } catch (refErr) {
+        logger.warn({ message: 'Referral capture failed', ref, error: refErr.message });
+      }
     }
 
     let verificationSent = false;

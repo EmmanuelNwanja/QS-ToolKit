@@ -18,6 +18,9 @@ export default function EditProjectPage() {
     location: '', state: '', description: '',
     start_date: '', end_date: '', estimated_value: '', status: 'active'
   });
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -47,6 +50,20 @@ export default function EditProjectPage() {
       })
       .finally(() => setBooting(false));
   }, [id]);
+
+  const toggleHistory = async () => {
+    if (showHistory) { setShowHistory(false); return; }
+    setShowHistory(true);
+    if (history.length > 0) return;
+    setHistoryLoading(true);
+    try {
+      const { data } = await projectAPI.history(id);
+      setHistory(data.history || []);
+    } catch { toast.error('Could not load edit history'); }
+    setHistoryLoading(false);
+  };
+
+  const FIELD_LABELS = { title: 'Title', client_name: 'Client Name', client_email: 'Client Email', project_type: 'Type', location: 'Location', state: 'State', description: 'Description', start_date: 'Start Date', end_date: 'End Date', estimated_value: 'Est. Value', status: 'Status', final_value: 'Final Value' };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -157,6 +174,36 @@ export default function EditProjectPage() {
               </button>
             </div>
           </form>
+
+          {/* Edit History Panel */}
+          <div className="mt-6">
+            <button type="button" onClick={toggleHistory} className="text-sm font-medium text-blue-600 hover:underline">
+              {showHistory ? 'Hide' : 'Show'} Edit History
+            </button>
+            {showHistory && (
+              <div className="mt-3 card">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Recent Changes</h3>
+                {historyLoading ? (
+                  <p className="text-xs text-gray-500">Loading...</p>
+                ) : history.length === 0 ? (
+                  <p className="text-xs text-gray-500">No edit history yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {history.map((h) => (
+                      <div key={h.id} className="text-xs border-b pb-2 last:border-0">
+                        <span className="font-medium text-gray-700">{FIELD_LABELS[h.field_name] || h.field_name}</span>
+                        <span className="text-gray-400 mx-1">changed from</span>
+                        <span className="text-red-600 truncate">{h.old_value || '(empty)'}</span>
+                        <span className="text-gray-400 mx-1">to</span>
+                        <span className="text-green-600 truncate">{h.new_value || '(empty)'}</span>
+                        <span className="text-gray-400 ml-2">{new Date(h.edited_at).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </Layout>
     </ProtectedRoute>

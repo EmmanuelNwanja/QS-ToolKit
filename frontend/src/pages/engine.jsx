@@ -376,6 +376,50 @@ export default function EnginePage() {
                             <span className="font-semibold">Dr. Q Summary:</span> {varianceResult.ai_summary.summary}
                           </div>
                         )}
+
+                        {varianceResult.diff.changes?.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Item-Level Changes</p>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                              <table className="w-full text-xs">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600">Type</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600">Section</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600">Item</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600">Before</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600">After</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {varianceResult.diff.changes.map((c, i) => (
+                                    <tr key={i} className={c.type === 'added' ? 'bg-emerald-50' : c.type === 'removed' ? 'bg-red-50' : ''}>
+                                      <td className="px-3 py-2">
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                          c.type === 'added' ? 'bg-emerald-100 text-emerald-700' :
+                                          c.type === 'removed' ? 'bg-red-100 text-red-700' :
+                                          'bg-amber-100 text-amber-700'
+                                        }`}>
+                                          {c.type === 'modified' ? 'mod' : c.type}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-gray-600">{c.section_title || c.field || '—'}</td>
+                                      <td className="px-3 py-2 text-gray-900">{c.level === 'item' ? (c.description || `Item ${c.item_no || ''}`) : c.level}</td>
+                                      <td className="px-3 py-2 text-gray-500">
+                                        {c.before !== undefined ? String(c.before) :
+                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.before}`).join(', ') : '—'}
+                                      </td>
+                                      <td className="px-3 py-2 text-gray-900">
+                                        {c.after !== undefined ? String(c.after) :
+                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.after}`).join(', ') : '—'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -5,9 +5,9 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import useAuthStore from '../../context/authStore';
 import pushNotificationService from '../../services/pushNotificationService';
-import { userAPI, pushAPI, subscriptionAPI } from '../../services/api';
+import { userAPI, pushAPI, subscriptionAPI, referralAPI } from '../../services/api';
 
-const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Account'];
+const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Referrals', 'Account'];
 
 export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuthStore();
@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [notifBusy, setNotifBusy] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [accountBusy, setAccountBusy] = useState(false);
+  const [referral, setReferral] = useState({ link: '', code: '', stats: { total_signups: 0, conversions: 0 } });
   const logoRef      = useRef();
   const signatureRef = useRef();
 
@@ -95,6 +96,15 @@ export default function SettingsPage() {
     userAPI.getTeam().then(res => setTeam(res.data)).catch(() => {});
     loadSubscription();
     loadNotificationState();
+    // Load referral data
+    referralAPI.getMyLink().then(res => {
+      const d = res.data || {};
+      setReferral(prev => ({ ...prev, link: d.link || '', code: d.code || '' }));
+    }).catch(() => {});
+    referralAPI.getMyStats().then(res => {
+      const d = res.data?.stats || {};
+      setReferral(prev => ({ ...prev, stats: { total_signups: d.total_signups || 0, conversions: d.conversions || 0 } }));
+    }).catch(() => {});
   }, [user]);
 
   const saveProfile = async (e) => {
@@ -521,6 +531,33 @@ export default function SettingsPage() {
                   <button onClick={cancelSubscription} disabled={subscriptionBusy} className="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
                     Cancel Subscription
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Referrals tab */}
+          {tab === 'Referrals' && (
+            <div className="card space-y-4">
+              <h2 className="section-title">👥 Referral Program</h2>
+              <p className="text-sm text-gray-500">Share your referral link. When someone signs up and pays, you may earn a discount on your next billing cycle.</p>
+
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">Your Referral Link</p>
+                <div className="flex items-center gap-2">
+                  <input className="input flex-1 text-sm" value={referral.link} readOnly />
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(referral.link); toast.success('Copied!'); }} className="btn-secondary text-sm whitespace-nowrap">Copy</button>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500">Total Signups</p>
+                  <p className="font-semibold text-sm text-gray-800">{referral.stats.total_signups}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500">Conversions</p>
+                  <p className="font-semibold text-sm text-gray-800">{referral.stats.conversions}</p>
                 </div>
               </div>
             </div>

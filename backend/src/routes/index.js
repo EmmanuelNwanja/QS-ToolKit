@@ -25,6 +25,7 @@ router.use('/research',      require('./researchRoutes'));
 router.use('/classroom/curriculum', require('./curriculumRoutes'));
 router.use('/classroom/migrate', require('./migrationRoutes'));
 router.use('/classroom',     require('./classroomRoutes'));
+router.use('/referrals',     require('./referralRoutes'));
 router.use('/',              require('./boqRevisionRoutes'));
 
 module.exports = router;

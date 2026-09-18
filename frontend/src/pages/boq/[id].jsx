@@ -33,6 +33,9 @@ export default function BoqDetailPage() {
   const [docForm, setDocForm] = useState({ title: '', notes: '', status: 'draft', measurement_standard: '' });
   const [certifying, setCertifying] = useState(false);
   const [certResult, setCertResult] = useState(null);
+  const [existingCert, setExistingCert] = useState(null);
+  const [certHistory, setCertHistory] = useState([]);
+  const [showCertHistory, setShowCertHistory] = useState(false);
   const [revisions, setRevisions] = useState([]);
   const [showVariance, setShowVariance] = useState(false);
   const [variance, setVariance] = useState(null);
@@ -64,6 +67,14 @@ export default function BoqDetailPage() {
       // Load revisions
       const { data: revData } = await revisionAPI.list(id);
       setRevisions(revData.revisions || []);
+
+      // Load existing certification (latest)
+      try {
+        const { data: histData } = await integrityAPI.history('boq', id);
+        const history = histData.history || [];
+        setCertHistory(history);
+        if (history.length > 0) setExistingCert(history[history.length - 1]);
+      } catch { /* no cert yet */ }
     } catch (err) {
       toast.error(err.response?.data?.message || 'BOQ not found');
       router.push('/projects');
@@ -203,11 +214,26 @@ export default function BoqDetailPage() {
     try {
       const { data } = await integrityAPI.certifyBoq(id);
       setCertResult(data);
+      setExistingCert({ cert_token: data.certToken, document_hash: data.hash, created_at: data.verifiedAt });
       toast.success('BOQ certified — tamper-evident hash generated');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Certification failed');
     } finally {
       setCertifying(false);
+    }
+  };
+
+  const downloadCert = async (certToken) => {
+    try {
+      const { data } = await integrityAPI.downloadCert(certToken);
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `QSToolkit-Certificate-${certToken.slice(0, 8)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Download failed');
     }
   };
 
@@ -276,6 +302,38 @@ export default function BoqDetailPage() {
                 <p className="text-xs font-semibold text-emerald-800 mb-1">✓ Document Certified</p>
                 <p className="text-[10px] text-emerald-700 font-mono break-all">Hash: {certResult.hash}</p>
                 <p className="text-[10px] text-emerald-700">Token: {certResult.certToken?.slice(0, 16)}...</p>
+                <button onClick={() => downloadCert(certResult.certToken)} className="mt-2 text-[10px] text-emerald-600 underline hover:text-emerald-800">
+                  Download Certificate
+                </button>
+              </div>
+            )}
+
+            {!certResult && existingCert && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-blue-800">🔒 Previously Certified</p>
+                  <p className="text-[10px] text-blue-600">Token: {existingCert.cert_token?.slice(0, 16)}... • {existingCert.created_at ? new Date(existingCert.created_at).toLocaleDateString() : ''}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => downloadCert(existingCert.cert_token)} className="text-[10px] text-blue-600 underline hover:text-blue-800">Download</button>
+                  <button onClick={() => setShowCertHistory((s) => !s)} className="text-[10px] text-blue-600 underline hover:text-blue-800">
+                    {showCertHistory ? 'Hide' : 'History'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {showCertHistory && certHistory.length > 0 && (
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Certification History ({certHistory.length})</p>
+                <div className="space-y-1">
+                  {certHistory.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between text-[10px]">
+                      <span className="font-mono text-gray-600">{c.cert_token?.slice(0, 12)}...</span>
+                      <span className="text-gray-500">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -346,19 +404,29 @@ export default function BoqDetailPage() {
               {showVariance && (
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    <select
-                      className="input text-sm"
-                      onChange={(e) => {
-                        const revA = e.target.value;
-                        const revB = revisions[revisions.length - 1]?.id;
-                        if (revA && revB) compareVariance(revA, revB);
-                      }}
-                    >
-                      <option value="">Select older revision...</option>
+                    <select id="boq-rev-a" className="input text-sm flex-1">
+                      <option value="">Older revision...</option>
                       {revisions.slice(0, -1).map((r) => (
                         <option key={r.id} value={r.id}>Rev {r.revision_number} — {formatDate(r.created_at)}</option>
                       ))}
                     </select>
+                    <select id="boq-rev-b" className="input text-sm flex-1">
+                      <option value="">Newer revision...</option>
+                      {revisions.slice(1).map((r) => (
+                        <option key={r.id} value={r.id}>Rev {r.revision_number} — {formatDate(r.created_at)}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const a = document.getElementById('boq-rev-a').value;
+                        const b = document.getElementById('boq-rev-b').value;
+                        if (a && b) compareVariance(a, b);
+                      }}
+                      disabled={loadingVariance}
+                      className="btn-primary text-sm"
+                    >
+                      {loadingVariance ? '...' : 'Compare'}
+                    </button>
                   </div>
                   {loadingVariance && <p className="text-sm text-gray-500">Analyzing changes...</p>}
                   {variance && (
@@ -381,6 +449,49 @@ export default function BoqDetailPage() {
                       {variance.ai_summary && (
                         <div className="p-3 bg-primary-50 border border-primary-100 rounded-lg text-sm text-primary-800">
                           <span className="font-semibold">AI Summary:</span> {variance.ai_summary.summary}
+                        </div>
+                      )}
+                      {variance.diff.changes?.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Item-Level Changes</p>
+                          <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-medium text-gray-600">Type</th>
+                                  <th className="px-3 py-2 text-left font-medium text-gray-600">Section</th>
+                                  <th className="px-3 py-2 text-left font-medium text-gray-600">Item</th>
+                                  <th className="px-3 py-2 text-left font-medium text-gray-600">Before</th>
+                                  <th className="px-3 py-2 text-left font-medium text-gray-600">After</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {variance.diff.changes.map((c, i) => (
+                                  <tr key={i} className={c.type === 'added' ? 'bg-emerald-50' : c.type === 'removed' ? 'bg-red-50' : ''}>
+                                    <td className="px-3 py-2">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                        c.type === 'added' ? 'bg-emerald-100 text-emerald-700' :
+                                        c.type === 'removed' ? 'bg-red-100 text-red-700' :
+                                        'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        {c.type === 'modified' ? 'mod' : c.type}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-600">{c.section_title || c.field || '—'}</td>
+                                    <td className="px-3 py-2 text-gray-900">{c.level === 'item' ? (c.description || `Item ${c.item_no || ''}`) : c.level}</td>
+                                    <td className="px-3 py-2 text-gray-500">
+                                      {c.before !== undefined ? String(c.before) :
+                                       c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.before}`).join(', ') : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-900">
+                                      {c.after !== undefined ? String(c.after) :
+                                       c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.after}`).join(', ') : '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
                     </div>
