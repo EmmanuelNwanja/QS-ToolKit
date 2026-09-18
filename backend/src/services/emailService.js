@@ -105,9 +105,10 @@ async function send({ to, subject, html, text, attachments = [] }) {
   const htmlPart = sanitizeHtmlDocument(html);
   const textPart = normalizePlainText(text || htmlToText(htmlPart));
 
-  const providers = EMAIL_PROVIDER === 'auto'
+  const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
+  const providers = emailProvider === 'auto'
     ? ['relay', ...(mailjetClient ? ['mailjet'] : []), ...(ZEPTOMAIL_API_KEY ? ['zeptomail'] : []), 'smtp']
-    : [EMAIL_PROVIDER];
+    : [emailProvider];
 
   for (const provider of providers) {
     if (provider === 'mailjet' && mailjetClient) {

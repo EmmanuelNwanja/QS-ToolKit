@@ -13,7 +13,7 @@ async function getAllFlags() {
     const { data: flags } = await supabase
       .from('feature_flags')
       .select('*')
-      .eq('is_enabled', true);
+      .eq('enabled_globally', true);
 
     const result = flags || [];
     flagCache.set('__all__', { flags: result, ts: Date.now() });
