@@ -281,13 +281,13 @@ async function sendViaRelay({ recipients, subject, htmlPart, textPart, attachmen
   }
 }
 
-async function sendViaZeptomail({ recipients, subject, htmlPart, textPart }) {
+async function sendViaZeptomail({ recipients, subject, htmlPart, textPart, attachments = [] }) {
   try {
     const to = recipients.map((r) => ({
       email_address: { address: r.email, name: r.name || undefined }
     }));
 
-    await axios.post('https://api.zeptomail.in/v1.1/email', {
+    const payload = {
       from: {
         address: ZEPTOMAIL_SENDER_EMAIL || BRAND.email,
         name: ZEPTOMAIL_SENDER_NAME || BRAND.name
@@ -296,7 +296,20 @@ async function sendViaZeptomail({ recipients, subject, htmlPart, textPart }) {
       subject,
       htmlbody: htmlPart,
       textbody: textPart
-    }, {
+    };
+
+    // ZeptoMail inline attachment support
+    if (attachments.length > 0) {
+      payload.attachment = attachments
+        .filter(a => a?.content && a?.name)
+        .map(a => ({
+          name: a.name,
+          content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
+          mime_type: a.contentType || 'application/octet-stream'
+        }));
+    }
+
+    await axios.post('https://api.zeptomail.in/v1.1/email', payload, {
       timeout: 20000,
       headers: {
         'Authorization': `Zoho-encmt ${ZEPTOMAIL_API_KEY}`,
@@ -529,26 +542,27 @@ function noteBox(text, type = 'info') {
 // ════════════════════════════════════════════════════════════════
 //  EMAIL VERIFICATION
 // ════════════════════════════════════════════════════════════════
-exports.sendEmailVerification = async (user, token) => {
+exports.sendEmailVerification = async (user, otp) => {
   const firstName = user.name?.split(' ')[0] || 'there';
-  const verifyUrl = `${BRAND.url}/auth/verify-email?token=${token}`;
 
   const html = layout({
-    preheader: `Verify your QSToolkit account to activate access`,
+    preheader: `Your QSToolkit verification code is ${otp}`,
     body: `
       ${heroSection({ emoji: '📧', title: 'Verify Your Email', subtitle: 'One quick step to activate your account.' })}
       ${bodySection(`
         ${bodyText(`Hi ${firstName}, thanks for creating your QSToolkit account.`)}
-        ${bodyText(`To activate your account and start using the platform, please verify your email address.`)}
-        ${ctaButton('Verify My Email →', verifyUrl)}
-        ${noteBox('This verification link expires in 30 minutes. If it expires, you can request a new one from the login page.', 'warning')}
+        ${bodyText(`To activate your account, enter this verification code:`)}
+        <div style="text-align:center;padding:20px 0;">
+          <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a3c5e;background:#f8fafc;padding:12px 24px;border-radius:8px;border:2px dashed #d1d5db;">${otp}</span>
+        </div>
+        ${noteBox('This code expires in 10 minutes. If it expires, request a new one from the login page.', 'warning')}
       `)}
     `
   });
 
   return send({
     to: user.email,
-    subject: 'Verify your QSToolkit email',
+    subject: `Your QSToolkit verification code: ${otp}`,
     html
   });
 };
@@ -861,6 +875,29 @@ exports.sendExpiryReminder = async ({ email, name, planName, expiresAt, renewUrl
 };
 
 // ════════════════════════════════════════════════════════════════
+//  SUBSCRIPTION DOWNGRADE NOTICE
+// ════════════════════════════════════════════════════════════════
+exports.sendDowngradeNotice = async ({ email, name, previousPlan }) => {
+  const firstName = name?.split(' ')[0] || 'there';
+  const prevDisplay = PLAN_DISPLAY_NAMES[previousPlan?.toLowerCase()] || previousPlan;
+
+  const html = layout({
+    preheader: `Your QSToolkit subscription has been downgraded`,
+    body: `
+      ${heroSection({ emoji: '📋', title: 'Subscription Downgraded', subtitle: 'Your plan has changed' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, your <strong>${prevDisplay}</strong> subscription has expired and your account has been moved to the <strong>Free</strong> plan.`)}
+        ${bodyText(`You still have access to core features, but some premium tools are now limited.`)}
+        ${noteBox(`Your projects, BOQs, and data are <strong>never deleted</strong>. Upgrade anytime to regain full access.`, 'info')}
+        ${ctaButton('Upgrade Now →', `${BRAND.url}/subscription`)}
+      `)}
+    `
+  });
+
+  return send({ to: email, subject: `Your QSToolkit ${prevDisplay} subscription has ended`, html });
+};
+
+// ════════════════════════════════════════════════════════════════
 //  PHILANTHROPIST — DONOR CONFIRMATION
 // ════════════════════════════════════════════════════════════════
 exports.sendPhilanthropistDonorConfirmation = async (meta) => {
@@ -1055,6 +1092,34 @@ exports.sendAdminTestEmail = async ({ to, adminName = 'Admin', subject, note }) 
   return send({
     to,
     subject: subject || `QSToolkit Email Test (${provider})`,
+    html
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  PASSWORD RESET OTP
+// ════════════════════════════════════════════════════════════════
+exports.sendPasswordResetOtp = async ({ email, name, otp }) => {
+  const firstName = name?.split(' ')[0] || 'there';
+
+  const html = layout({
+    preheader: `Your QSToolkit password reset code is ${otp}`,
+    body: `
+      ${heroSection({ emoji: '🔒', title: 'Reset Your Password', subtitle: 'Enter this code to set a new password.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, we received a request to reset your QSToolkit password.`)}
+        ${bodyText(`Your password reset code:`)}
+        <div style="text-align:center;padding:20px 0;">
+          <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a3c5e;background:#f8fafc;padding:12px 24px;border-radius:8px;border:2px dashed #d1d5db;">${otp}</span>
+        </div>
+        ${noteBox('This code expires in 10 minutes. If you did not request a password reset, please ignore this email — your account is safe.', 'warning')}
+      `)}
+    `
+  });
+
+  return send({
+    to: email,
+    subject: `Your QSToolkit password reset code: ${otp}`,
     html
   });
 };

@@ -2,17 +2,35 @@ const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 
+function generateCode() {
+  return require('crypto').randomBytes(4).toString('hex').toUpperCase();
+}
+
 // ─── User-facing endpoints ────────────────────────────────────
 
 exports.getMyLink = async (req, res, next) => {
   try {
-    const { data, err } = await supabase
+    let { data, error: err } = await supabase
       .from('referral_links')
       .select('code, created_at')
       .eq('user_id', req.user.id)
       .single();
 
-    if (err || !data) return res.status(404).json(error('Referral link not found'));
+    // Create-on-miss: if no row exists, generate one
+    if (err || !data) {
+      const code = generateCode();
+      const { data: created, error: insErr } = await supabase
+        .from('referral_links')
+        .insert({ user_id: req.user.id, code })
+        .select('code, created_at')
+        .single();
+
+      if (insErr) {
+        logger.warn({ message: 'Failed to create referral link', user_id: req.user.id, error: insErr.message });
+        return res.status(500).json(error('Could not create referral link'));
+      }
+      data = created;
+    }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://qs.solnuv.com';
     return res.json(success('Referral link', {

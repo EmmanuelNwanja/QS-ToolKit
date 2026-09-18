@@ -9,7 +9,6 @@ const supabase = require('../config/supabase');
 const emailService = require('./emailService');
 const logger = require('../utils/logger');
 const subscriptionManagementService = require('./subscriptionManagementService');
-const subscriptionNotifications = require('./subscriptionNotificationTemplates');
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 const paystackHeaders = () => ({
@@ -228,13 +227,13 @@ async function monitorSubscriptionExpiry() {
       try {
         await subscriptionManagementService.sendExpiryReminder(sub.user_id, '7');
         if (sub.users?.email) {
-          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+          await emailService.sendExpiryReminder({
             email: sub.users.email,
-            userName: sub.users?.name || 'User',
-            plan: sub.plan_name,
+            name: sub.users?.name || 'User',
+            planName: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
-            daysUntil: 7,
-          }, emailService).catch(err => logger.warn('Failed to send 7d reminder email', { userId: sub.user_id, error: err.message }));
+            renewUrl: `${process.env.FRONTEND_URL}/subscription`
+          }).catch(err => logger.warn('Failed to send 7d reminder email', { userId: sub.user_id, error: err.message }));
         }
       } catch (err) {
         logger.warn(`Failed to send 7d reminder for user ${sub.user_id}`, { error: err.message });
@@ -248,13 +247,13 @@ async function monitorSubscriptionExpiry() {
       try {
         await subscriptionManagementService.sendExpiryReminder(sub.user_id, '3');
         if (sub.users?.email) {
-          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+          await emailService.sendExpiryReminder({
             email: sub.users.email,
-            userName: sub.users?.name || 'User',
-            plan: sub.plan_name,
+            name: sub.users?.name || 'User',
+            planName: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
-            daysUntil: 3,
-          }, emailService).catch(err => logger.warn('Failed to send 3d reminder email', { userId: sub.user_id, error: err.message }));
+            renewUrl: `${process.env.FRONTEND_URL}/subscription`
+          }).catch(err => logger.warn('Failed to send 3d reminder email', { userId: sub.user_id, error: err.message }));
         }
       } catch (err) {
         logger.warn(`Failed to send 3d reminder for user ${sub.user_id}`, { error: err.message });
@@ -268,13 +267,13 @@ async function monitorSubscriptionExpiry() {
       try {
         await subscriptionManagementService.sendExpiryReminder(sub.user_id, '1');
         if (sub.users?.email) {
-          await subscriptionNotifications.sendSubscriptionExpiryReminder({
+          await emailService.sendExpiryReminder({
             email: sub.users.email,
-            userName: sub.users?.name || 'User',
-            plan: sub.plan_name,
+            name: sub.users?.name || 'User',
+            planName: sub.plan_name,
             expiresAt: sub.subscription_expires_at,
-            daysUntil: 1,
-          }, emailService).catch(err => logger.warn('Failed to send 1d reminder email', { userId: sub.user_id, error: err.message }));
+            renewUrl: `${process.env.FRONTEND_URL}/subscription`
+          }).catch(err => logger.warn('Failed to send 1d reminder email', { userId: sub.user_id, error: err.message }));
         }
       } catch (err) {
         logger.warn(`Failed to send 1d reminder for user ${sub.user_id}`, { error: err.message });
@@ -309,11 +308,11 @@ async function monitorSubscriptionExpiry() {
             .maybeSingle();
 
           if (user?.email) {
-            await subscriptionNotifications.sendSubscriptionDowngradeNotice({
+            await emailService.sendDowngradeNotice({
               email: user.email,
-              userName: user.name || 'User',
+              name: user.name || 'User',
               previousPlan: sub.plan_name,
-            }, emailService).catch(err => logger.warn('Failed to send downgrade email', { userId: sub.user_id, error: err.message }));
+            }).catch(err => logger.warn('Failed to send downgrade email', { userId: sub.user_id, error: err.message }));
           }
         } catch (err) {
           logger.warn(`Failed to downgrade user ${sub.user_id}`, { error: err.message });

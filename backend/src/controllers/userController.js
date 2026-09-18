@@ -41,6 +41,63 @@ exports.forceChangePassword = async (req, res, next) => {
   }
 };
 
+// ─── Change password (authenticated, from settings) ───────────
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json(error('Current password and new password are required'));
+    }
+
+    if (new_password.length < 8) {
+      return res.status(400).json(error('New password must be at least 8 characters'));
+    }
+
+    if (current_password === new_password) {
+      return res.status(400).json(error('New password must be different from current password'));
+    }
+
+    // Verify current password against Supabase Auth
+    const { data: authUser } = await supabase.auth.admin.getUserById(req.user.supabase_auth_id);
+    if (!authUser?.user?.email) {
+      return res.status(500).json(error('Could not verify current password'));
+    }
+
+    // Use Supabase signInWithPassword to verify the current password
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: authUser.user.email,
+      password: current_password
+    });
+
+    if (signInErr) {
+      return res.status(400).json(error('Current password is incorrect'));
+    }
+
+    // Update to new password
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(
+      req.user.supabase_auth_id,
+      { password: new_password }
+    );
+
+    if (updateErr) {
+      logger.error('Password change failed:', updateErr.message);
+      return res.status(500).json(error('Could not change password'));
+    }
+
+    // Update local password_hash
+    const passwordHash = await bcrypt.hash(new_password, 12);
+    await supabase
+      .from('users')
+      .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+      .eq('id', req.user.id);
+
+    return res.json(success('Password changed successfully'));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── Get profile ──────────────────────────────────────────────
 exports.getProfile = async (req, res, next) => {
   try {

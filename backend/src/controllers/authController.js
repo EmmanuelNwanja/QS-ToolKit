@@ -6,7 +6,8 @@ const emailService = require('../services/emailService');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 
-const VERIFICATION_TOKEN_TTL_MINUTES = 30;
+const VERIFICATION_TOKEN_TTL_MINUTES = 10; // OTP-based, shorter TTL
+const OTP_TTL_MINUTES = 10;
 const VERIFICATION_RESEND_COOLDOWN_SECONDS = 90;
 const MAX_SIGNUPS_PER_IP_PREFIX_PER_DAY = 5;
 const MAX_SIGNUPS_PER_DEVICE_PER_30_DAYS = 2;
@@ -425,49 +426,47 @@ exports.me = async (req, res, next) => {
 // ── Verify email token ────────────────────────────────────────
 exports.verifyEmail = async (req, res, next) => {
   try {
-    const token = String(req.body?.token || req.query?.token || '').trim();
-    if (!token) return res.status(400).json(error('Verification token is required'));
+    const otp = String(req.body?.otp || '').trim();
+    const email = String(req.body?.email || '').toLowerCase().trim();
 
-    const tokenHash = hashValue(token);
+    if (!otp || !email) return res.status(400).json(error('Email and OTP are required'));
 
-    const { data: tokenRow } = await supabase
-      .from('email_verification_tokens')
-      .select('id, user_id, expires_at, used_at')
-      .eq('token_hash', tokenHash)
-      .single();
-
-    if (!tokenRow) {
-      return res.status(400).json(error('Invalid verification token', { code: 'INVALID_TOKEN' }));
-    }
-
-    if (tokenRow.used_at) {
-      return res.status(400).json(error('Verification token has already been used', { code: 'TOKEN_ALREADY_USED' }));
-    }
-
-    if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-      return res.status(400).json(error('Verification token has expired', { code: 'TOKEN_EXPIRED' }));
-    }
-
-    await supabase
-      .from('email_verification_tokens')
-      .update({ used_at: new Date().toISOString() })
-      .eq('id', tokenRow.id);
-
+    // Look up user by email
     const { data: user } = await supabase
       .from('users')
-      .update({ is_verified: true, updated_at: new Date().toISOString() })
-      .eq('id', tokenRow.user_id)
-      .select('*')
+      .select('id, is_verified')
+      .eq('email', email)
       .single();
 
-    if (user) {
-      const welcomeSent = await emailService.sendWelcome(user);
+    if (!user) return res.status(400).json(error('Invalid email', { code: 'INVALID_EMAIL' }));
+    if (user.is_verified) return res.json(success('Email is already verified.'));
+
+    const result = await verifyOtpToken(user.id, otp, 'email_verification');
+
+    if (!result.valid) {
+      const codeMap = { INVALID_OTP: 'Invalid verification code', OTP_ALREADY_USED: 'Code already used', OTP_EXPIRED: 'Code has expired' };
+      return res.status(400).json(error(codeMap[result.error] || 'Invalid code', { code: result.error }));
+    }
+
+    // Mark verified
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ is_verified: true, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+    if (updateErr) throw updateErr;
+
+    // Send welcome email
+    const { data: fullUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (fullUser) {
+      const welcomeSent = await emailService.sendWelcome(fullUser);
       if (!welcomeSent) {
-        logger.warn({
-          message: 'Welcome email failed after successful verification',
-          user_id: user.id,
-          email: user.email
-        });
+        logger.warn({ message: 'Welcome email failed after verification', user_id: user.id });
       }
     }
 
@@ -534,6 +533,120 @@ exports.resendVerification = async (req, res, next) => {
   }
 };
 
+// ── Forgot password (send OTP) ────────────────────────────────
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    if (!email) return res.status(400).json(error('Email is required'));
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .eq('email', email)
+      .single();
+
+    // Always return success to prevent account enumeration
+    if (!user) {
+      return res.json(success('If your account exists, a password reset code has been sent.'));
+    }
+
+    const otp = await createOtpToken(user.id, 'password_reset', req);
+    await emailService.sendPasswordResetOtp({ email: user.email, name: user.name, otp });
+
+    return res.json(success('If your account exists, a password reset code has been sent.'));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Verify reset OTP (returns reset token) ────────────────────
+exports.verifyResetOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    const otpCode = String(otp || '').trim();
+
+    if (!normalizedEmail || !otpCode) {
+      return res.status(400).json(error('Email and OTP are required'));
+    }
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', normalizedEmail)
+      .single();
+
+    if (!user) return res.status(400).json(error('Invalid email'));
+
+    const result = await verifyOtpToken(user.id, otpCode, 'password_reset');
+
+    if (!result.valid) {
+      const codeMap = { INVALID_OTP: 'Invalid reset code', OTP_ALREADY_USED: 'Code already used', OTP_EXPIRED: 'Code has expired' };
+      return res.status(400).json(error(codeMap[result.error] || 'Invalid code', { code: result.error }));
+    }
+
+    // Issue a short-lived reset token (15 min)
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, purpose: 'password_reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    return res.json(success('OTP verified. You can now reset your password.', { reset_token: resetToken }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Reset password (with reset token) ─────────────────────────
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { reset_token, new_password } = req.body;
+
+    if (!reset_token || !new_password) {
+      return res.status(400).json(error('Reset token and new password are required'));
+    }
+
+    if (new_password.length < 8) {
+      return res.status(400).json(error('Password must be at least 8 characters'));
+    }
+
+    // Verify the reset token
+    let payload;
+    try {
+      payload = jwt.verify(reset_token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(400).json(error('Invalid or expired reset token', { code: 'INVALID_RESET_TOKEN' }));
+    }
+
+    if (payload.purpose !== 'password_reset') {
+      return res.status(400).json(error('Invalid reset token purpose'));
+    }
+
+    // Update password via Supabase Auth
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(
+      payload.id,
+      { password: new_password }
+    );
+
+    if (updateErr) {
+      logger.error('Password reset failed:', updateErr.message);
+      return res.status(500).json(error('Could not reset password'));
+    }
+
+    // Update local password_hash
+    const passwordHash = await bcrypt.hash(new_password, 12);
+    await supabase
+      .from('users')
+      .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+      .eq('id', payload.id);
+
+    return res.json(success('Password reset successfully. You can now sign in.'));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── Helpers ───────────────────────────────────────────────────
 function generateToken(user) {
   return jwt.sign(
@@ -549,30 +662,64 @@ function sanitizeUser(user) {
 }
 
 async function createEmailVerificationToken(userId, req) {
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = hashValue(rawToken);
-  const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
-
-  const { error: tokenError } = await supabase
-    .from('email_verification_tokens')
-    .insert({
-      user_id: userId,
-      token_hash: tokenHash,
-      expires_at: expiresAt,
-      ip_address: getClientIp(req),
-      user_agent: req.get('user-agent') || null
-    });
-
-  if (tokenError) {
-    logger.error('Failed to create verification token:', tokenError.message);
-    throw new Error('Unable to create email verification token');
-  }
-
-  return rawToken;
+  return createOtpToken(userId, 'email_verification', req);
 }
 
 function hashValue(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+// ── OTP helpers ───────────────────────────────────────────────
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
+}
+
+async function createOtpToken(userId, purpose, req) {
+  const otp = generateOtp();
+  const otpHash = hashValue(otp);
+  const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000).toISOString();
+
+  const { error: otpError } = await supabase
+    .from('email_otp_tokens')
+    .insert({
+      user_id: userId,
+      otp_hash: otpHash,
+      purpose,
+      expires_at: expiresAt
+    });
+
+  if (otpError) {
+    logger.error('Failed to create OTP token:', otpError.message);
+    throw new Error('Unable to create OTP');
+  }
+
+  return otp;
+}
+
+async function verifyOtpToken(userId, otp, purpose) {
+  const otpHash = hashValue(otp);
+
+  const { data: otpRow } = await supabase
+    .from('email_otp_tokens')
+    .select('id, expires_at, used_at')
+    .eq('user_id', userId)
+    .eq('otp_hash', otpHash)
+    .eq('purpose', purpose)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!otpRow) return { valid: false, error: 'INVALID_OTP' };
+  if (otpRow.used_at) return { valid: false, error: 'OTP_ALREADY_USED' };
+  if (new Date(otpRow.expires_at).getTime() < Date.now()) return { valid: false, error: 'OTP_EXPIRED' };
+
+  // Mark as used
+  await supabase
+    .from('email_otp_tokens')
+    .update({ used_at: new Date().toISOString() })
+    .eq('id', otpRow.id);
+
+  return { valid: true };
 }
 
 function getDeviceId(req) {

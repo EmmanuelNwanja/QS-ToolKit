@@ -25,6 +25,23 @@ router.post('/resend-verification', authLimiter, [
   validate
 ], ctrl.resendVerification);
 
+router.post('/forgot-password', authLimiter, [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  validate
+], ctrl.forgotPassword);
+
+router.post('/verify-reset-otp', authLimiter, [
+  body('email').isEmail().normalizeEmail(),
+  body('otp').isLength({ min: 6, max: 6 }).isNumeric(),
+  validate
+], ctrl.verifyResetOtp);
+
+router.post('/reset-password', authLimiter, [
+  body('reset_token').notEmpty(),
+  body('new_password').isLength({ min: 8 }),
+  validate
+], ctrl.resetPassword);
+
 router.post('/google', ctrl.googleCallback);
 router.post('/onboarding', protect, ctrl.completeOnboarding);
 router.get('/me', protect, ctrl.me);

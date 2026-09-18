@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [accountBusy, setAccountBusy] = useState(false);
   const [referral, setReferral] = useState({ link: '', code: '', stats: { total_signups: 0, conversions: 0 } });
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwLoading, setPwLoading] = useState(false);
   const logoRef      = useRef();
   const signatureRef = useRef();
 
@@ -256,6 +258,32 @@ export default function SettingsPage() {
     } catch {
       toast.error('Could not delete account');
     } finally { setAccountBusy(false); }
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwForm.current_password || !pwForm.new_password) {
+      toast.error('Please fill all password fields');
+      return;
+    }
+    if (pwForm.new_password.length < 8) {
+      toast.error('New password must be at least 8 characters');
+      return;
+    }
+    if (pwForm.new_password !== pwForm.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await userAPI.changePassword({
+        current_password: pwForm.current_password,
+        new_password: pwForm.new_password
+      });
+      toast.success('Password changed successfully');
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not change password');
+    } finally { setPwLoading(false); }
   };
 
   return (
@@ -566,6 +594,26 @@ export default function SettingsPage() {
           {/* Account tab */}
           {tab === 'Account' && (
             <div className="space-y-4">
+              {/* Change Password */}
+              <div className="card space-y-4">
+                <h2 className="section-title">🔐 Change Password</h2>
+                <div>
+                  <label className="label">Current Password</label>
+                  <input type="password" className="input" value={pwForm.current_password} onChange={(e) => setPwForm(f => ({ ...f, current_password: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">New Password</label>
+                  <input type="password" className="input" placeholder="Min. 8 characters" value={pwForm.new_password} onChange={(e) => setPwForm(f => ({ ...f, new_password: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Confirm New Password</label>
+                  <input type="password" className="input" value={pwForm.confirm_password} onChange={(e) => setPwForm(f => ({ ...f, confirm_password: e.target.value }))} />
+                </div>
+                <button onClick={handleChangePassword} disabled={pwLoading} className="btn-primary text-sm">
+                  {pwLoading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+
               <div className="card space-y-4">
                 <h2 className="section-title">🧾 Account Management</h2>
                 <p className="text-sm text-gray-500">Hibernate pauses account activity. Delete permanently anonymizes account data.</p>

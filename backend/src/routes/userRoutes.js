@@ -15,6 +15,7 @@ const upload = multer({
 router.use(protect);
 
 router.post('/password/force-change', ctrl.forceChangePassword);
+router.post('/password/change', ctrl.changePassword);
 
 // Profile
 router.get('/profile',              ctrl.getProfile);

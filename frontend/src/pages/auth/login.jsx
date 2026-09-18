@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -15,6 +15,14 @@ export default function LoginPage() {
   const [emailIssueAlert, setEmailIssueAlert] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: otp, 3: new password
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const otpRefs = useRef([]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -47,6 +55,70 @@ export default function LoginPage() {
       toast.error(err.response?.data?.message || 'Unable to resend verification email.');
     } finally {
       setResending(false);
+    }
+  };
+
+  // ── Forgot password handlers ────────────────────────────────
+  const handleForgotSendOtp = async () => {
+    if (!forgotEmail) { toast.error('Enter your email'); return; }
+    setForgotLoading(true);
+    try {
+      await authAPI.forgotPassword(forgotEmail);
+      toast.success('Reset code sent! Check your email.');
+      setForgotStep(2);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not send code');
+    } finally { setForgotLoading(false); }
+  };
+
+  const handleForgotVerifyOtp = async () => {
+    const code = forgotOtp.join('');
+    if (code.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setForgotLoading(true);
+    try {
+      const { data } = await authAPI.verifyResetOtp({ email: forgotEmail, otp: code });
+      setResetToken(data?.reset_token || '');
+      setForgotStep(3);
+      toast.success('Code verified! Set your new password.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid code');
+    } finally { setForgotLoading(false); }
+  };
+
+  const handleForgotResetPassword = async () => {
+    if (!forgotNewPassword || forgotNewPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (forgotNewPassword !== forgotConfirmPassword) { toast.error('Passwords do not match'); return; }
+    setForgotLoading(true);
+    try {
+      await authAPI.resetPassword({ reset_token: resetToken, new_password: forgotNewPassword });
+      toast.success('Password reset! You can now sign in.');
+      setShowForgotPasswordModal(false);
+      setForgotStep(1);
+      setForgotEmail('');
+      setForgotOtp(['', '', '', '', '', '']);
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not reset password');
+    } finally { setForgotLoading(false); }
+  };
+
+  const handleForgotOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...forgotOtp];
+    newOtp[index] = value.slice(-1);
+    setForgotOtp(newOtp);
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (newOtp.every(d => d !== '') && index === 5) {
+      // Auto-verify
+      setTimeout(() => {
+        const code = newOtp.join('');
+        setForgotLoading(true);
+        authAPI.verifyResetOtp({ email: forgotEmail, otp: code })
+          .then(({ data }) => { setResetToken(data?.reset_token || ''); setForgotStep(3); toast.success('Code verified!'); })
+          .catch((err) => { toast.error(err.response?.data?.message || 'Invalid code'); setForgotOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus(); })
+          .finally(() => setForgotLoading(false));
+      }, 100);
     }
   };
 
@@ -202,31 +274,95 @@ export default function LoginPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
             <div className="border-b border-gray-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-gray-900">Forgot Password</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {forgotStep === 1 ? 'Forgot Password' : forgotStep === 2 ? 'Enter Reset Code' : 'Set New Password'}
+              </h3>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
-              <p className="text-sm text-gray-700">
-                To reset your access, please contact QSToolkit Admin support.
-              </p>
-              <p className="text-sm text-gray-700">
-                Email: <a href="mailto:support@qs.solnuv.com" className="font-semibold text-primary-700 underline">support@qs.solnuv.com</a>
-              </p>
-              <p className="text-sm text-gray-700">
-                Or contact the QSToolkit WhatsApp Support Group.
-              </p>
-              <p className="text-xs text-gray-500">
-                Admin will verify your account and issue a temporary one-time password.
-              </p>
+            <div className="px-5 py-4 space-y-4">
+              {/* Step 1: Enter email */}
+              {forgotStep === 1 && (
+                <>
+                  <p className="text-sm text-gray-600">Enter your email and we&apos;ll send you a reset code.</p>
+                  <input
+                    type="email"
+                    className="input"
+                    placeholder="your@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                  />
+                  <button onClick={handleForgotSendOtp} disabled={forgotLoading} className="btn-primary w-full">
+                    {forgotLoading ? 'Sending...' : 'Send Reset Code'}
+                  </button>
+                </>
+              )}
+
+              {/* Step 2: Enter OTP */}
+              {forgotStep === 2 && (
+                <>
+                  <p className="text-sm text-gray-600">Enter the 6-digit code sent to <strong>{forgotEmail}</strong></p>
+                  <div className="flex justify-center gap-2">
+                    {forgotOtp.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => { otpRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        className="w-11 h-12 text-center text-lg font-bold border border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition"
+                        value={digit}
+                        onChange={(e) => handleForgotOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Backspace' && !forgotOtp[i] && i > 0) otpRefs.current[i - 1]?.focus(); }}
+                      />
+                    ))}
+                  </div>
+                  <button onClick={handleForgotVerifyOtp} disabled={forgotLoading || forgotOtp.some(d => !d)} className="btn-primary w-full">
+                    {forgotLoading ? 'Verifying...' : 'Verify Code'}
+                  </button>
+                  <button type="button" onClick={() => { setForgotStep(1); setForgotOtp(['', '', '', '', '', '']); }} className="text-sm text-gray-500 hover:underline w-full text-center">
+                    ← Change email
+                  </button>
+                </>
+              )}
+
+              {/* Step 3: New password */}
+              {forgotStep === 3 && (
+                <>
+                  <p className="text-sm text-gray-600">Enter your new password below.</p>
+                  <div>
+                    <label className="label">New Password</label>
+                    <input
+                      type="password"
+                      className="input"
+                      placeholder="Min. 8 characters"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Confirm Password</label>
+                    <input
+                      type="password"
+                      className="input"
+                      placeholder="Repeat password"
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <button onClick={handleForgotResetPassword} disabled={forgotLoading} className="btn-primary w-full">
+                    {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                  </button>
+                </>
+              )}
             </div>
 
-            <div className="flex justify-end border-t border-gray-200 px-5 py-4">
+            <div className="flex justify-end border-t border-gray-200 px-5 py-3">
               <button
                 type="button"
-                onClick={() => setShowForgotPasswordModal(false)}
-                className="rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800"
+                onClick={() => { setShowForgotPasswordModal(false); setForgotStep(1); setForgotOtp(['', '', '', '', '', '']); }}
+                className="text-sm text-gray-500 hover:text-gray-700"
               >
-                Close
+                Cancel
               </button>
             </div>
           </div>
