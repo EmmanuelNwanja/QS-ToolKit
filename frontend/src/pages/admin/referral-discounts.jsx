@@ -5,60 +5,89 @@ import { referralAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function ReferralDiscounts() {
+  const [adminTab, setAdminTab] = useState('discounts');
   const [discounts, setDiscounts] = useState([]);
+  const [incomeRates, setIncomeRates] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ user_id: '', discount_percent: '' });
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [discountForm, setDiscountForm] = useState({ user_id: '', discount_percent: '' });
+  const [rateForm, setRateForm] = useState({ user_id: '', basic_rate: '1.0', pro_rate: '0.6', enterprise_rate: '0.3' });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [discountsRes, statsRes] = await Promise.all([
+      const [discountsRes, statsRes, ratesRes] = await Promise.all([
         referralAPI.adminListDiscounts(),
-        referralAPI.adminStats()
+        referralAPI.adminStats(),
+        referralAPI.adminListIncomeRates()
       ]);
       setDiscounts(discountsRes.data?.discounts || []);
       setStats(statsRes.data?.stats || null);
-    } catch (err) {
+      setIncomeRates(ratesRes.data?.rates || []);
+    } catch {
       toast.error('Failed to load referral data');
     } finally { setLoading(false); }
   };
 
-  const handleAssign = async (e) => {
+  const handleAssignDiscount = async (e) => {
     e.preventDefault();
     try {
       await referralAPI.adminAssignDiscount({
-        user_id: form.user_id,
-        discount_percent: parseFloat(form.discount_percent)
+        user_id: discountForm.user_id,
+        discount_percent: parseFloat(discountForm.discount_percent)
       });
       toast.success('Discount assigned');
-      setShowModal(false);
-      setForm({ user_id: '', discount_percent: '' });
+      setShowDiscountModal(false);
+      setDiscountForm({ user_id: '', discount_percent: '' });
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to assign discount');
     }
   };
 
-  const handleRevoke = async (id) => {
+  const handleRevokeDiscount = async (id) => {
     if (!confirm('Revoke this discount?')) return;
     try {
       await referralAPI.adminRevokeDiscount(id);
       toast.success('Discount revoked');
       fetchData();
+    } catch { toast.error('Failed to revoke discount'); }
+  };
+
+  const handleSetIncomeRate = async (e) => {
+    e.preventDefault();
+    try {
+      await referralAPI.adminSetIncomeRate({
+        user_id: rateForm.user_id,
+        basic_rate: parseFloat(rateForm.basic_rate),
+        pro_rate: parseFloat(rateForm.pro_rate),
+        enterprise_rate: parseFloat(rateForm.enterprise_rate)
+      });
+      toast.success('Income rate set');
+      setShowRateModal(false);
+      setRateForm({ user_id: '', basic_rate: '1.0', pro_rate: '0.6', enterprise_rate: '0.3' });
+      fetchData();
     } catch (err) {
-      toast.error('Failed to revoke discount');
+      toast.error(err.response?.data?.message || 'Failed to set income rate');
     }
+  };
+
+  const handleRevokeIncomeRate = async (id) => {
+    if (!confirm('Revoke this income rate? User will revert to default rates.')) return;
+    try {
+      await referralAPI.adminRevokeIncomeRate(id);
+      toast.success('Income rate revoked');
+      fetchData();
+    } catch { toast.error('Failed to revoke income rate'); }
   };
 
   return (
     <ProtectedAdminRoute>
-      <AdminLayout title="Referral Discounts">
+      <AdminLayout title="Referral Management">
         <div className="space-y-6">
           {/* Stats */}
           {stats && (
@@ -76,72 +105,176 @@ export default function ReferralDiscounts() {
             </div>
           )}
 
-          {/* Assign button */}
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">Active Discounts</h2>
-            <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
-              Assign Discount
-            </button>
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-gray-200">
+            {['discounts', 'income-rates'].map(t => (
+              <button key={t} onClick={() => setAdminTab(t)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  adminTab === t ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}>
+                {t === 'discounts' ? 'Referral Discounts' : 'Income Rates'}
+              </button>
+            ))}
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Discount %</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
-                ) : discounts.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No referral discounts configured.</td></tr>
-                ) : discounts.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{d.users?.name || 'Unknown'}</p>
-                      <p className="text-xs text-gray-400">{d.users?.email}</p>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-primary-700">{d.discount_percent}%</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${d.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {d.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-right">
-                      {d.is_active && (
-                        <button onClick={() => handleRevoke(d.id)} className="text-xs text-red-500 hover:text-red-700">Revoke</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Discounts Tab */}
+          {adminTab === 'discounts' && (
+            <>
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-gray-900">Active Discounts</h2>
+                <button onClick={() => setShowDiscountModal(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+                  Assign Discount
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Discount %</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {loading ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+                    ) : discounts.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No referral discounts configured.</td></tr>
+                    ) : discounts.map(d => (
+                      <tr key={d.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900">{d.users?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-400">{d.users?.email}</p>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-primary-700">{d.discount_percent}%</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${d.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {d.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          {d.is_active && (
+                            <button onClick={() => handleRevokeDiscount(d.id)} className="text-xs text-red-500 hover:text-red-700">Revoke</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
-          {/* Modal */}
-          {showModal && (
+          {/* Income Rates Tab */}
+          {adminTab === 'income-rates' && (
+            <>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Custom Income Rates</h2>
+                  <p className="text-xs text-gray-500 mt-1">Default: Basic 1.0% · Pro 0.6% · Enterprise 0.3%</p>
+                </div>
+                <button onClick={() => setShowRateModal(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+                  Set Income Rate
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-600">Basic %</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-600">Pro %</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-600">Enterprise %</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {loading ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+                    ) : incomeRates.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">All users on default rates.</td></tr>
+                    ) : incomeRates.map(r => (
+                      <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900">{r.users?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-400">{r.users?.email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center font-semibold">{r.basic_rate}%</td>
+                        <td className="px-4 py-3 text-center font-semibold">{r.pro_rate}%</td>
+                        <td className="px-4 py-3 text-center font-semibold">{r.enterprise_rate}%</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {r.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {r.is_active && (
+                            <button onClick={() => handleRevokeIncomeRate(r.id)} className="text-xs text-red-500 hover:text-red-700">Revoke</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Discount Modal */}
+          {showDiscountModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
                 <h3 className="text-lg font-semibold mb-4">Assign Referral Discount</h3>
-                <form onSubmit={handleAssign} className="space-y-4">
+                <form onSubmit={handleAssignDiscount} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.user_id} onChange={e => setForm(f => ({ ...f, user_id: e.target.value }))} required />
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={discountForm.user_id} onChange={e => setDiscountForm(f => ({ ...f, user_id: e.target.value }))} required />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Discount %</label>
-                    <input type="number" min="1" max="100" step="0.01" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.discount_percent} onChange={e => setForm(f => ({ ...f, discount_percent: e.target.value }))} required />
+                    <input type="number" min="1" max="100" step="0.01" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={discountForm.discount_percent} onChange={e => setDiscountForm(f => ({ ...f, discount_percent: e.target.value }))} required />
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                    <button type="button" onClick={() => setShowDiscountModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
                     <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">Assign</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Income Rate Modal */}
+          {showRateModal && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+                <h3 className="text-lg font-semibold mb-4">Set Custom Income Rate</h3>
+                <p className="text-xs text-gray-500 mb-4">Override default rates (Basic 1.0%, Pro 0.6%, Enterprise 0.3%) for a specific user.</p>
+                <form onSubmit={handleSetIncomeRate} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={rateForm.user_id} onChange={e => setRateForm(f => ({ ...f, user_id: e.target.value }))} required />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Basic %</label>
+                      <input type="number" min="0" max="100" step="0.1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={rateForm.basic_rate} onChange={e => setRateForm(f => ({ ...f, basic_rate: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pro %</label>
+                      <input type="number" min="0" max="100" step="0.1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={rateForm.pro_rate} onChange={e => setRateForm(f => ({ ...f, pro_rate: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Enterprise %</label>
+                      <input type="number" min="0" max="100" step="0.1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={rateForm.enterprise_rate} onChange={e => setRateForm(f => ({ ...f, enterprise_rate: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setShowRateModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                    <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">Set Rate</button>
                   </div>
                 </form>
               </div>

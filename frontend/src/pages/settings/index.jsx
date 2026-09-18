@@ -8,6 +8,7 @@ import pushNotificationService from '../../services/pushNotificationService';
 import { userAPI, pushAPI, subscriptionAPI, referralAPI } from '../../services/api';
 
 const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Referrals', 'Account'];
+const DEFAULT_INCOME_RATES = { basic: 1.0, pro: 0.6, enterprise: 0.3 };
 
 export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuthStore();
@@ -31,6 +32,8 @@ export default function SettingsPage() {
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [accountBusy, setAccountBusy] = useState(false);
   const [referral, setReferral] = useState({ link: '', code: '', stats: { total_signups: 0, conversions: 0 } });
+  const [refIncome, setRefIncome] = useState({ summary: { total_earned: 0, total_pending: 0, total_paid: 0, total_referrals: 0, active_referrals: 0, by_plan: {} }, history: [], rates: DEFAULT_INCOME_RATES });
+  const [refSignups, setRefSignups] = useState([]);
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [pwLoading, setPwLoading] = useState(false);
   const logoRef      = useRef();
@@ -106,6 +109,17 @@ export default function SettingsPage() {
     referralAPI.getMyStats().then(res => {
       const d = res.data?.stats || {};
       setReferral(prev => ({ ...prev, stats: { total_signups: d.total_signups || 0, conversions: d.conversions || 0 } }));
+    }).catch(() => {});
+    referralAPI.getMyIncome().then(res => {
+      const d = res.data || {};
+      setRefIncome({
+        summary: d.summary || DEFAULT_INCOME_RATES,
+        history: d.history || [],
+        rates: d.rates || DEFAULT_INCOME_RATES
+      });
+    }).catch(() => {});
+    referralAPI.getMySignups().then(res => {
+      setRefSignups(res.data?.signups || []);
     }).catch(() => {});
   }, [user]);
 
@@ -566,28 +580,142 @@ export default function SettingsPage() {
 
           {/* Referrals tab */}
           {tab === 'Referrals' && (
-            <div className="card space-y-4">
-              <h2 className="section-title">👥 Referral Program</h2>
-              <p className="text-sm text-gray-500">Share your referral link. When someone signs up and pays, you may earn a discount on your next billing cycle.</p>
-
-              <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Your Referral Link</p>
-                <div className="flex items-center gap-2">
-                  <input className="input flex-1 text-sm" value={referral.link} readOnly />
-                  <button type="button" onClick={() => { navigator.clipboard.writeText(referral.link); toast.success('Copied!'); }} className="btn-secondary text-sm whitespace-nowrap">Copy</button>
+            <div className="space-y-4">
+              {/* Referral Link */}
+              <div className="card space-y-3">
+                <h2 className="section-title">Referral Program</h2>
+                <p className="text-sm text-gray-500">Share your referral link. Earn income when your referrals subscribe.</p>
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">Your Referral Link</p>
+                  <div className="flex items-center gap-2">
+                    <input className="input flex-1 text-sm" value={referral.link} readOnly />
+                    <button type="button" onClick={() => { navigator.clipboard.writeText(referral.link); toast.success('Copied!'); }} className="btn-secondary text-sm whitespace-nowrap">Copy</button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                  Your code: <span className="font-mono font-semibold text-gray-600">{referral.code}</span>
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs text-gray-500">Total Signups</p>
-                  <p className="font-semibold text-sm text-gray-800">{referral.stats.total_signups}</p>
+              {/* Income Summary */}
+              <div className="card space-y-3">
+                <h2 className="section-title">Referral Income</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Total Earned', value: `₦${Number(refIncome.summary.total_earned || 0).toLocaleString()}`, color: 'text-green-700' },
+                    { label: 'Pending', value: `₦${Number(refIncome.summary.total_pending || 0).toLocaleString()}`, color: 'text-amber-700' },
+                    { label: 'Paid', value: `₦${Number(refIncome.summary.total_paid || 0).toLocaleString()}`, color: 'text-blue-700' },
+                    { label: 'Active Referrals', value: refIncome.summary.active_referrals || 0, color: 'text-primary-700' },
+                  ].map(s => (
+                    <div key={s.label} className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                      <p className="text-xs text-gray-500">{s.label}</p>
+                      <p className={`font-semibold text-sm ${s.color}`}>{s.value}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs text-gray-500">Conversions</p>
-                  <p className="font-semibold text-sm text-gray-800">{referral.stats.conversions}</p>
+                <div className="text-xs text-gray-400">
+                  Your rates: Basic {refIncome.rates.basic}% · Pro {refIncome.rates.pro}% · Enterprise {refIncome.rates.enterprise}%
                 </div>
               </div>
+
+              {/* Referred Users */}
+              <div className="card space-y-3">
+                <h2 className="section-title">Referred Users ({refSignups.length})</h2>
+                {refSignups.length === 0 ? (
+                  <p className="text-sm text-gray-400">No one has signed up with your link yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">User</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Joined</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Plan</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Status</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600">Payment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {refSignups.map(s => {
+                          const name = s.users?.name || 'Unknown';
+                          const email = s.users?.email || '';
+                          const maskedEmail = email ? email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : '';
+                          const status = s.users?.subscription_status || 'inactive';
+                          return (
+                            <tr key={s.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">
+                                <p className="font-medium text-gray-900">{name}</p>
+                                <p className="text-xs text-gray-400">{maskedEmail}</p>
+                              </td>
+                              <td className="px-3 py-2 text-gray-500 text-xs">{new Date(s.signup_at).toLocaleDateString()}</td>
+                              <td className="px-3 py-2 text-xs">
+                                {s.first_plan_name ? (
+                                  <span className="inline-flex px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 font-medium capitalize">{s.first_plan_name}</span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {status === 'active' ? 'Active' : 'Free'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-right text-xs text-gray-500">
+                                {s.first_payment_amount ? `₦${Number(s.first_payment_amount).toLocaleString()}` : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Income History */}
+              {refIncome.history.length > 0 && (
+                <div className="card space-y-3">
+                  <h2 className="section-title">Income History</h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Referred User</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600">Plan</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600">Rate</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600">Your Income</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {refIncome.history.map(h => (
+                          <tr key={h.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-500 text-xs">{new Date(h.created_at).toLocaleDateString()}</td>
+                            <td className="px-3 py-2">
+                              <p className="text-xs font-medium text-gray-900">{h.users?.name || 'Unknown'}</p>
+                            </td>
+                            <td className="px-3 py-2 text-xs capitalize">{h.plan_name}</td>
+                            <td className="px-3 py-2 text-right text-xs">₦{Number(h.gross_amount).toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-xs">{h.income_rate}%</td>
+                            <td className="px-3 py-2 text-right text-xs font-semibold text-green-700">₦{Number(h.income_amount).toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                h.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {h.status === 'paid' ? 'Paid' : 'Pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

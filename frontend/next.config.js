@@ -6,6 +6,11 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  async redirects() {
+    return [
+      { source: '/register', destination: '/auth/register', permanent: true }
+    ];
+  },
   images: {
     domains: [
       'your-project.supabase.co',

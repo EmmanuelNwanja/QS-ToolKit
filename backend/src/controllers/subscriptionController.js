@@ -750,6 +750,15 @@ exports.verify = async (req, res, next) => {
       } catch (emailErr) {
         logger.error('Failed to send subscription confirmation email', { userId: meta.user_id, error: emailErr.message });
       }
+
+      // Record referral income for referrer
+      try {
+        const referralCtrl = require('./referralController');
+        const grossAmount = roundMoney(meta.gross_amount ?? verification.amount);
+        await referralCtrl.recordReferralIncome(meta.user_id, null, meta.plan_name, grossAmount);
+      } catch (refIncomeErr) {
+        logger.warn({ message: 'Failed to record referral income', error: refIncomeErr.message });
+      }
     }
 
     return res.json(success('Subscription activated', {
@@ -892,6 +901,15 @@ exports.webhook = async (req, res, next) => {
         await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data, expiresAt });
         if (meta.promo_id) {
           await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
+        }
+
+        // Record referral income for referrer
+        try {
+          const referralCtrl = require('./referralController');
+          const grossAmount = roundMoney(meta.gross_amount ?? ((data.amount || 0) / 100));
+          await referralCtrl.recordReferralIncome(meta.user_id, null, meta.plan_name, grossAmount);
+        } catch (refIncomeErr) {
+          logger.warn({ message: 'Failed to record referral income (Paystack webhook)', error: refIncomeErr.message });
         }
       }
     }
@@ -1057,6 +1075,15 @@ exports.flutterwaveWebhook = async (req, res, next) => {
           }
         } catch (emailErr) {
           logger.error('Failed to send subscription confirmation email', { userId: meta.user_id, error: emailErr.message });
+        }
+
+        // Record referral income for referrer
+        try {
+          const referralCtrl = require('./referralController');
+          const grossAmount = roundMoney(data.amount);
+          await referralCtrl.recordReferralIncome(meta.user_id, null, plan?.name, grossAmount);
+        } catch (refIncomeErr) {
+          logger.warn({ message: 'Failed to record referral income (Flutterwave webhook)', error: refIncomeErr.message });
         }
       }
     }

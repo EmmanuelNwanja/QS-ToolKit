@@ -459,7 +459,8 @@ export default function SubscriptionPage() {
             })}
           </div>
 
-          {/* Add-on Cards */}
+          {/* Add-on Cards — Coming Soon, hidden for now */}
+          {false && (
           <div className="mt-2">
             <h3 className="font-display text-lg font-bold text-primary-800 mb-4">Add-ons</h3>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -532,6 +533,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
           </div>
+          )}
 
           <div className="card bg-blue-50 border-blue-100">
             <h3 className="font-semibold text-blue-800 mb-2">Secure Payment</h3>

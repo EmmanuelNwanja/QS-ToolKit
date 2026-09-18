@@ -420,11 +420,17 @@ export const researchAPI = {
 export const referralAPI = {
   getMyLink:         ()       => api.get('/referrals/my-link'),
   getMyStats:        ()       => api.get('/referrals/my-stats'),
+  getMyIncome:       ()       => api.get('/referrals/my-income'),
+  getMySignups:      ()       => api.get('/referrals/my-signups'),
   adminListDiscounts:(params) => api.get('/referrals/admin/discounts', { params }),
   adminStats:        ()       => api.get('/referrals/admin/stats'),
   adminAssignDiscount:(data)  => api.post('/referrals/admin/discounts', data),
   adminUpdateDiscount:(id, d) => api.patch(`/referrals/admin/discounts/${id}`, d),
-  adminRevokeDiscount:(id)    => api.delete(`/referrals/admin/discounts/${id}`)
+  adminRevokeDiscount:(id)    => api.delete(`/referrals/admin/discounts/${id}`),
+  adminListIncomeRates:(params) => api.get('/referrals/admin/income-rates', { params }),
+  adminSetIncomeRate: (data)  => api.post('/referrals/admin/income-rates', data),
+  adminUpdateIncomeRate:(id, d) => api.patch(`/referrals/admin/income-rates/${id}`, d),
+  adminRevokeIncomeRate:(id)  => api.delete(`/referrals/admin/income-rates/${id}`)
 };
 
 export default api;
