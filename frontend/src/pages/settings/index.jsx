@@ -5,7 +5,7 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import useAuthStore from '../../context/authStore';
 import pushNotificationService from '../../services/pushNotificationService';
-import { userAPI, pushAPI, subscriptionAPI, referralAPI } from '../../services/api';
+import { userAPI, pushAPI, subscriptionAPI, referralAPI, authAPI } from '../../services/api';
 
 const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Referrals', 'Account'];
 const DEFAULT_INCOME_RATES = { basic: 1.0, pro: 0.6, enterprise: 0.3 };
@@ -34,8 +34,13 @@ export default function SettingsPage() {
   const [referral, setReferral] = useState({ link: '', code: '', stats: { total_signups: 0, conversions: 0 } });
   const [refIncome, setRefIncome] = useState({ summary: { total_earned: 0, total_pending: 0, total_paid: 0, total_referrals: 0, active_referrals: 0, by_plan: {} }, history: [], rates: DEFAULT_INCOME_RATES });
   const [refSignups, setRefSignups] = useState([]);
-  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwStep, setPwStep] = useState(1); // 1: send OTP, 2: verify OTP, 3: new password
+  const [pwOtp, setPwOtp] = useState(['', '', '', '', '', '']);
+  const [pwResetToken, setPwResetToken] = useState('');
+  const [pwNewPassword, setPwNewPassword] = useState('');
+  const [pwConfirmPassword, setPwConfirmPassword] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+  const pwOtpRefs = useRef([]);
   const logoRef      = useRef();
   const signatureRef = useRef();
 
@@ -274,30 +279,64 @@ export default function SettingsPage() {
     } finally { setAccountBusy(false); }
   };
 
-  const handleChangePassword = async () => {
-    if (!pwForm.current_password || !pwForm.new_password) {
-      toast.error('Please fill all password fields');
-      return;
-    }
-    if (pwForm.new_password.length < 8) {
-      toast.error('New password must be at least 8 characters');
-      return;
-    }
-    if (pwForm.new_password !== pwForm.confirm_password) {
-      toast.error('New passwords do not match');
-      return;
-    }
+  const handlePwSendOtp = async () => {
     setPwLoading(true);
     try {
-      await userAPI.changePassword({
-        current_password: pwForm.current_password,
-        new_password: pwForm.new_password
-      });
-      toast.success('Password changed successfully');
-      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+      await authAPI.forgotPassword(user.email);
+      toast.success('Verification code sent! Check your email.');
+      setPwStep(2);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not send code');
+    } finally { setPwLoading(false); }
+  };
+
+  const handlePwVerifyOtp = async () => {
+    const code = pwOtp.join('');
+    if (code.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setPwLoading(true);
+    try {
+      const { data } = await authAPI.verifyResetOtp({ email: user.email, otp: code });
+      setPwResetToken(data?.reset_token || '');
+      setPwStep(3);
+      toast.success('Code verified! Set your new password.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid code');
+    } finally { setPwLoading(false); }
+  };
+
+  const handlePwResetPassword = async () => {
+    if (!pwNewPassword || pwNewPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (pwNewPassword !== pwConfirmPassword) { toast.error('Passwords do not match'); return; }
+    setPwLoading(true);
+    try {
+      await authAPI.resetPassword({ reset_token: pwResetToken, new_password: pwNewPassword });
+      toast.success('Password changed successfully!');
+      setPwStep(1);
+      setPwOtp(['', '', '', '', '', '']);
+      setPwResetToken('');
+      setPwNewPassword('');
+      setPwConfirmPassword('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not change password');
     } finally { setPwLoading(false); }
+  };
+
+  const handlePwOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...pwOtp];
+    newOtp[index] = value.slice(-1);
+    setPwOtp(newOtp);
+    if (value && index < 5) pwOtpRefs.current[index + 1]?.focus();
+    if (newOtp.every(d => d !== '') && index === 5) {
+      setTimeout(() => {
+        const code = newOtp.join('');
+        setPwLoading(true);
+        authAPI.verifyResetOtp({ email: user.email, otp: code })
+          .then(({ data }) => { setPwResetToken(data?.reset_token || ''); setPwStep(3); toast.success('Code verified!'); })
+          .catch((err) => { toast.error(err.response?.data?.message || 'Invalid code'); setPwOtp(['', '', '', '', '', '']); pwOtpRefs.current[0]?.focus(); })
+          .finally(() => setPwLoading(false));
+      }, 300);
+    }
   };
 
   return (
@@ -725,21 +764,50 @@ export default function SettingsPage() {
               {/* Change Password */}
               <div className="card space-y-4">
                 <h2 className="section-title">🔐 Change Password</h2>
-                <div>
-                  <label className="label">Current Password</label>
-                  <input type="password" className="input" value={pwForm.current_password} onChange={(e) => setPwForm(f => ({ ...f, current_password: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">New Password</label>
-                  <input type="password" className="input" placeholder="Min. 8 characters" value={pwForm.new_password} onChange={(e) => setPwForm(f => ({ ...f, new_password: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">Confirm New Password</label>
-                  <input type="password" className="input" value={pwForm.confirm_password} onChange={(e) => setPwForm(f => ({ ...f, confirm_password: e.target.value }))} />
-                </div>
-                <button onClick={handleChangePassword} disabled={pwLoading} className="btn-primary text-sm">
-                  {pwLoading ? 'Changing...' : 'Change Password'}
-                </button>
+
+                {pwStep === 1 && (
+                  <>
+                    <p className="text-sm text-gray-500">We&#39;ll send a verification code to <strong>{user?.email}</strong></p>
+                    <button onClick={handlePwSendOtp} disabled={pwLoading} className="btn-primary text-sm">
+                      {pwLoading ? 'Sending...' : 'Send Verification Code'}
+                    </button>
+                  </>
+                )}
+
+                {pwStep === 2 && (
+                  <>
+                    <p className="text-sm text-gray-500">Enter the 6-digit code sent to <strong>{user?.email}</strong></p>
+                    <div className="flex gap-2 justify-center">
+                      {pwOtp.map((digit, i) => (
+                        <input key={i} ref={el => pwOtpRefs.current[i] = el} type="text" inputMode="numeric" maxLength={1}
+                          value={digit} onChange={e => handlePwOtpChange(i, e.target.value)}
+                          className="w-11 h-12 text-center text-lg font-mono border border-gray-300 rounded-lg focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                        />
+                      ))}
+                    </div>
+                    <button onClick={handlePwVerifyOtp} disabled={pwLoading} className="btn-primary text-sm">
+                      {pwLoading ? 'Verifying...' : 'Verify Code'}
+                    </button>
+                    <button onClick={() => { setPwStep(1); setPwOtp(['', '', '', '', '', '']); }} className="text-sm text-primary-600 hover:underline w-full text-center">← Change email or resend</button>
+                  </>
+                )}
+
+                {pwStep === 3 && (
+                  <>
+                    <p className="text-sm text-gray-500">Set your new password below.</p>
+                    <div>
+                      <label className="label">New Password</label>
+                      <input type="password" className="input" placeholder="Min. 8 characters" value={pwNewPassword} onChange={e => setPwNewPassword(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="label">Confirm New Password</label>
+                      <input type="password" className="input" value={pwConfirmPassword} onChange={e => setPwConfirmPassword(e.target.value)} />
+                    </div>
+                    <button onClick={handlePwResetPassword} disabled={pwLoading} className="btn-primary text-sm">
+                      {pwLoading ? 'Changing...' : 'Change Password'}
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="card space-y-4">
