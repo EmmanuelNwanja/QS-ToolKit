@@ -120,6 +120,7 @@ export default function AiChatWidget({ context = {} }) {
         onClick={() => setOpen((o) => !o)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary-800 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
         aria-label="Open AI Chat"
+        data-tour="chat-bot"
       >
         {open ? (
           <span className="text-xl">✕</span>

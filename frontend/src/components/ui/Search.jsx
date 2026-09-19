@@ -1,31 +1,33 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { searchAPI } from '../../services/api';
 
 /* ══ Seek ═════════════════════════════════════════════════
-   A search icon that becomes a search field.
+   A search icon that becomes a search field with live results.
 
    ONE OBJECT, NOT TWO. The icon and the field are both
    inside it the whole time — the box's WIDTH is the state.
 
-   Originally from Bencho (MIT).
    QSToolkit: tokens mapped to tailwind gray scale + font-body.
-   Replaces GlobalSearch.jsx with a more polished interaction.
+   Live results: queries /search as the user types (min 3 chars),
+   renders a predictable grouped dropdown (Projects / BOQs /
+   Invoices) and navigates on selection.
 
-   QSToolkit use: global search, command palette trigger,
-   or any context where search should feel like a single
-   transforming object rather than two swapping elements. */
+   QSToolkit sizing: the field was too large next to the
+   notification bell + upgrade button; SHUT/LENS/WIDE/SNUG are
+   trimmed to fit the header without crowding. */
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-const SHUT = 64;
-const LENS = 28;
+const SHUT = 44;
+const LENS = 20;
 const INSET = (SHUT - LENS) / 2;
-const CORNER = 32;
-const WIDE = 320;
-const SNUG = 280;
+const CORNER = 22;
+const WIDE = 240;
+const SNUG = 190;
+const MIN_CHARS = 3;
 
-/* ── one spring, for everything that settles ───────────────
-   QSToolkit: inlined spring to avoid external dependencies.
-   Frames, not milliseconds. Tuned for snappy search feel. */
+/* ── one spring, for everything that settles ─────────────── */
 const springOf = (tune) => ({
   k: 0.08 + (tune / 100) * 0.16,
   d: 0.62 + (tune / 100) * 0.2,
@@ -76,6 +78,12 @@ const stillness = () =>
   typeof window !== "undefined" &&
   !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+const TYPE_META = {
+  projects: { label: 'Projects', href: (r) => `/projects/${r.id}` },
+  boqs:     { label: 'BOQs',     href: (r) => `/boq/${r.id}` },
+  invoices: { label: 'Invoices', href: () => '/invoices' },
+};
+
 export function Search({
   give = 50,
   spring = 50,
@@ -83,6 +91,7 @@ export function Search({
   corner = CORNER,
   onSearch,
 } = {}) {
+  const router = useRouter();
   const [snug, setSnug] = useState(
     () => typeof window !== "undefined"
       && window.matchMedia("(max-width: 760px)").matches,
@@ -108,11 +117,14 @@ export function Search({
   const field = useRef(null);
   const beat = useRef(0);
   const rest = useRef(0);
+  const listId = useRef(`sek-list-${Math.random().toString(36).slice(2, 9)}`);
 
   const [open, setOpen] = useState(false);
   const [press, setPress] = useState(false);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState({ projects: [], boqs: [], invoices: [] });
+  const [error, setError] = useState(null);
   const [lean, setLean] = useState({ x: 0, y: 0 });
   const still = stillness();
 
@@ -125,6 +137,53 @@ export function Search({
   const w = useSpring(target, clamp(spring, 0, 100), still);
 
   const p = clamp((w - SHUT) / Math.max(1, Math.max(SHUT, span) - SHUT), 0, 1);
+
+  /* ── Live search: debounced, min 3 chars, abortable ────────── */
+
+  const runSearch = useCallback(async (q) => {
+    const trimmed = q.trim();
+    if (trimmed.length < MIN_CHARS) {
+      setResults({ projects: [], boqs: [], invoices: [] });
+      setError(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await searchAPI.global(trimmed);
+      setResults(data?.results || { projects: [], boqs: [], invoices: [] });
+      setError(null);
+    } catch (err) {
+      const code = err.response?.data?.code;
+      if (code !== 'QUERY_TOO_SHORT') setError('Search unavailable');
+      setResults({ projects: [], boqs: [], invoices: [] });
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const trimmed = value.trim();
+    if (!open || trimmed.length < MIN_CHARS) {
+      setResults({ projects: [], boqs: [], invoices: [] });
+      setError(null);
+      return undefined;
+    }
+    const t = setTimeout(() => { runSearch(trimmed); }, 250);
+    return () => clearTimeout(t);
+  }, [value, open, runSearch]);
+
+  const totalHits =
+    (results.projects?.length || 0) +
+    (results.boqs?.length || 0) +
+    (results.invoices?.length || 0);
+
+  const go = (type, r) => {
+    const meta = TYPE_META[type];
+    if (!meta) return;
+    setOpen(false);
+    setValue('');
+    router.push(meta.href(r)).catch(() => {});
+  };
 
   useEffect(() => {
     const el = frame.current;
@@ -168,7 +227,9 @@ export function Search({
     }, still ? 0 : 90);
   };
 
-  const away = () => {
+  const away = (e) => {
+    // Don't close when clicking inside the results dropdown.
+    if (e && frame.current && frame.current.contains(e.relatedTarget)) return;
     if (value.trim()) return;
     setOpen(false);
   };
@@ -180,15 +241,21 @@ export function Search({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && value.trim()) {
+    if (e.key === "Enter" && value.trim().length >= MIN_CHARS) {
+      if (results.projects?.length) { go('projects', results.projects[0]); return; }
+      if (results.boqs?.length) { go('boqs', results.boqs[0]); return; }
+      if (results.invoices?.length) { go('invoices', results.invoices[0]); return; }
       onSearch?.(value.trim());
     }
     if (e.key !== "Escape") return;
     e.preventDefault();
     setValue("");
+    setResults({ projects: [], boqs: [], invoices: [] });
     setOpen(false);
     field.current?.blur();
   };
+
+  const showPanel = open && value.trim().length >= MIN_CHARS;
 
   return (
     <div
@@ -235,7 +302,11 @@ export function Search({
           type="text"
           value={value}
           placeholder="Search"
-          aria-label="Search"
+          aria-label="Search projects, BOQs and invoices"
+          role="combobox"
+          aria-expanded={showPanel}
+          aria-controls={listId.current}
+          aria-autocomplete="list"
           inputMode={touch ? "none" : undefined}
           tabIndex={open ? 0 : -1}
           onChange={(e) => { setValue(e.target.value); tapped(); }}
@@ -247,6 +318,60 @@ export function Search({
           <button className="sek-hit" aria-label="Search" onClick={start} />
         )}
       </div>
+
+      {/* ── Live results dropdown ─────────────────────────────── */}
+      {showPanel && (
+        <div
+          id={listId.current}
+          role="listbox"
+          className="absolute left-0 top-[calc(100%+6px)] w-[320px] max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50"
+        >
+          {busy && totalHits === 0 && (
+            <div className="px-4 py-3 text-sm text-gray-400">Searching…</div>
+          )}
+
+          {!busy && error && (
+            <div className="px-4 py-3 text-sm text-red-500">{error}</div>
+          )}
+
+          {!busy && !error && totalHits === 0 && (
+            <div className="px-4 py-3 text-sm text-gray-400">
+              No matches for “{value.trim()}”
+            </div>
+          )}
+
+          {!busy && !error && Object.entries(TYPE_META).map(([type, meta]) => {
+            const rows = results[type] || [];
+            if (rows.length === 0) return null;
+            return (
+              <div key={type} className="py-1">
+                <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  {meta.label}
+                </p>
+                {rows.map((r) => (
+                  <button
+                    key={`${type}-${r.id}`}
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    onMouseDown={(e) => { e.preventDefault(); go(type, r); }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {type === 'invoices' ? (r.invoice_number || r.client_name || 'Invoice') : (r.title || 'Untitled')}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {type === 'projects' && (r.client_name || r.location || r.status || '')}
+                      {type === 'boqs' && (r.status ? `Status: ${r.status}` : '')}
+                      {type === 'invoices' && (r.client_name || r.invoice_type || '')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

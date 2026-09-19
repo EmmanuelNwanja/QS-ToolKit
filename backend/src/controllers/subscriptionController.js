@@ -1,19 +1,11 @@
-const axios = require('axios');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
 const logger = require('../utils/logger');
 const paymentSubmissionService = require('../services/paymentSubmissionService');
 const subscriptionManagementService = require('../services/subscriptionManagementService');
-const { initializePayment, flutterwaveVerifyByReference, paystackVerify, flutterwaveCancelSubscription, flutterwaveGetSubscriptionsByEmail } = require('../services/paymentGateway');
+const { initializePayment, flutterwaveVerifyByReference, flutterwaveCancelSubscription, flutterwaveGetSubscriptionsByEmail } = require('../services/paymentGateway');
 const { getGatewayForCountry } = require('../services/flutterwaveService');
-
-// Legacy Paystack constants — kept for backward-compat webhook handlers only
-const PAYSTACK_BASE = 'https://api.paystack.co';
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-  'Content-Type': 'application/json'
-});
 
 const PLAN_ALIASES = {
   free: ['free'],
@@ -49,21 +41,6 @@ async function resolveSubscriptionPlanByName(planName) {
     || plans[0];
 }
 
-async function resolveSubscriptionPlanByPaystackCode(planCode) {
-  if (!planCode) return null;
-
-  const { data: plans, error: planErr } = await supabase
-    .from('subscription_plans')
-    .select('*')
-    .eq('is_active', true);
-
-  if (planErr) throw planErr;
-
-  return (plans || []).find((plan) => (
-    plan.paystack_plan_code === planCode || plan.paystack_plan_code_annual === planCode
-  )) || null;
-}
-
 async function resolveSubscriptionPlanByFlutterwavePlanId(planId) {
   if (!planId) return null;
 
@@ -85,10 +62,10 @@ async function resolveSubscriptionPlanById(planId) {
   return data;
 }
 
-function resolveBillingCycleFromPlanCode(plan, planCode, fallback = 'monthly') {
-  if (!planCode || !plan) return fallback;
-  if (plan.paystack_plan_code_annual === planCode) return 'annual';
-  if (plan.paystack_plan_code === planCode) return 'monthly';
+function resolveBillingCycleFromFlutterwavePlanId(plan, planId, fallback = 'monthly') {
+  if (!planId || !plan) return fallback;
+  if (plan.flutterwave_plan_id_annual === planId) return 'annual';
+  if (plan.flutterwave_plan_id === planId) return 'monthly';
   return fallback;
 }
 
@@ -96,13 +73,6 @@ function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
-// Legacy Paystack subscription creation — used by ensureRecurringSubscriptionForDiscountedCharge (webhook)
-async function createPaystackSubscription({ customerCode, paystackPlanCode, authorizationCode, startDate }) {
-  const payload = { customer: customerCode, plan: paystackPlanCode };
-  if (authorizationCode) payload.authorization = authorizationCode;
-  if (startDate) payload.start_date = new Date(startDate).toISOString();
-  return axios.post(`${PAYSTACK_BASE}/subscription`, payload, { headers: paystackHeaders() });
-}
 
 async function markPromoUsedOnce({ promoId, userId, planName }) {
   if (!promoId || !userId) return false;
@@ -285,20 +255,18 @@ exports.initiate = async (req, res, next) => {
       }
     }
 
-    // ─── Referral discount (first paid subscription only) ────
+    // ─── Referral discount (first paid subscription within 60 days) ────
+    let referralDiscountUsed = false;
+    const referralCtrl = require('./referralController');
     if (!promoId && basePrice > 0) {
       try {
-        const referralCtrl = require('./referralController');
-        const refInfo = await referralCtrl.getReferralInfoForUser(req.user.id);
-        if (refInfo?.referred_by) {
-          const refDiscount = await referralCtrl.getReferralDiscount(refInfo.referred_by);
-          if (refDiscount) {
-            const referralDiscountAmt = (basePrice * refDiscount.discount_percent) / 100;
-            discountApplied += referralDiscountAmt;
-            basePrice -= referralDiscountAmt;
-            // Mark discount as used
-            await referralCtrl.markDiscountUsed(req.user.id);
-          }
+        const eligible = await referralCtrl.getEligibleReferralDiscount(req.user.id);
+        if (eligible?.discount) {
+          const referralDiscountAmt = (basePrice * eligible.discount.discount_percent) / 100;
+          discountApplied += referralDiscountAmt;
+          basePrice -= referralDiscountAmt;
+          // Deferred: only marked used after the payment actually succeeds.
+          referralDiscountUsed = true;
         }
       } catch (refErr) {
         logger.warn({ message: 'Referral discount lookup failed', error: refErr.message });
@@ -310,11 +278,14 @@ exports.initiate = async (req, res, next) => {
     const discountedCharge = discountApplied > 0 && basePrice > 0;
 
     // 100% promo discounts should activate directly without external payment.
-    if (basePrice === 0 || (gw.gateway === 'paystack' && Math.round(basePrice * 100) === 0)) {
+    if (basePrice === 0) {
       const expiresAt = await activateSubscription(req.user.id, plan.id, billing_cycle);
 
       if (promoId) {
         await markPromoUsedOnce({ promoId, userId: req.user.id, planName: plan.name });
+      }
+      if (referralDiscountUsed) {
+        await referralCtrl.markDiscountUsed(req.user.id);
       }
 
       await recordBillingTransactionOnce({
@@ -373,6 +344,7 @@ exports.initiate = async (req, res, next) => {
           gateway: gw.gateway,
           promo_id: promoId,
           promo_code: promoCodeValue,
+          referral_discount: referralDiscountUsed,
           discount_applied: discountApplied,
           discount_amount: discountApplied,
           gross_amount: listPrice,
@@ -635,36 +607,17 @@ exports.verify = async (req, res, next) => {
     const actualRef = rawRef ? rawRef.split(',')[0].trim() : rawRef;
 
     let verification;
-    if (gateway === 'flutterwave' || tx_ref) {
-      // Flutterwave verification by tx_ref
-      try {
-        verification = await flutterwaveVerifyByReference(actualRef);
-      } catch (flwErr) {
-        const status = flwErr?.response?.data?.status || flwErr?.response?.status;
-        const msg = flwErr?.response?.data?.message || flwErr.message;
-        // Flutterwave returns "error" status with 400 when tx_ref not found (payment not completed)
-        if (status === 'error' || status === 400 || status === 404) {
-          return res.status(400).json(error('Payment not found. The transaction may not have been completed. Please try again.'));
-        }
-        throw flwErr;
+    // Flutterwave verification by tx_ref (sole gateway)
+    try {
+      verification = await flutterwaveVerifyByReference(actualRef);
+    } catch (flwErr) {
+      const status = flwErr?.response?.data?.status || flwErr?.response?.status;
+      const msg = flwErr?.response?.data?.message || flwErr.message;
+      // Flutterwave returns "error" status with 400 when tx_ref not found (payment not completed)
+      if (status === 'error' || status === 400 || status === 404) {
+        return res.status(400).json(error('Payment not found. The transaction may not have been completed. Please try again.'));
       }
-    } else {
-      // Try Flutterwave first (primary), fall back to Paystack (legacy)
-      try {
-        verification = await flutterwaveVerifyByReference(actualRef);
-      } catch {
-        const paystackRes = await paystackVerify(actualRef);
-        const txn = paystackRes.data.data;
-        if (txn.status !== 'success') return res.status(400).json(error('Payment not successful'));
-        verification = {
-          success: true,
-          gateway: 'paystack',
-          reference: txn.reference,
-          amount: txn.amount / 100,
-          currency: txn.currency,
-          customer_email: txn.customer?.email
-        };
-      }
+      throw flwErr;
     }
 
     if (!verification.success) return res.status(400).json(error('Payment not successful'));
@@ -740,6 +693,16 @@ exports.verify = async (req, res, next) => {
         }
       }
 
+      // Referral discount consumed only on confirmed payment success.
+      if (meta.referral_discount) {
+        try {
+          const referralCtrlVerify = require('./referralController');
+          await referralCtrlVerify.markDiscountUsed(meta.user_id);
+        } catch (refErr) {
+          logger.warn({ message: 'Failed to mark referral discount used', userId: meta.user_id, error: refErr.message });
+        }
+      }
+
       // Send confirmation email (non-critical, don't break response if it fails)
       try {
         const { data: user } = await supabase.from('users')
@@ -764,198 +727,6 @@ exports.verify = async (req, res, next) => {
     return res.json(success('Subscription activated', {
       plan: meta.plan_name, billing_cycle: meta.billing_cycle || 'monthly'
     }));
-  } catch (err) { next(err); }
-};
-
-// ── Paystack webhook ──────────────────────────────────────────
-exports.webhook = async (req, res, next) => {
-  try {
-    const hash = require('crypto')
-      .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
-      .update(JSON.stringify(req.body)).digest('hex');
-    if (hash !== req.headers['x-paystack-signature'])
-      return res.status(401).send('Invalid signature');
-
-    const { event, data } = req.body;
-    if (event === 'charge.success') {
-      const meta = data.metadata || {};
-
-      // Handle academy subscription payments
-      if (meta.product_type === 'academy_subscription' && meta.user_id) {
-        if (await hasBillingTransactionReference(data.reference)) return res.sendStatus(200);
-        const billingCycle = meta.billing_cycle || 'weekly';
-        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
-        const now = new Date();
-        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
-
-        // Expire any existing active subscription
-        await supabase
-          .from('academy_subscriptions')
-          .update({ status: 'expired' })
-          .eq('user_id', meta.user_id)
-          .eq('status', 'active');
-
-        await supabase
-          .from('academy_subscriptions')
-          .insert({
-            user_id: meta.user_id,
-            status: 'active',
-            billing_cycle: billingCycle,
-            started_at: now.toISOString(),
-            expires_at: expiresAt.toISOString(),
-            payment_reference: data.reference,
-            amount_paid: (data.amount || 0) / 100,
-            created_at: now.toISOString(),
-          });
-
-        await recordBillingTransactionOnce({
-          userId: meta.user_id,
-          amount: (data.amount || 0) / 100,
-          currency: data.currency || 'NGN',
-          reference: data.reference,
-          description: `Academy subscription (${billingCycle})`,
-          metadata: { product_type: 'academy_subscription', billing_cycle: billingCycle }
-        });
-        return res.sendStatus(200);
-      }
-
-      // Handle exam prep subscription payments
-      if (meta.product_type === 'exam_prep_subscription' && meta.user_id) {
-        if (await hasBillingTransactionReference(data.reference)) return res.sendStatus(200);
-        const billingCycle = meta.billing_cycle || 'weekly';
-        const durationMs = { weekly: 7, monthly: 30, annual: 365 }[billingCycle] || 7;
-        const now = new Date();
-        const expiresAt = new Date(now.getTime() + durationMs * 24 * 60 * 60 * 1000);
-
-        // Expire any existing active subscription
-        await supabase
-          .from('exam_prep_subscriptions')
-          .update({ status: 'expired' })
-          .eq('user_id', meta.user_id)
-          .eq('status', 'active');
-
-        await supabase
-          .from('exam_prep_subscriptions')
-          .insert({
-            user_id: meta.user_id,
-            status: 'active',
-            billing_cycle: billingCycle,
-            started_at: now.toISOString(),
-            expires_at: expiresAt.toISOString(),
-            payment_reference: data.reference,
-            amount_paid: (data.amount || 0) / 100,
-            created_at: now.toISOString(),
-          });
-
-        await recordBillingTransactionOnce({
-          userId: meta.user_id,
-          amount: (data.amount || 0) / 100,
-          currency: data.currency || 'NGN',
-          reference: data.reference,
-          description: `Exam prep subscription (${billingCycle})`,
-          metadata: { product_type: 'exam_prep_subscription', billing_cycle: billingCycle }
-        });
-        return res.sendStatus(200);
-      }
-
-      if (!meta.is_philanthropist && meta.user_id && meta.plan_id) {
-        if (await hasBillingTransactionReference(data.reference)) {
-          await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data });
-          return res.sendStatus(200);
-        }
-
-        const expiresAt = await activateSubscription(
-          meta.user_id,
-          meta.plan_id,
-          meta.billing_cycle || 'monthly',
-          { extendFromCurrentExpiry: !!(meta.is_renewal || meta.is_auto_renewal) }
-        );
-        await persistPaystackCustomerState(meta.user_id, data);
-        await recordBillingTransactionOnce({
-          userId: meta.user_id,
-          amount: (data.amount || 0) / 100,
-          grossAmount: meta.gross_amount,
-          discountAmount: meta.discount_amount || meta.discount_applied,
-          currency: data.currency || 'NGN',
-          reference: data.reference,
-          description: `${meta.plan_name} plan (${meta.billing_cycle || 'monthly'}) subscription`,
-          planName: meta.plan_name,
-          billingCycle: meta.billing_cycle,
-          promoId: meta.promo_id,
-          paystackPlanCode: meta.paystack_plan_code || data.plan?.plan_code || null,
-          metadata: {
-            plan_id: meta.plan_id,
-            plan_name: meta.plan_name,
-            billing_cycle: meta.billing_cycle,
-            paystack_plan_code: meta.paystack_plan_code || data.plan?.plan_code || null,
-            promo_id: meta.promo_id || null,
-            promo_code: meta.promo_code || null,
-            gross_amount: roundMoney(meta.gross_amount ?? ((data.amount || 0) / 100)),
-            discount_amount: roundMoney(meta.discount_amount ?? meta.discount_applied ?? 0),
-            net_amount: roundMoney((data.amount || 0) / 100),
-            payment_mode: meta.payment_mode || 'recurring_plan_initialize',
-            source: 'charge.success'
-          }
-        });
-
-        await ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload: data, expiresAt });
-        if (meta.promo_id) {
-          await markPromoUsedOnce({ promoId: meta.promo_id, userId: meta.user_id, planName: meta.plan_name });
-        }
-
-        // Record referral income for referrer
-        try {
-          const referralCtrl = require('./referralController');
-          const grossAmount = roundMoney(meta.gross_amount ?? ((data.amount || 0) / 100));
-          await referralCtrl.recordReferralIncome(meta.user_id, null, meta.plan_name, grossAmount);
-        } catch (refIncomeErr) {
-          logger.warn({ message: 'Failed to record referral income (Paystack webhook)', error: refIncomeErr.message });
-        }
-      }
-    }
-    if (event === 'subscription.create') {
-      const resolved = await resolveUserAndPlanFromPaystackEvent(data);
-      if (resolved?.user?.id) {
-        await persistPaystackCustomerState(resolved.user.id, data);
-      }
-    }
-    if (event === 'invoice.update' && isSuccessfulInvoiceEvent(data)) {
-      const recurringReference = data.reference || data.invoice_code || null;
-      if (recurringReference && await hasBillingTransactionReference(recurringReference)) {
-        return res.sendStatus(200);
-      }
-
-      const resolved = await resolveUserAndPlanFromPaystackEvent(data);
-      if (resolved?.user?.id && resolved?.plan?.id) {
-        const billingCycle = resolved.billingCycle || resolved.user.billing_cycle || 'monthly';
-        await activateSubscription(
-          resolved.user.id,
-          resolved.plan.id,
-          billingCycle,
-          { extendFromCurrentExpiry: true }
-        );
-        await persistPaystackCustomerState(resolved.user.id, data);
-        await recordBillingTransactionOnce({
-          userId: resolved.user.id,
-          amount: (data.amount_paid ?? data.amount ?? 0) / 100,
-          currency: data.currency || 'NGN',
-          reference: data.reference || data.invoice_code || `${event}-${resolved.user.id}-${Date.now()}`,
-          description: `${resolved.plan.name} plan (${billingCycle}) renewal`,
-          metadata: {
-            plan_id: resolved.plan.id,
-            plan_name: resolved.plan.name,
-            billing_cycle: billingCycle,
-            paystack_plan_code: resolved.planCode,
-            source: 'invoice.update'
-          }
-        });
-      }
-    }
-    if (event === 'subscription.disable') {
-      const email = data.customer?.email;
-      if (email) await supabase.from('users').update({ subscription_status: 'inactive' }).eq('email', email);
-    }
-    return res.sendStatus(200);
   } catch (err) { next(err); }
 };
 
@@ -1064,6 +835,16 @@ exports.flutterwaveWebhook = async (req, res, next) => {
           });
         }
 
+        // Referral discount consumed only on confirmed payment success.
+        if (meta.referral_discount) {
+          try {
+            const referralCtrlFlw = require('./referralController');
+            await referralCtrlFlw.markDiscountUsed(meta.user_id);
+          } catch (refErr) {
+            logger.warn({ message: 'Failed to mark referral discount used (Flutterwave webhook)', userId: meta.user_id, error: refErr.message });
+          }
+        }
+
         // Send confirmation email (non-critical)
         try {
           const { data: userData } = await supabase.from('users')
@@ -1159,7 +940,7 @@ exports.cancelMySubscription = async (req, res, next) => {
   try {
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, name, subscription_status, subscription_expires_at, flutterwave_subscription_id, paystack_subscription_code, subscription_plans(name)')
+      .select('id, email, name, subscription_status, subscription_expires_at, flutterwave_subscription_id, subscription_plans(name)')
       .eq('id', req.user.id)
       .single();
 
@@ -1185,14 +966,6 @@ exports.cancelMySubscription = async (req, res, next) => {
         }
       } catch (flwErr) {
         logger.warn('Failed to find/cancel Flutterwave subscription by email', { userId: req.user.id, error: flwErr.message });
-      }
-    }
-
-    if (user.paystack_subscription_code) {
-      try {
-        await axios.post(`${PAYSTACK_BASE}/subscription/${user.paystack_subscription_code}/disable`, {}, { headers: paystackHeaders() });
-      } catch (psErr) {
-        logger.warn('Failed to cancel Paystack subscription', { userId: req.user.id, error: psErr.message });
       }
     }
 
@@ -1349,7 +1122,7 @@ exports.renewMySubscription = async (req, res, next) => {
 
     const { data: user, error: userErr } = await supabase
       .from('users')
-      .select('email, plan_id, flutterwave_subscription_id, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
+      .select('email, plan_id, flutterwave_subscription_id, subscription_plans(name, price_monthly, price_annual)')
       .eq('id', req.user.id)
       .single();
 
@@ -1414,23 +1187,6 @@ exports.renewMySubscription = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-async function persistPaystackCustomerState(userId, paystackPayload) {
-  if (!userId) return;
-
-  const customerCode = paystackPayload?.customer?.customer_code || null;
-  const subscriptionCode = paystackPayload?.subscription?.subscription_code
-    || paystackPayload?.subscription_code
-    || null;
-
-  if (!customerCode && !subscriptionCode) return;
-
-  const updates = { updated_at: new Date().toISOString() };
-  if (customerCode) updates.paystack_customer_id = customerCode;
-  if (subscriptionCode) updates.paystack_subscription_code = subscriptionCode;
-
-  await supabase.from('users').update(updates).eq('id', userId);
-}
-
 async function persistFlutterwaveCustomerState(userId, flwPayload) {
   if (!userId) return;
 
@@ -1446,55 +1202,6 @@ async function persistFlutterwaveCustomerState(userId, flwPayload) {
   await supabase.from('users').update(updates).eq('id', userId);
 }
 
-async function ensureRecurringSubscriptionForDiscountedCharge({ meta, paystackPayload, expiresAt = null }) {
-  if (!meta?.requires_subscription_creation || meta?.is_philanthropist || !meta?.user_id || !meta?.paystack_plan_code) {
-    return null;
-  }
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, paystack_customer_id, paystack_subscription_code, subscription_expires_at')
-    .eq('id', meta.user_id)
-    .maybeSingle();
-
-  if (userError || !user) {
-    return null;
-  }
-
-  if (user.paystack_subscription_code) {
-    return user.paystack_subscription_code;
-  }
-
-  const customerCode = paystackPayload?.customer?.customer_code || user.paystack_customer_id;
-  if (!customerCode) {
-    logger.warn(`Skipping deferred recurring setup for user ${meta.user_id}: missing Paystack customer code`);
-    return null;
-  }
-
-  try {
-    const subscriptionRes = await createPaystackSubscription({
-      customerCode,
-      paystackPlanCode: meta.paystack_plan_code,
-      authorizationCode: paystackPayload?.authorization?.authorization_code || null,
-      startDate: expiresAt || user.subscription_expires_at || null
-    });
-
-    await persistPaystackCustomerState(meta.user_id, {
-      customer: { customer_code: customerCode },
-      subscription: subscriptionRes.data.data
-    });
-
-    return subscriptionRes.data.data;
-  } catch (err) {
-    logger.error('Deferred recurring subscription setup failed', {
-      user_id: meta.user_id,
-      plan_code: meta.paystack_plan_code,
-      error: err.response?.data?.message || err.message
-    });
-    return null;
-  }
-}
-
 async function recordBillingTransactionOnce({
   userId,
   amount,
@@ -1506,7 +1213,6 @@ async function recordBillingTransactionOnce({
   planName,
   billingCycle,
   promoId,
-  paystackPlanCode,
   metadata
 }) {
   if (!reference) return;
@@ -1532,7 +1238,6 @@ async function recordBillingTransactionOnce({
     plan_name: planName || metadata?.plan_name || null,
     billing_cycle: billingCycle || metadata?.billing_cycle || null,
     promo_id: promoId || metadata?.promo_id || null,
-    paystack_plan_code: paystackPlanCode || metadata?.paystack_plan_code || null,
     metadata: {
       ...metadata,
       gross_amount: resolvedGross,
@@ -1540,8 +1245,7 @@ async function recordBillingTransactionOnce({
       net_amount: netAmount,
       plan_name: planName || metadata?.plan_name || null,
       billing_cycle: billingCycle || metadata?.billing_cycle || null,
-      promo_id: promoId || metadata?.promo_id || null,
-      paystack_plan_code: paystackPlanCode || metadata?.paystack_plan_code || null
+      promo_id: promoId || metadata?.promo_id || null
     }
   };
 
@@ -1549,7 +1253,7 @@ async function recordBillingTransactionOnce({
   if (!insertError) return;
 
   const message = String(insertError.message || '').toLowerCase();
-  const missingFinancialColumn = ['gross_amount', 'discount_amount', 'net_amount', 'plan_name', 'billing_cycle', 'promo_id', 'paystack_plan_code']
+  const missingFinancialColumn = ['gross_amount', 'discount_amount', 'net_amount', 'plan_name', 'billing_cycle', 'promo_id']
     .some((column) => message.includes(column));
 
   if (!missingFinancialColumn) {
@@ -1579,63 +1283,6 @@ async function hasBillingTransactionReference(reference) {
     .maybeSingle();
 
   return !!existing;
-}
-
-async function resolveUserAndPlanFromPaystackEvent(data) {
-  const customerEmail = data?.customer?.email || null;
-  const customerCode = data?.customer?.customer_code || null;
-  const subscriptionCode = data?.subscription?.subscription_code || data?.subscription_code || null;
-  const planCode = data?.plan?.plan_code
-    || data?.subscription?.plan?.plan_code
-    || data?.line_items?.[0]?.plan?.plan_code
-    || null;
-
-  let user = null;
-
-  if (subscriptionCode) {
-    const lookup = await supabase
-      .from('users')
-      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
-      .eq('paystack_subscription_code', subscriptionCode)
-      .maybeSingle();
-    user = lookup.data || null;
-  }
-
-  if (!user && customerCode) {
-    const lookup = await supabase
-      .from('users')
-      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
-      .eq('paystack_customer_id', customerCode)
-      .maybeSingle();
-    user = lookup.data || null;
-  }
-
-  if (!user && customerEmail) {
-    const lookup = await supabase
-      .from('users')
-      .select('id, email, plan_id, billing_cycle, paystack_customer_id, paystack_subscription_code')
-      .eq('email', customerEmail)
-      .maybeSingle();
-    user = lookup.data || null;
-  }
-
-  let plan = await resolveSubscriptionPlanByPaystackCode(planCode);
-  if (!plan && user?.plan_id) {
-    const lookup = await supabase
-      .from('subscription_plans')
-      .select('*')
-      .eq('id', user.plan_id)
-      .maybeSingle();
-    plan = lookup.data || null;
-  }
-
-  const billingCycle = resolveBillingCycleFromPlanCode(plan, planCode, user?.billing_cycle || 'monthly');
-  return { user, plan, billingCycle, planCode };
-}
-
-function isSuccessfulInvoiceEvent(data) {
-  const status = String(data?.status || '').toLowerCase();
-  return status === 'success' || status === 'paid' || data?.paid === true;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

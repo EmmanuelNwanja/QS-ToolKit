@@ -12,6 +12,7 @@ router.get('/my-income', ctrl.getMyIncome);
 router.get('/my-signups', ctrl.getMySignups);
 
 // ─── Admin routes ─────────────────────────────────────────────
+router.get('/admin/users-lookup', adminAuth, requirePermission('manage_users'), ctrl.adminUserLookup);
 router.get('/admin/discounts', adminAuth, requirePermission('manage_users'), ctrl.adminListDiscounts);
 router.get('/admin/stats', adminAuth, requirePermission('view_analytics'), ctrl.adminGetReferralStats);
 router.post('/admin/discounts', adminAuth, superAdminAuth, ctrl.adminAssignDiscount);

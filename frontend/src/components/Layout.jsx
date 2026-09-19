@@ -11,19 +11,20 @@ import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
 import AiChatWidget from './ui/ai-chat';
 import Search from './ui/Search';
+import ProductTour from './tour/ProductTour';
 import { clsx } from 'clsx';
 
 const NAV_GROUPS = [
   {
     label: 'Overview',
     items: [
-      { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', href: '/dashboard' },
+      { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', href: '/dashboard', tourKey: 'nav-dashboard' },
     ],
   },
   {
     label: 'AI Tools',
     items: [
-      { key: '/engine', icon: <RobotOutlined />, label: 'AI Engine', href: '/engine' },
+      { key: '/engine', icon: <RobotOutlined />, label: 'AI Engine', href: '/engine', tourKey: 'nav-engine' },
       { key: '/qs-flow', icon: <RocketOutlined />, label: 'QS Flow', href: '/qs-flow' },
       { key: '/parametric', icon: <ApartmentOutlined />, label: 'Smart Parametric', href: '/parametric', disabled: true, comingSoon: true },
     ],
@@ -31,9 +32,9 @@ const NAV_GROUPS = [
   {
     label: 'Projects',
     items: [
-      { key: '/projects', icon: <FolderOutlined />, label: 'Projects', href: '/projects' },
+      { key: '/projects', icon: <FolderOutlined />, label: 'Projects', href: '/projects', tourKey: 'nav-projects' },
       { key: '/boq', icon: <FileTextOutlined />, label: 'Bill of Quantities', href: '/boq' },
-      { key: '/calculators', icon: <CalculatorOutlined />, label: 'Calculators', href: '/calculators' },
+      { key: '/calculators', icon: <CalculatorOutlined />, label: 'Calculators', href: '/calculators', tourKey: 'nav-calculators' },
     ],
   },
   {
@@ -126,22 +127,25 @@ export default function Layout({ children, title }) {
     children: group.items.map(item => {
       const locked = item.plans && !item.plans.map(normalizePlan).includes(currentPlan);
       const isComingSoon = item.disabled && item.comingSoon;
-      return {
-        key: item.key,
-        icon: item.icon,
-        label: isComingSoon ? (
+      const wrappedLabel = item.tourKey ? <span data-tour={item.tourKey}>{item.label}</span> : item.label;
+      const label = isComingSoon ? (
           <span className="flex items-center gap-1 text-gray-400 cursor-not-allowed">
-            {item.label}
+            {wrappedLabel}
             <span className="text-[9px] font-semibold bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full ml-auto">Soon</span>
           </span>
         ) : locked ? (
           <Link href="/subscription" scroll={false} className="flex items-center gap-1">
-            {item.label}
+            {wrappedLabel}
             <span className="text-[9px] font-semibold bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded-full ml-auto">Locked</span>
           </Link>
         ) : (
-          <Link href={item.href} scroll={false}>{item.label}</Link>
-        ),
+          <Link href={item.href} scroll={false}>{wrappedLabel}</Link>
+        );
+
+      return {
+        key: item.key,
+        icon: item.icon,
+        label,
         disabled: item.disabled,
       };
     }),
@@ -204,7 +208,9 @@ export default function Layout({ children, title }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Search />
+            <div data-tour="search">
+              <Search />
+            </div>
             {installPrompt && (
               <button onClick={handleInstall}
                 className="hidden sm:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
@@ -213,10 +219,25 @@ export default function Layout({ children, title }) {
                 Install
               </button>
             )}
-            <NotificationBell />
-            <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
-              {planName() === 'free' ? '⬆ Upgrade' : `✅ ${PLAN_DISPLAY_NAMES[planName()] || planName()}`}
-            </Link>
+            <div data-tour="notifications">
+              <NotificationBell />
+            </div>
+            <div data-tour="subscription">
+              <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
+                {planName() === 'free' ? '⬆ Upgrade' : `✅ ${PLAN_DISPLAY_NAMES[planName()] || planName()}`}
+              </Link>
+            </div>
+            <button
+              type="button"
+              aria-label="Replay product tour"
+              title="Replay product tour"
+              onClick={() => window.dispatchEvent(new Event('qst:replay-tour'))}
+              className="text-gray-400 hover:text-primary-700 transition-colors p-1.5 rounded-full hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+              </svg>
+            </button>
           </div>
         </header>
 
@@ -226,6 +247,7 @@ export default function Layout({ children, title }) {
       </div>
 
       <AiChatWidget />
+      <ProductTour />
     </div>
   );
 }

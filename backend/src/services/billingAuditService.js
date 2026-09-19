@@ -1,6 +1,6 @@
 const supabase = require('../config/supabase');
 const logger = require('../utils/logger');
-const paystackAPI = require('../config/paystack');
+const { flutterwaveCreateRefund } = require('./paymentGateway');
 
 function readTransactionNumber(transaction, field, fallback = 0) {
   if (transaction?.[field] !== undefined && transaction?.[field] !== null) {
@@ -85,15 +85,7 @@ exports.processRefund = async (userId, subscriptionId, refundData) => {
       .single();
 
     if (txError || !originalTransaction) {
-      // If not found in DB, try to verify with Paystack
-      try {
-        const paystackTx = await paystackAPI.verifyTransaction(originalTransactionReference);
-        if (!paystackTx) {
-          throw new Error('Transaction not found');
-        }
-      } catch (err) {
-        throw new Error(`Original transaction not found: ${err.message}`);
-      }
+      throw new Error(`Original transaction not found: ${txError?.message || 'unknown reference'}`);
     }
 
     // Validate refund amount doesn't exceed original
@@ -101,15 +93,15 @@ exports.processRefund = async (userId, subscriptionId, refundData) => {
       throw new Error('Refund amount exceeds original transaction amount');
     }
 
-    // Process refund based on method
-    let paystackRefundId = null;
-    if (method === 'paystack' && originalTransactionReference) {
+    // Process gateway refund via Flutterwave when requested
+    let flutterwaveRefundId = null;
+    if (method === 'flutterwave' && originalTransactionReference) {
       try {
-        const refund = await paystackAPI.createRefund(originalTransactionReference, amount);
-        paystackRefundId = refund.reference;
-        logger.info(`Paystack refund created: ${refund.reference}`);
+        const refund = await flutterwaveCreateRefund(originalTransactionReference, amount);
+        flutterwaveRefundId = refund?.id || refund?.reference || null;
+        logger.info(`Flutterwave refund created: ${flutterwaveRefundId}`);
       } catch (err) {
-        throw new Error(`Paystack refund failed: ${err.message}`);
+        throw new Error(`Flutterwave refund failed: ${err.message}`);
       }
     }
 
@@ -123,7 +115,7 @@ exports.processRefund = async (userId, subscriptionId, refundData) => {
         currency: originalTransaction?.currency || 'NGN',
         type: 'refund',
         status: 'completed',
-        payment_reference: paystackRefundId,
+        payment_reference: flutterwaveRefundId,
         description: `Refund: ${reason}`,
         metadata: {
           original_transaction_reference: originalTransactionReference,

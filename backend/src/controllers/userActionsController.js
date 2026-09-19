@@ -1007,7 +1007,7 @@ exports.processRefund = async (req, res, next) => {
     }
 
     if (!method) {
-      return res.status(400).json(error('Refund method required: original_payment, credit, or paystack'));
+      return res.status(400).json(error('Refund method required: original_payment, credit, or flutterwave'));
     }
 
     // Get subscription details
@@ -1100,7 +1100,7 @@ exports.processRefundByUser = async (req, res, next) => {
       return res.status(400).json(error('Amount must be greater than 0'));
     }
     if (!method) {
-      return res.status(400).json(error('Refund method required: original_payment, credit, or paystack'));
+      return res.status(400).json(error('Refund method required: original_payment, credit, or flutterwave'));
     }
 
     // Find the user's most recent paid subscription

@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import { authAPI } from '../../services/api';
+import PasswordInput from '../../components/PasswordInput';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -225,12 +226,11 @@ export default function LoginPage() {
               </div>
               <div>
                 <label className="label">Password <span className="text-red-500">*</span></label>
-                <input
-                  type="password"
-                  className="input"
+                <PasswordInput
                   placeholder="Your password"
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  autoComplete="current-password"
                   required
                 />
                 <div className="mt-2 text-right">
@@ -331,22 +331,20 @@ export default function LoginPage() {
                   <p className="text-sm text-gray-600">Enter your new password below.</p>
                   <div>
                     <label className="label">New Password</label>
-                    <input
-                      type="password"
-                      className="input"
+                    <PasswordInput
                       placeholder="Min. 8 characters"
                       value={forgotNewPassword}
                       onChange={(e) => setForgotNewPassword(e.target.value)}
+                      autoComplete="new-password"
                     />
                   </div>
                   <div>
                     <label className="label">Confirm Password</label>
-                    <input
-                      type="password"
-                      className="input"
+                    <PasswordInput
                       placeholder="Repeat password"
                       value={forgotConfirmPassword}
                       onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
                     />
                   </div>
                   <button onClick={handleForgotResetPassword} disabled={forgotLoading} className="btn-primary w-full">

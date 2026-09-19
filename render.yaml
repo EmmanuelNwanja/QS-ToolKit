@@ -29,17 +29,17 @@ services:
         fromGroup: qstoolkit-secrets
       - key: JWT_EXPIRES_IN
         value: 7d
-      - key: MAILJET_API_KEY
+      - key: ZEPTOMAIL_API_KEY
         fromGroup: qstoolkit-secrets
-      - key: MAILJET_API_SECRET
-        fromGroup: qstoolkit-secrets
-      - key: MAILJET_SENDER_EMAIL
+      - key: ZEPTOMAIL_SENDER_EMAIL
         value: noreply@qs.solnuv.com
-      - key: MAILJET_SENDER_NAME
+      - key: ZEPTOMAIL_SENDER_NAME
         value: QSToolkit
-      - key: PAYSTACK_SECRET_KEY
+      - key: EMAIL_PROVIDER
+        value: zeptomail
+      - key: FLUTTERWAVE_SECRET_KEY
         fromGroup: qstoolkit-secrets
-      - key: PAYSTACK_PUBLIC_KEY
+      - key: FLUTTERWAVE_SECRET_HASH
         fromGroup: qstoolkit-secrets
       - key: CRON_SECRET
         fromGroup: qstoolkit-secrets

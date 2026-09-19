@@ -117,7 +117,7 @@ export default function PricingPage() {
     <>
       <Head>
         <title>Pricing — QSToolkit | Plans from ₦8,999/mo</title>
-        <meta name="description" content="Transparent pricing for quantity surveying professionals across 9 African countries. Plans from ₦8,999/mo in Nigeria, with local currency support via Paystack and Flutterwave." />
+        <meta name="description" content="Transparent pricing for quantity surveying professionals across 9 African countries. Plans from ₦8,999/mo in Nigeria, with local currency support via Flutterwave." />
         <meta name="keywords" content="QSToolkit pricing, quantity surveying software cost, QS software Nigeria, BOQ software price, construction software pricing" />
         <link rel="canonical" href="https://qs.solnuv.com/pricing" />
         <meta property="og:title" content="Pricing — QSToolkit | Plans from ₦8,999/mo" />
@@ -188,7 +188,7 @@ export default function PricingPage() {
                 {
                   '@type': 'Question',
                   name: 'What payment methods do you accept?',
-                  acceptedAnswer: { '@type': 'Answer', text: 'We accept cards, bank transfers, USSD, and mobile money via Paystack and Flutterwave. Direct bank transfers are verified within 24 hours.' },
+                  acceptedAnswer: { '@type': 'Answer', text: 'We accept cards, bank transfers, USSD, and mobile money via Flutterwave. Direct bank transfers are verified within 24 hours.' },
                 },
                 {
                   '@type': 'Question',
@@ -426,7 +426,7 @@ export default function PricingPage() {
               {[
                 { q: 'Can I switch plans anytime?', a: 'Yes. Upgrade instantly when you need more. Downgrade at your next billing cycle. No penalties.' },
                 { q: 'Is there a free trial?', a: 'You get limited access on signup to explore calculators and create a few documents. Upgrade when you are ready.' },
-                { q: 'What payment methods do you accept?', a: 'We accept cards, bank transfers, and mobile money via Paystack and Flutterwave. Available across 9 African countries and globally in USD/GBP.' },
+                { q: 'What payment methods do you accept?', a: 'We accept cards, bank transfers, and mobile money via Flutterwave. Available across 9 African countries and globally in USD/GBP.' },
                 { q: 'Do you offer refunds?', a: 'We do not offer refunds for partial months. You can cancel anytime and keep access until the end of your billing period.' },
                 { q: 'What happens if I hit my monthly limit?', a: 'You will see a friendly prompt to upgrade. Your existing data stays accessible. Nothing is deleted.' }
               ].map((item, i) => (

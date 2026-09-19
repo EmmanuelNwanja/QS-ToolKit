@@ -6,6 +6,8 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import useAuthStore from '../../context/authStore';
 import pushNotificationService from '../../services/pushNotificationService';
 import { userAPI, pushAPI, subscriptionAPI, referralAPI, authAPI } from '../../services/api';
+import PasswordInput from '../../components/PasswordInput';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Referrals', 'Account'];
 const DEFAULT_INCOME_RATES = { basic: 1.0, pro: 0.6, enterprise: 0.3 };
@@ -305,7 +307,8 @@ export default function SettingsPage() {
   };
 
   const handlePwResetPassword = async () => {
-    if (!pwNewPassword || pwNewPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    const pwStrength = validatePassword(pwNewPassword, { email: user?.email, name: user?.name });
+    if (!pwNewPassword || !pwStrength.valid) { toast.error(pwStrength.errors[0] || 'Password must be at least 8 characters'); return; }
     if (pwNewPassword !== pwConfirmPassword) { toast.error('Passwords do not match'); return; }
     setPwLoading(true);
     try {
@@ -797,11 +800,23 @@ export default function SettingsPage() {
                     <p className="text-sm text-gray-500">Set your new password below.</p>
                     <div>
                       <label className="label">New Password</label>
-                      <input type="password" className="input" placeholder="Min. 8 characters" value={pwNewPassword} onChange={e => setPwNewPassword(e.target.value)} />
+                      <PasswordInput
+                        placeholder="Min. 8 chars, 1 upper, 1 number, 1 symbol"
+                        value={pwNewPassword}
+                        onChange={e => setPwNewPassword(e.target.value)}
+                        autoComplete="new-password"
+                        strength={pwNewPassword ? validatePassword(pwNewPassword, { email: user?.email, name: user?.name }) : undefined}
+                        showStrengthHint
+                      />
                     </div>
                     <div>
                       <label className="label">Confirm New Password</label>
-                      <input type="password" className="input" value={pwConfirmPassword} onChange={e => setPwConfirmPassword(e.target.value)} />
+                      <PasswordInput
+                        placeholder="Repeat password"
+                        value={pwConfirmPassword}
+                        onChange={e => setPwConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                      />
                     </div>
                     <button onClick={handlePwResetPassword} disabled={pwLoading} className="btn-primary text-sm">
                       {pwLoading ? 'Changing...' : 'Change Password'}

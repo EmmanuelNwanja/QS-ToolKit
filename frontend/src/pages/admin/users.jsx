@@ -503,7 +503,7 @@ export default function AdminUsers() {
                           <option value="">Select method</option>
                           <option value="original_payment">Original Payment Method</option>
                           <option value="credit">Account Credit</option>
-                          <option value="paystack">Paystack Direct</option>
+                          <option value="flutterwave">Flutterwave Direct</option>
                         </select>
                       </div>
                     </>

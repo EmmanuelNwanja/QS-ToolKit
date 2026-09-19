@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
+import PasswordInput from '../../components/PasswordInput';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 const USER_TYPES = [
   { value: 'student',      emoji: '🎓', label: 'Student',              desc: 'University QS student' },
@@ -26,18 +28,32 @@ export default function RegisterPage() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Live strength feedback while the user types
+  const pwStrength = useMemo(
+    () => validatePassword(form.password, { email: form.email, name: form.name }),
+    [form.password, form.email, form.name]
+  );
+
   const next = () => {
     if (step === 0 && !form.user_type) { toast.error('Please select an account type'); return; }
     if (step === 1) {
       if (!form.name || !form.email || !form.password) { toast.error('Please fill all required fields'); return; }
       if (form.password !== form.confirmPassword) { toast.error('Passwords do not match'); return; }
-      if (form.password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+      if (!pwStrength.valid) {
+        toast.error(pwStrength.errors[0]);
+        return;
+      }
     }
     setStep(s => s + 1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!pwStrength.valid) {
+      toast.error(pwStrength.errors[0]);
+      setStep(1);
+      return;
+    }
     setLoading(true);
     try {
       const { confirmPassword, ...payload } = form;
@@ -136,19 +152,43 @@ export default function RegisterPage() {
             {step === 1 && (
               <div className="space-y-4">
                 <h2 className="font-display text-lg font-bold text-primary-800 mb-2">Your Details</h2>
-                {[
-                  { label: 'Full Name', key: 'name', type: 'text', ph: 'e.g. Chukwuemeka Obi', req: true },
-                  { label: 'Email Address', key: 'email', type: 'email', ph: 'your@email.com', req: true },
-                  { label: 'Phone Number', key: 'phone', type: 'tel', ph: '08012345678', req: false },
-                  { label: 'Password', key: 'password', type: 'password', ph: 'Min. 8 characters', req: true },
-                  { label: 'Confirm Password', key: 'confirmPassword', type: 'password', ph: 'Repeat password', req: true }
-                ].map(f => (
-                  <div key={f.key}>
-                    <label className="label">{f.label}{f.req && <span className="text-red-500"> *</span>}</label>
-                    <input type={f.type} className="input" placeholder={f.ph}
-                      value={form[f.key]} onChange={e => set(f.key, e.target.value)} required={f.req} />
-                  </div>
-                ))}
+                <div>
+                  <label className="label">Full Name<span className="text-red-500"> *</span></label>
+                  <input type="text" className="input" placeholder="e.g. Chukwuemeka Obi"
+                    value={form.name} onChange={e => set('name', e.target.value)} required />
+                </div>
+                <div>
+                  <label className="label">Email Address<span className="text-red-500"> *</span></label>
+                  <input type="email" className="input" placeholder="your@email.com"
+                    value={form.email} onChange={e => set('email', e.target.value)} required />
+                </div>
+                <div>
+                  <label className="label">Phone Number</label>
+                  <input type="tel" className="input" placeholder="08012345678"
+                    value={form.phone} onChange={e => set('phone', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Password<span className="text-red-500"> *</span></label>
+                  <PasswordInput
+                    placeholder="Min. 8 chars, 1 upper, 1 number, 1 symbol"
+                    value={form.password}
+                    onChange={e => set('password', e.target.value)}
+                    autoComplete="new-password"
+                    required
+                    strength={form.password ? pwStrength : undefined}
+                    showStrengthHint
+                  />
+                </div>
+                <div>
+                  <label className="label">Confirm Password<span className="text-red-500"> *</span></label>
+                  <PasswordInput
+                    placeholder="Repeat password"
+                    value={form.confirmPassword}
+                    onChange={e => set('confirmPassword', e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setStep(0)} className="btn-secondary flex-1">← Back</button>
                   <button onClick={next} className="btn-primary flex-1">Continue →</button>

@@ -4,6 +4,7 @@ const emailService = require('../services/emailService');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
+const { validatePassword } = require('../utils/passwordValidator');
 
 // ─── Force change password after OTP login ───────────────────
 exports.forceChangePassword = async (req, res, next) => {
@@ -15,8 +16,13 @@ exports.forceChangePassword = async (req, res, next) => {
       return res.status(400).json(error('Password change is not currently required for this account.'));
     }
 
-    if (!newPassword || newPassword.length < 8) {
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
       return res.status(400).json(error('New password must be at least 8 characters'));
+    }
+
+    const pwCheck = validatePassword(newPassword, { email: req.user.email, name: req.user.name });
+    if (!pwCheck.valid) {
+      return res.status(400).json(error(pwCheck.errors[0], { code: 'WEAK_PASSWORD', errors: pwCheck.errors }));
     }
 
     if (newPassword !== confirmPassword) {
@@ -53,6 +59,11 @@ exports.changePassword = async (req, res, next) => {
 
     if (new_password.length < 8) {
       return res.status(400).json(error('New password must be at least 8 characters'));
+    }
+
+    const pwCheck = validatePassword(new_password, { email: req.user.email, name: req.user.name });
+    if (!pwCheck.valid) {
+      return res.status(400).json(error(pwCheck.errors[0], { code: 'WEAK_PASSWORD', errors: pwCheck.errors }));
     }
 
     if (current_password === new_password) {

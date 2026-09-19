@@ -1,6 +1,5 @@
 // ─── Supported Countries ──────────────────────────────────────
-// Flutterwave primary: Uganda, Tanzania, and countries Paystack doesn't cover
-// Paystack primary: Nigeria, Ghana, South Africa, Kenya, Côte d'Ivoire
+// Flutterwave is the sole payment gateway across all supported countries.
 
 const COUNTRY_GATEWAYS = {
   NG: { gateway: 'flutterwave', currency: 'NGN', name: 'Nigeria' },

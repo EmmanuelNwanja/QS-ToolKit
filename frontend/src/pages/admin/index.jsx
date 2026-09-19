@@ -148,7 +148,6 @@ export default function AdminDashboard() {
     { href: '/admin/bank-transfer-settings', icon: <BankOutlined />, title: 'Bank Transfer Settings', desc: 'Configure bank account details', color: '#06b6d4' },
     { href: '/admin/notifications', icon: <BellOutlined />, title: 'Send Notifications', desc: 'Push notifications to users', color: '#8b5cf6' },
     { href: '/admin/referral-discounts', icon: <TeamOutlined />, title: 'Referral Discounts', desc: 'Manage referral discount assignments', color: '#06b6d4' },
-    ...(user?.admin_role === 'super_admin' ? [{ href: '/admin/paystack-plans', icon: <SafetyOutlined />, title: 'Paystack Plan Mapping', desc: 'Manage recurring billing plan codes', color: '#ec4899' }] : []),
   ];
 
   const planColumns = [

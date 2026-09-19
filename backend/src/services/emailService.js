@@ -1,38 +1,20 @@
 /**
  * QSToolkit Email Service
- * Brand-consistent transactional email delivery via Mailjet.
- * Includes HTML + plain-text multipart delivery to reduce spam risk.
+ * Transactional email delivery via ZeptoMail (Zoho Transactional).
+ * HTML + plain-text payload; the optional self-hosted relay service is the
+ * only fallback (used when ZeptoMail is temporarily unreachable).
  */
 
-const Mailjet = require('node-mailjet');
-const nodemailer = require('nodemailer');
 const axios = require('axios');
 const logger = require('../utils/logger');
 
-const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
-const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET;
-const MAILJET_SENDER_EMAIL = process.env.MAILJET_SENDER_EMAIL;
-const MAILJET_SENDER_NAME = process.env.MAILJET_SENDER_NAME;
-const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase(); // smtp | relay | mailjet | zeptomail | auto
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'zeptomail').toLowerCase(); // zeptomail | relay | auto
 const ZEPTOMAIL_API_KEY = process.env.ZEPTOMAIL_API_KEY;
 const ZEPTOMAIL_SENDER_EMAIL = process.env.ZEPTOMAIL_SENDER_EMAIL;
 const ZEPTOMAIL_SENDER_NAME = process.env.ZEPTOMAIL_SENDER_NAME;
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME;
 const EMAIL_RELAY_URL = process.env.EMAIL_RELAY_URL;
 const EMAIL_RELAY_TOKEN = process.env.EMAIL_RELAY_TOKEN;
-const SMTP_HOSTS = (process.env.SMTP_HOSTS || '')
-  .split(',')
-  .map((h) => h.trim())
-  .filter(Boolean);
-const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT || 15000);
-const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
-const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT || 20000);
+
 const PLAN_DISPLAY_NAMES = {
   free: 'Free', basic: 'Starter', pro: 'Pro', enterprise: 'Elite'
 };
@@ -51,40 +33,15 @@ const BRAND = {
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 
-if (EMAIL_PROVIDER === 'mailjet' || EMAIL_PROVIDER === 'auto') {
-  if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    logger.warn('Mailjet credentials missing; SMTP will be used if configured');
-  }
-  if (!MAILJET_SENDER_EMAIL) {
-    logger.warn('MAILJET_SENDER_EMAIL missing; using fallback sender for Mailjet.');
-  }
-}
-
-const mailjetClient = MAILJET_API_KEY && MAILJET_API_SECRET
-  ? Mailjet.apiConnect(MAILJET_API_KEY, MAILJET_API_SECRET)
-  : null;
-
-const smtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+const zeptomailConfigured = !!ZEPTOMAIL_API_KEY;
 const relayConfigured = !!EMAIL_RELAY_URL;
 
-if (EMAIL_PROVIDER === 'smtp' && !smtpConfigured) {
-  logger.error('Email service misconfigured: EMAIL_PROVIDER=smtp but SMTP_* credentials are missing');
-}
-
-if (EMAIL_PROVIDER === 'relay' && !relayConfigured) {
-  logger.error('Email service misconfigured: EMAIL_PROVIDER=relay but EMAIL_RELAY_URL is missing');
-}
-
-if (EMAIL_PROVIDER === 'mailjet' && !mailjetClient) {
-  logger.error('Email service misconfigured: EMAIL_PROVIDER=mailjet but MAILJET_* credentials are missing');
-}
-
-if (EMAIL_PROVIDER === 'zeptomail' && !ZEPTOMAIL_API_KEY) {
+if (!zeptomailConfigured && EMAIL_PROVIDER === 'zeptomail') {
   logger.error('Email service misconfigured: EMAIL_PROVIDER=zeptomail but ZEPTOMAIL_API_KEY is missing');
 }
 
-if (EMAIL_PROVIDER === 'auto' && !mailjetClient && !smtpConfigured && !relayConfigured && !ZEPTOMAIL_API_KEY) {
-  logger.error('Email service misconfigured: no Mailjet, Relay, SMTP, or Zeptomail provider is configured');
+if (!zeptomailConfigured && !relayConfigured) {
+  logger.error('Email service misconfigured: no ZeptoMail or relay provider is configured');
 }
 
 // ── Core send function ────────────────────────────────────────
@@ -106,18 +63,12 @@ async function send({ to, subject, html, text, attachments = [] }) {
   const htmlPart = sanitizeHtmlDocument(html);
   const textPart = normalizePlainText(text || htmlToText(htmlPart));
 
-  const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
-  const providers = emailProvider === 'auto'
-    ? ['relay', ...(mailjetClient ? ['mailjet'] : []), ...(ZEPTOMAIL_API_KEY ? ['zeptomail'] : []), 'smtp']
-    : [emailProvider];
+  const providers = EMAIL_PROVIDER === 'auto'
+    ? ['zeptomail', ...(relayConfigured ? ['relay'] : [])]
+    : [EMAIL_PROVIDER];
 
   for (const provider of providers) {
-    if (provider === 'mailjet' && mailjetClient) {
-      const ok = await sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments });
-      if (ok) return true;
-    }
-
-    if (provider === 'zeptomail' && ZEPTOMAIL_API_KEY) {
+    if (provider === 'zeptomail' && zeptomailConfigured) {
       const ok = await sendViaZeptomail({ recipients, subject, htmlPart, textPart, attachments });
       if (ok) return true;
     }
@@ -126,126 +77,9 @@ async function send({ to, subject, html, text, attachments = [] }) {
       const ok = await sendViaRelay({ recipients, subject, htmlPart, textPart, attachments });
       if (ok) return true;
     }
-
-    if (provider === 'smtp' && smtpConfigured) {
-      const ok = await sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments });
-      if (ok) return true;
-    }
   }
 
   logger.error({ message: 'Email delivery failed for all configured providers', subject, to, providers });
-  return false;
-}
-
-async function sendViaMailjet({ recipients, subject, htmlPart, textPart, attachments }) {
-  try {
-    const mailjetRecipients = recipients.map((r) => ({
-      Email: r.email,
-      ...(r.name ? { Name: r.name } : {})
-    }));
-
-    const mailjetAttachments = attachments.map((attachment) => {
-      if (!attachment?.content || !attachment?.name) return null;
-      return {
-        Filename: attachment.name,
-        ContentType: attachment.contentType || 'application/octet-stream',
-        Base64Content: attachment.content
-      };
-    }).filter(Boolean);
-
-    await mailjetClient
-      .post('send', { version: 'v3.1' })
-      .request({
-        Messages: [{
-          From: {
-            Email: MAILJET_SENDER_EMAIL || SMTP_FROM_EMAIL || BRAND.email,
-            Name: MAILJET_SENDER_NAME || SMTP_FROM_NAME || BRAND.name
-          },
-          To: mailjetRecipients,
-          Subject: subject,
-          TextPart: textPart,
-          HTMLPart: htmlPart,
-          ...(mailjetAttachments.length ? { Attachments: mailjetAttachments } : {})
-        }]
-      });
-
-    return true;
-  } catch (err) {
-    logger.error({
-      message: 'Mailjet email delivery failed',
-      subject,
-      status: err.statusCode || err.response?.status,
-      provider_error: err.response?.body || err.response?.data || err.message
-    });
-    return false;
-  }
-}
-
-async function sendViaSmtp({ recipients, subject, htmlPart, textPart, attachments }) {
-  const endpoints = buildSmtpEndpoints();
-  let lastError = null;
-
-  try {
-    const to = recipients.map((r) => (r.name ? `${r.name} <${r.email}>` : r.email)).join(', ');
-    const smtpAttachments = attachments.map((attachment) => {
-      if (!attachment?.content || !attachment?.name) return null;
-      return {
-        filename: attachment.name,
-        content: Buffer.from(attachment.content, 'base64'),
-        contentType: attachment.contentType || 'application/octet-stream'
-      };
-    }).filter(Boolean);
-
-    for (const endpoint of endpoints) {
-      try {
-        const transport = nodemailer.createTransport({
-          host: endpoint.host,
-          port: endpoint.port,
-          secure: endpoint.secure,
-          requireTLS: endpoint.port === 587,
-          auth: { user: SMTP_USER, pass: SMTP_PASS },
-          connectionTimeout: SMTP_CONNECTION_TIMEOUT,
-          greetingTimeout: SMTP_GREETING_TIMEOUT,
-          socketTimeout: SMTP_SOCKET_TIMEOUT,
-          tls: {
-            servername: endpoint.host,
-            minVersion: 'TLSv1.2'
-          }
-        });
-
-        await transport.sendMail({
-          from: `${SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name} <${SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email}>`,
-          to,
-          subject,
-          text: textPart,
-          html: htmlPart,
-          ...(smtpAttachments.length ? { attachments: smtpAttachments } : {})
-        });
-
-        return true;
-      } catch (err) {
-        lastError = err;
-        logger.warn({
-          message: 'SMTP endpoint attempt failed',
-          host: endpoint.host,
-          port: endpoint.port,
-          secure: endpoint.secure,
-          provider_error: err.message
-        });
-      }
-    }
-  } catch (err) {
-    lastError = err;
-  }
-
-  if (lastError) {
-    logger.error({
-      message: 'SMTP email delivery failed',
-      subject,
-      provider_error: lastError.message
-    });
-  }
-
   return false;
 }
 
@@ -253,8 +87,8 @@ async function sendViaRelay({ recipients, subject, htmlPart, textPart, attachmen
   try {
     const payload = {
       from: {
-        email: SMTP_FROM_EMAIL || MAILJET_SENDER_EMAIL || BRAND.email,
-        name: SMTP_FROM_NAME || MAILJET_SENDER_NAME || BRAND.name
+        email: ZEPTOMAIL_SENDER_EMAIL || BRAND.email,
+        name: ZEPTOMAIL_SENDER_NAME || BRAND.name
       },
       to: recipients,
       subject,
@@ -323,40 +157,13 @@ async function sendViaZeptomail({ recipients, subject, htmlPart, textPart, attac
     return true;
   } catch (err) {
     logger.error({
-      message: 'Zeptomail delivery failed',
+      message: 'ZeptoMail delivery failed',
       subject,
       status: err.response?.status,
       provider_error: err.response?.data || err.message
     });
     return false;
   }
-}
-
-function buildSmtpEndpoints() {
-  const hosts = [...new Set([SMTP_HOST, ...SMTP_HOSTS].filter(Boolean))];
-  const lowerHosts = hosts.map((h) => h.toLowerCase());
-
-  // Zoho fallback host variants help when account is provisioned in another region.
-  if (lowerHosts.includes('smtp.zoho.com') && !lowerHosts.includes('smtp.zoho.eu')) {
-    hosts.push('smtp.zoho.eu');
-  }
-  if (lowerHosts.includes('smtp.zoho.eu') && !lowerHosts.includes('smtp.zoho.com')) {
-    hosts.push('smtp.zoho.com');
-  }
-
-  const ports = [...new Set([SMTP_PORT, 465, 587].filter(Boolean))];
-  const endpoints = [];
-  for (const host of hosts) {
-    for (const port of ports) {
-      endpoints.push({
-        host,
-        port,
-        // 465 = implicit TLS (SMTPS), 587 = STARTTLS (secure must be false)
-        secure: port === 465
-      });
-    }
-  }
-  return endpoints;
 }
 
 function sanitizeHtmlDocument(html) {
@@ -1043,7 +850,7 @@ exports.sendCreditIssued = async (user, { amount, reason, newBalance }) => {
 exports.sendRefundNotification = async (user, { amount, reason, method }) => {
   const firstName    = user.name?.split(' ')[0] || 'there';
   const refundAmount = `₦${Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
-  const methodLabels = { original_payment: 'Original payment method', credit: 'Account credit', paystack: 'Paystack refund' };
+  const methodLabels = { original_payment: 'Original payment method', credit: 'Account credit', flutterwave: 'Flutterwave refund' };
 
   const html = layout({
     preheader: `Your refund of ${refundAmount} has been processed`,
@@ -1071,7 +878,7 @@ exports.sendRefundNotification = async (user, { amount, reason, method }) => {
 // ════════════════════════════════════════════════════════════════
 exports.sendAdminTestEmail = async ({ to, adminName = 'Admin', subject, note }) => {
   const ts = new Date().toISOString();
-  const provider = (process.env.EMAIL_PROVIDER || 'auto').toLowerCase();
+  const provider = (process.env.EMAIL_PROVIDER || 'zeptomail').toLowerCase();
 
   const html = layout({
     preheader: 'QSToolkit test email for provider verification',

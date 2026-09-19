@@ -395,7 +395,7 @@ exports.subscribe = async (req, res, next) => {
       }));
     }
 
-    // Online payment (routes to Flutterwave or Paystack based on country)
+    // Online payment (routes via Flutterwave based on country)
     const { data: user } = await supabase.from('users').select('email, country').eq('id', req.user.id).single();
     if (!user?.email) return res.status(400).json(error('User email is required'));
 

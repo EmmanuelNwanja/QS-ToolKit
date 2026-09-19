@@ -226,8 +226,6 @@ export const adminAPI = {
   getUsers:              (params) => api.get('/admin/users', { params }),
   generateUserOneTimePassword: (userId, data) => api.post(`/admin/users/${userId}/one-time-password`, data),
   getSubscriptions:      (params) => api.get('/admin/subscriptions', { params }),
-  getPaystackPlanMappings: () => api.get('/admin/paystack-plan-mappings'),
-  updatePaystackPlanMapping: (planId, data) => api.patch(`/admin/paystack-plan-mappings/${planId}`, data),
   getBankTransferSettings: () => api.get('/admin/payment-settings/bank-transfer'),
   updateBankTransferSettings: (data) => api.put('/admin/payment-settings/bank-transfer', data),
   getDirectPayments:     (params) => api.get('/admin/payments/direct/list', { params }),
@@ -416,6 +414,11 @@ export const researchAPI = {
   cancelSubscription: () => api.post('/research/subscription/cancel'),
 };
 
+// ─── Global Search ────────────────────────────────────────────
+export const searchAPI = {
+  global: (q) => api.get('/search', { params: { q } })
+};
+
 // ─── Referrals ─────────────────────────────────────────────────
 export const referralAPI = {
   getMyLink:         ()       => api.get('/referrals/my-link'),
@@ -423,6 +426,7 @@ export const referralAPI = {
   getMyIncome:       ()       => api.get('/referrals/my-income'),
   getMySignups:      ()       => api.get('/referrals/my-signups'),
   adminListDiscounts:(params) => api.get('/referrals/admin/discounts', { params }),
+  adminUserLookup:   (q)     => api.get('/referrals/admin/users-lookup', { params: { q } }),
   adminStats:        ()       => api.get('/referrals/admin/stats'),
   adminAssignDiscount:(data)  => api.post('/referrals/admin/discounts', data),
   adminUpdateDiscount:(id, d) => api.patch(`/referrals/admin/discounts/${id}`, d),

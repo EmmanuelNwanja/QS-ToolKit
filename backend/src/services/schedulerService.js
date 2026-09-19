@@ -4,17 +4,10 @@
  * OR can run inline with node-cron if you prefer
  */
 const cron = require('node-cron');
-const axios = require('axios');
 const supabase = require('../config/supabase');
 const emailService = require('./emailService');
 const logger = require('../utils/logger');
 const subscriptionManagementService = require('./subscriptionManagementService');
-
-const PAYSTACK_BASE = 'https://api.paystack.co';
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-  'Content-Type': 'application/json'
-});
 
 // ── Expire subscriptions ──────────────────────────────────────
 async function expireSubscriptions() {
@@ -94,7 +87,7 @@ async function autoRenewSubscriptions() {
     const now = new Date().toISOString();
     const { data: users, error: queryErr } = await supabase
       .from('users')
-      .select('id, email, plan_id, subscription_expires_at, billing_cycle, paystack_subscription_code, flutterwave_subscription_id, subscription_plans(name, price_monthly, price_annual, paystack_plan_code, paystack_plan_code_annual)')
+      .select('id, email, plan_id, subscription_expires_at, billing_cycle, flutterwave_subscription_id, subscription_plans(name, price_monthly, price_annual)')
       .eq('auto_renew', true)
       .eq('subscription_status', 'active')
       .lte('subscription_expires_at', now);
@@ -106,113 +99,25 @@ async function autoRenewSubscriptions() {
       return;
     }
 
-    logger.info(`Found ${users.length} subscriptions eligible for auto-renewal`);
+    logger.info(`Found ${users.length} subscriptions due for auto-renewal review`);
 
-    let successCount = 0;
-    let failureCount = 0;
-
-    // Process each user
+    // Flutterwave recurring subscriptions renew automatically via the
+    // Flutterwave API + webhooks — nothing to charge manually here. Users
+    // without a Flutterwave subscription simply lapse and are nudged to
+    // renew manually (reminders are sent by monitorSubscriptionExpiry).
+    let autoRenewing = 0;
+    let manual = 0;
     for (const user of users) {
-      try {
-        if (!user.plan_id || !user.subscription_plans?.name) {
-          logger.warn(`User ${user.id} has no valid plan. Skipping.`);
-          failureCount++;
-          continue;
-        }
-
-        const billingCycle = user.billing_cycle || 'monthly';
-        const plan = user.subscription_plans;
-        const mappedPaystackPlanCode = billingCycle === 'annual'
-          ? plan.paystack_plan_code_annual
-          : plan.paystack_plan_code;
-
-        // Flutterwave recurring subscriptions renew automatically via Flutterwave API
-        if (user.flutterwave_subscription_id) {
-          logger.info(`Skipping user ${user.id}; Flutterwave recurring subscription handles renewal.`);
-          continue;
-        }
-
-        if (mappedPaystackPlanCode) {
-          logger.info(`Skipping manual auto-renew for user ${user.id}; Paystack recurring plan mapping is configured.`);
-          continue;
-        }
-
-        const basePrice = billingCycle === 'annual' ? plan.price_annual : plan.price_monthly;
-
-        if (!basePrice || Number(basePrice) <= 0) {
-          logger.warn(`User ${user.id} plan has no payable price. Skipping.`);
-          failureCount++;
-          continue;
-        }
-
-        // Initiate Paystack renewal transaction
-        const paystackRes = await axios.post(
-          `${PAYSTACK_BASE}/transaction/initialize`,
-          {
-            email: user.email,
-            amount: Math.round(Number(basePrice) * 100),
-            currency: 'NGN',
-            metadata: {
-              user_id: user.id,
-              plan_id: user.plan_id,
-              plan_name: plan.name,
-              billing_cycle: billingCycle,
-              is_philanthropist: false,
-              is_auto_renewal: true,
-              custom_fields: [
-                { display_name: 'Plan', variable_name: 'plan', value: plan.name },
-                { display_name: 'Billing', variable_name: 'billing', value: billingCycle },
-                { display_name: 'Type', variable_name: 'type', value: 'auto_renewal' }
-              ]
-            },
-            callback_url: `${process.env.FRONTEND_URL}/subscription`
-          },
-          { headers: paystackHeaders() }
-        );
-
-        // Log renewal attempt
-        const reference = paystackRes.data.data?.reference;
-        if (reference) {
-          await supabase.from('subscription_renewal_attempts').insert({
-            user_id: user.id,
-            plan_id: user.plan_id,
-            plan_name: plan.name,
-            billing_cycle: billingCycle,
-            amount: Number(basePrice),
-            payment_reference: reference,
-            status: 'initiated',
-            attempted_at: new Date().toISOString()
-          });
-
-          logger.info(`Auto-renewal transaction initiated for user ${user.id}: ${reference}`);
-          successCount++;
-        }
-      } catch (renewErr) {
-        logger.error(`Auto-renewal failed for user ${user.id}: ${renewErr.message}`);
-        failureCount++;
-
-        // Log failed attempt
-        try {
-          await supabase.from('subscription_renewal_attempts').insert({
-            user_id: user.id,
-            plan_id: user.plan_id,
-            plan_name: user.subscription_plans?.name,
-            billing_cycle: user.billing_cycle || 'monthly',
-            amount: user.subscription_plans ? Number(user.subscription_plans.price_monthly) : 0,
-            payment_reference: null,
-            status: 'failed',
-            error_message: renewErr.message,
-            attempted_at: new Date().toISOString()
-          });
-        } catch (logErr) {
-          logger.warn(`Failed to log renewal attempt for user ${user.id}: ${logErr.message}`);
-        }
+      if (user.flutterwave_subscription_id) {
+        autoRenewing++;
+      } else {
+        manual++;
       }
     }
 
-    logger.info(`✅ Auto-renewal job complete. Success: ${successCount}, Failures: ${failureCount}`);
+    logger.info(`✅ Auto-renewal review complete. Flutterwave-managed: ${autoRenewing}, needs manual renewal: ${manual}`);
   } catch (err) {
-    logger.error('Auto-renewal job failed:', err.message);
+    logger.error('Auto-renewal review failed:', err.message);
   }
 }
 

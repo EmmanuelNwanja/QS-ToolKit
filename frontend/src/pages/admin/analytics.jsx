@@ -414,7 +414,7 @@ function EmptyState({ tab }) {
   const DESCRIPTIONS = {
     summary:       'No summary data yet. Data appears once users register and subscriptions are created.',
     growth:        'No growth data in the selected date range. Try a wider date range.',
-    revenue:       'No revenue data in the selected date range. Transactions are recorded when subscriptions are activated via Paystack.',
+    revenue:       'No revenue data in the selected date range. Transactions are recorded when subscriptions are activated via Flutterwave.',
     subscriptions: 'No subscription data in the selected date range. Subscription metrics appear once users upgrade.',
     cohorts:       'No cohort data yet. Cohort analysis groups users by the month they signed up and tracks how many retain active subscriptions over time — useful for measuring long-term product health.'
   };

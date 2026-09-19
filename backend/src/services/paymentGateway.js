@@ -1,30 +1,6 @@
 const axios = require('axios');
 const { getGatewayForCountry, convertFromNGN } = require('./flutterwaveService');
 
-// ─── Paystack Helpers ─────────────────────────────────────────
-
-const PAYSTACK_BASE = 'https://api.paystack.co';
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-  'Content-Type': 'application/json'
-});
-
-async function paystackInitialize({ email, amountKobo, currency, metadata, callbackUrl, planCode }) {
-  const payload = {
-    email,
-    amount: amountKobo,
-    currency: currency || 'NGN',
-    metadata,
-    callback_url: callbackUrl
-  };
-  if (planCode) payload.plan = planCode;
-  return axios.post(`${PAYSTACK_BASE}/transaction/initialize`, payload, { headers: paystackHeaders() });
-}
-
-async function paystackVerify(reference) {
-  return axios.get(`${PAYSTACK_BASE}/transaction/verify/${reference}`, { headers: paystackHeaders() });
-}
-
 // ─── Flutterwave Helpers ──────────────────────────────────────
 
 const FLW_BASE = 'https://api.flutterwave.com/v3';
@@ -78,6 +54,15 @@ async function flutterwaveGetSubscriptionsByEmail(email) {
   return res.data?.data || [];
 }
 
+async function flutterwaveCreateRefund(transactionId, amount) {
+  const res = await axios.post(
+    `${FLW_BASE}/transactions/${transactionId}/refund`,
+    { amount },
+    { headers: flwHeaders() }
+  );
+  return res.data?.data || res.data;
+}
+
 function verifyFlutterwaveSignature(body, signature) {
   const crypto = require('crypto');
   const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
@@ -93,40 +78,18 @@ function generateTxRef(prefix) {
 }
 
 /**
- * Initialize a payment with the correct gateway based on user country.
+ * Initialize a payment via Flutterwave (sole payment gateway).
  * @param {Object} opts
  * @param {string} opts.email - Customer email
- * @param {string} opts.amountNGN - Amount in NGN (will be converted for non-NGN gateways)
+ * @param {string} opts.amountNGN - Amount in NGN (will be converted for non-NGN currencies)
  * @param {string} opts.country - ISO country code (NG, GH, UG, etc.)
- * @param {string} opts.metadata - Transaction metadata object
+ * @param {Object} opts.metadata - Transaction metadata object
  * @param {string} opts.callbackUrl - Redirect URL after payment
  * @param {string} opts.txPrefix - tx_ref prefix (e.g., 'sub', 'academy', 'exam')
- * @param {string} opts.paystackPlanCode - Paystack plan code (Paystack only)
+ * @param {string} opts.paymentPlan - Flutterwave payment plan ID (recurring billing)
  */
-async function initializePayment({ email, amountNGN, country, metadata, callbackUrl, txPrefix, paystackPlanCode, paymentPlan }) {
+async function initializePayment({ email, amountNGN, country, metadata, callbackUrl, txPrefix, paymentPlan }) {
   const gw = getGatewayForCountry(country);
-
-  if (gw.gateway === 'paystack') {
-    // Paystack amounts in kobo (NGN * 100)
-    const amountKobo = Math.round(amountNGN * 100);
-    const res = await paystackInitialize({
-      email,
-      amountKobo,
-      currency: gw.currency,
-      metadata: { ...metadata, project: 'qstoolkit' },
-      callbackUrl,
-      planCode: paystackPlanCode
-    });
-    return {
-      gateway: 'paystack',
-      authorization_url: res.data.data.authorization_url,
-      reference: res.data.data.reference,
-      currency: gw.currency,
-      amount: amountKobo
-    };
-  }
-
-  // Flutterwave
   const amountFLW = convertFromNGN(amountNGN, gw.currency);
   const txRef = generateTxRef(txPrefix || 'qst');
   const res = await flutterwaveInitialize({
@@ -149,37 +112,20 @@ async function initializePayment({ email, amountNGN, country, metadata, callback
 }
 
 /**
- * Verify a payment by reference. Routes to the correct gateway.
+ * Verify a payment by reference.
  */
 async function verifyPayment(reference, gateway) {
-  if (gateway === 'flutterwave') {
-    const res = await flutterwaveVerify(reference);
-    const tx = res.data.data;
-    return {
-      success: tx.status === 'successful',
-      gateway: 'flutterwave',
-      reference: tx.tx_ref,
-      amount: tx.amount,
-      currency: tx.currency,
-      customer_email: tx.customer?.email,
-      flw_transaction_id: tx.id,
-      paid_at: tx.created_at
-    };
-  }
-
-  // Paystack (default)
-  const res = await paystackVerify(reference);
+  const res = await flutterwaveVerify(reference);
   const tx = res.data.data;
   return {
-    success: tx.status === 'success',
-    gateway: 'paystack',
-    reference: tx.reference,
-    amount: tx.amount / 100, // kobo to naira
+    success: tx.status === 'successful',
+    gateway: 'flutterwave',
+    reference: tx.tx_ref,
+    amount: tx.amount,
     currency: tx.currency,
     customer_email: tx.customer?.email,
-    paystack_customer_code: tx.customer?.customer_code,
-    authorization_code: tx.authorization?.authorization_code,
-    paid_at: tx.paid_at
+    flw_transaction_id: tx.id,
+    paid_at: tx.created_at
   };
 }
 
@@ -188,9 +134,8 @@ module.exports = {
   verifyPayment,
   verifyFlutterwaveSignature,
   flutterwaveVerifyByReference,
+  flutterwaveCreateRefund,
   generateTxRef,
-  paystackInitialize,
-  paystackVerify,
   flutterwaveInitialize,
   flutterwaveVerify,
   flutterwaveCancelSubscription,

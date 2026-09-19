@@ -60,12 +60,12 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
           { key: 'Content-Security-Policy', value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://js.paystack.co https://static.cloudflareinsights.com",
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://static.cloudflareinsights.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://static.cloudflareinsights.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://browser.sentry-cdn.com`,
-            "frame-src 'self' https://js.paystack.co",
+            `connect-src 'self' ${BACKEND_ORIGIN} https://*.supabase.co wss://*.supabase.co https://api.flutterwave.com https://checkout.flutterwave.com https://static.cloudflareinsights.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://browser.sentry-cdn.com`,
+            "frame-src 'self' https://checkout.flutterwave.com",
           ].join('; ') },
         ]
       }

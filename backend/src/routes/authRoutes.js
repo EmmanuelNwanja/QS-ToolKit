@@ -8,7 +8,7 @@ const { validate } = require('../utils/validators');
 router.post('/register', authLimiter, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('password').isLength({ min: 8, max: 128 }).withMessage('Password must be between 8 and 128 characters'),
   body('user_type').isIn(['student', 'professional', 'company']).withMessage('Invalid user type'),
   validate
 ], ctrl.register);
@@ -38,7 +38,7 @@ router.post('/verify-reset-otp', authLimiter, [
 
 router.post('/reset-password', authLimiter, [
   body('reset_token').notEmpty(),
-  body('new_password').isLength({ min: 8 }),
+  body('new_password').isLength({ min: 8, max: 128 }),
   validate
 ], ctrl.resetPassword);
 

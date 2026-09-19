@@ -32,8 +32,8 @@ const NAV_GROUPS = [
     items: [
       { key: '/admin/direct-payments', icon: <BankOutlined />, label: 'Direct Payments', href: '/admin/direct-payments' },
       { key: '/admin/bank-transfer-settings', icon: <BankOutlined />, label: 'Bank Transfer', href: '/admin/bank-transfer-settings' },
-      { key: '/admin/paystack-plans', icon: <SettingOutlined />, label: 'Paystack Plans', href: '/admin/paystack-plans', superAdminOnly: true },
       { key: '/admin/promo-codes', icon: <TagsOutlined />, label: 'Promo Codes', href: '/admin/promo-codes' },
+      { key: '/admin/referral-discounts', icon: <TeamOutlined />, label: 'Referral Rewards', href: '/admin/referral-discounts', superAdminOnly: true },
     ],
   },
   {

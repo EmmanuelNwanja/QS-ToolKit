@@ -5,6 +5,7 @@ const supabase = require('../config/supabase');
 const emailService = require('../services/emailService');
 const { success, error } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
+const { validatePassword } = require('../utils/passwordValidator');
 
 const VERIFICATION_TOKEN_TTL_MINUTES = 10; // OTP-based, shorter TTL
 const OTP_TTL_MINUTES = 10;
@@ -77,6 +78,15 @@ exports.register = async (req, res, next) => {
         'Too many signups from your network in the last 24 hours. Please try again later.',
         { code: 'NETWORK_SIGNUP_LIMIT', window_hours: 24 }
       ));
+    }
+
+    // Strong password policy (registration)
+    const pwCheck = validatePassword(password, { email: normalizedEmail, name });
+    if (!pwCheck.valid) {
+      return res.status(400).json(error(pwCheck.errors[0], {
+        code: 'WEAK_PASSWORD',
+        errors: pwCheck.errors
+      }));
     }
 
     // Hash password
@@ -607,8 +617,12 @@ exports.resetPassword = async (req, res, next) => {
       return res.status(400).json(error('Reset token and new password are required'));
     }
 
-    if (new_password.length < 8) {
-      return res.status(400).json(error('Password must be at least 8 characters'));
+    const pwCheck = validatePassword(new_password);
+    if (!pwCheck.valid) {
+      return res.status(400).json(error(pwCheck.errors[0], {
+        code: 'WEAK_PASSWORD',
+        errors: pwCheck.errors
+      }));
     }
 
     // Verify the reset token

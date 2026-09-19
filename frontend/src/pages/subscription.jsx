@@ -538,7 +538,7 @@ export default function SubscriptionPage() {
           <div className="card bg-blue-50 border-blue-100">
             <h3 className="font-semibold text-blue-800 mb-2">Secure Payment</h3>
             <p className="text-sm text-blue-700">
-              Pay via Card, Bank Transfer, USSD, or Mobile Money through Paystack and Flutterwave.
+              Pay via Card, Bank Transfer, USSD, or Mobile Money through Flutterwave.
               Cancel anytime from your profile settings.
             </p>
           </div>

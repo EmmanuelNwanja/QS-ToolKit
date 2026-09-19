@@ -168,6 +168,33 @@ exports.adminListDiscounts = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.adminUserLookup = async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 3) return res.json(success('Users', { users: [] }));
+
+    const safe = q.replace(/[%_,()]/g, ' ').trim();
+    if (!safe) return res.json(success('Users', { users: [] }));
+
+    const { data, error: err } = await supabase
+      .from('users')
+      .select('id, name, email, referral_links(code)')
+      .or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
+      .order('created_at', { ascending: false })
+      .limit(8);
+
+    if (err) throw err;
+    return res.json(success('Users', {
+      users: (data || []).map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        referral_code: u.referral_links?.[0]?.code || null
+      }))
+    }));
+  } catch (err) { next(err); }
+};
+
 exports.adminGetReferralStats = async (req, res, next) => {
   try {
     const [{ count: totalSignups }, { count: totalConversions }, { data: topReferrers }] = await Promise.all([
@@ -206,6 +233,45 @@ exports.getReferralDiscount = async (referrerUserId) => {
     .eq('is_active', true)
     .single();
   return data || null;
+};
+
+/**
+ * Referral signup discount is only valid on the referred user's FIRST paid
+ * subscription within 60 days of account creation.
+ */
+const REFERRAL_DISCOUNT_WINDOW_DAYS = 60;
+
+/** Pure helper — golden-tested in src/tests/referralDiscountWindow.test.js */
+exports.isWithinReferralDiscountWindow = (createdAtIso, nowMs = Date.now()) => {
+  const createdAt = new Date(createdAtIso).getTime();
+  if (!Number.isFinite(createdAt)) return false;
+  const windowEnd = createdAt + REFERRAL_DISCOUNT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return nowMs <= windowEnd;
+};
+
+exports.getEligibleReferralDiscount = async (referredUserId) => {
+  const { data: user } = await supabase
+    .from('users')
+    .select('referred_by, created_at')
+    .eq('id', referredUserId)
+    .single();
+
+  if (!user?.referred_by) return null;
+
+  if (!exports.isWithinReferralDiscountWindow(user.created_at)) {
+    return null; // outside the 60-day signup window
+  }
+
+  const { data: signup } = await supabase
+    .from('referral_signups')
+    .select('discount_applied')
+    .eq('referred_user_id', referredUserId)
+    .single();
+
+  if (signup?.discount_applied) return null; // first-subscription discount already consumed
+
+  const discount = await exports.getReferralDiscount(user.referred_by);
+  return discount ? { discount, referrerUserId: user.referred_by } : null;
 };
 
 exports.recordReferralSignup = async (referrerUserId, referredUserId) => {

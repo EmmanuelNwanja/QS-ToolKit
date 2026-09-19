@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import { userAPI } from '../../services/api';
+import PasswordInput from '../../components/PasswordInput';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 export default function ForceChangePasswordPage() {
   const router = useRouter();
@@ -31,8 +33,9 @@ export default function ForceChangePasswordPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (form.newPassword.length < 8) {
-      toast.error('New password must be at least 8 characters.');
+    const strength = validatePassword(form.newPassword, { email: user?.email, name: user?.name });
+    if (!strength.valid) {
+      toast.error(strength.errors[0]);
       return;
     }
 
@@ -79,25 +82,25 @@ export default function ForceChangePasswordPage() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label className="label">New Password</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="At least 8 characters"
+              <PasswordInput
+                placeholder="Min. 8 chars, 1 upper, 1 number, 1 symbol"
                 value={form.newPassword}
                 onChange={(event) => setForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                autoComplete="new-password"
                 required
                 minLength={8}
+                strength={form.newPassword ? validatePassword(form.newPassword, { email: user?.email, name: user?.name }) : undefined}
+                showStrengthHint
               />
             </div>
 
             <div>
               <label className="label">Confirm New Password</label>
-              <input
-                type="password"
-                className="input"
+              <PasswordInput
                 placeholder="Repeat your new password"
                 value={form.confirmPassword}
                 onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                autoComplete="new-password"
                 required
                 minLength={8}
               />

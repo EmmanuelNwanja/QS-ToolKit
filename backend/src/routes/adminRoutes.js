@@ -114,21 +114,6 @@ router.get(
   adminController.getSubscriptions
 );
 
-router.get(
-  '/paystack-plan-mappings',
-  adminAuth,
-  superAdminAuth,
-  adminController.getPaystackPlanMappings
-);
-
-router.patch(
-  '/paystack-plan-mappings/:planId',
-  adminAuth,
-  superAdminAuth,
-  trackAdminActivity('updated_paystack_plan_mapping', 'subscription_plan'),
-  adminController.updatePaystackPlanMapping
-);
-
 // ── DIRECT PAYMENT MANAGEMENT ──────────────────────────────────
 router.get(
   '/payments/direct/list',
