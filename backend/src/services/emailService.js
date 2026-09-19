@@ -314,7 +314,7 @@ async function sendViaZeptomail({ recipients, subject, htmlPart, textPart, attac
     await axios.post(zeptoUrl, payload, {
       timeout: 20000,
       headers: {
-        'Authorization': `Zoho-encmt ${ZEPTOMAIL_API_KEY}`,
+        'Authorization': `Zoho-enczapikey ${ZEPTOMAIL_API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
