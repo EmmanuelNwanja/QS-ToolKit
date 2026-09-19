@@ -310,7 +310,8 @@ async function sendViaZeptomail({ recipients, subject, htmlPart, textPart, attac
         }));
     }
 
-    await axios.post('https://api.zeptomail.in/v1.1/email', payload, {
+    const zeptoUrl = process.env.ZEPTOMAIL_API_URL || 'https://api.zeptomail.com/v1.1/email';
+    await axios.post(zeptoUrl, payload, {
       timeout: 20000,
       headers: {
         'Authorization': `Zoho-encmt ${ZEPTOMAIL_API_KEY}`,
