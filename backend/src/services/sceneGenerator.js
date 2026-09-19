@@ -3,8 +3,7 @@
 // hardcoded Nigerian QS fallbacks when AI is unavailable.
 
 const { callAI } = require('./aiService');
-let logger;
-try { logger = require('../utils/logger'); } catch { logger = console; }
+const logger = require('../utils/logger');
 
 // ─── Helpers ───────────────────────────────────────────────────
 function parseJSON(raw) {

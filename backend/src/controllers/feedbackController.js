@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
@@ -14,7 +14,7 @@ exports.createLink = async (req, res, next) => {
 
     if (!project) return res.status(404).json(error('Project not found'));
 
-    const token = uuidv4().replace(/-/g, '');
+    const token = crypto.randomUUID().replace(/-/g, '');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expires_days);
 

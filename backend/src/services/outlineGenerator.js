@@ -2,8 +2,7 @@
 // Generates a structured sequence of scenes for a given topic.
 
 const { callAI } = require('./aiService');
-let logger;
-try { logger = require('../utils/logger'); } catch { logger = console; }
+const logger = require('../utils/logger');
 
 function parseJSON(raw) {
   return JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());

@@ -1,8 +1,9 @@
 const supabase = require('../config/supabase');
 const { success, error } = require('../utils/responseHelper');
 const emailService = require('../services/emailService');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const logger = require('../utils/logger');
 
 // ─── Force change password after OTP login ───────────────────
 exports.forceChangePassword = async (req, res, next) => {
@@ -209,7 +210,7 @@ exports.inviteMember = async (req, res, next) => {
       return res.status(403).json(error('Only admins can invite members'));
     }
 
-    const token = uuidv4();
+    const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 

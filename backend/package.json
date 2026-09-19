@@ -34,7 +34,6 @@
     "posthog-node": "^5.52.4",
     "puppeteer-core": "^25.0.4",
     "sharp": "^0.34.5",
-    "uuid": "^11.0.5",
     "web-push": "^3.6.7",
     "winston": "^3.14.0"
   },
