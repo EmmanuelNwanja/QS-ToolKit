@@ -1075,7 +1075,7 @@ exports.checkDailyLimit = async (userId, type) => {
 
   const planLimits = {
     free: { chat: 3, drawing_analysis: 0, forecast: 0 },
-    student: { chat: 10, drawing_analysis: 1, forecast: 1 },
+    basic: { chat: 10, drawing_analysis: 1, forecast: 1 },
     pro: { chat: 50, drawing_analysis: 10, forecast: 10 },
     enterprise: { chat: 200, drawing_analysis: 50, forecast: 50 }
   };

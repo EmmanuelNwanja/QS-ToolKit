@@ -106,7 +106,7 @@ export default function RegisterPage() {
                   Your account was created successfully, but we could not send your activation email.
                   Please contact support for manual activation at
                   {' '}
-                  <a href="mailto:support@qs.solnuv.com" className="font-semibold underline">support@qs.solnuv.com</a>.
+                  <a href="mailto:dev@qs.solnuv.com" className="font-semibold underline">dev@qs.solnuv.com</a>.
                 </p>
               </div>
             )}

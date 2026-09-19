@@ -10,7 +10,7 @@ const logger = require('../utils/logger');
 // VAPID public/private keys (should be in env)
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-const vapidEmail = process.env.VAPID_EMAIL || 'mailto:support@qs.solnuv.com';
+const vapidEmail = process.env.VAPID_EMAIL || 'mailto:dev@qs.solnuv.com';
 
 // Configure web-push with VAPID keys when both are available
 if (vapidPublicKey && vapidPrivateKey) {

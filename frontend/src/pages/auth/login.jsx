@@ -206,7 +206,7 @@ export default function LoginPage() {
                   Your account may already be created, but we could not deliver the activation email.
                   Contact support for manual activation at
                   {' '}
-                  <a href="mailto:support@qs.solnuv.com" className="font-semibold underline">support@qs.solnuv.com</a>.
+                  <a href="mailto:dev@qs.solnuv.com" className="font-semibold underline">dev@qs.solnuv.com</a>.
                 </p>
               </div>
             )}
