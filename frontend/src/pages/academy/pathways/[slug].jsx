@@ -142,7 +142,7 @@ export default function PathwayDetailPage() {
                   {enrolling ? 'Enrolling...' : 'Enroll in Pathway'}
                 </button>
               ) : (
-                <div className="bg-white/10 rounded-xl px-6 py-4 text-center">
+                <div className="bg-white/15 rounded-xl px-6 py-4 text-center">
                   <p className="text-xs text-primary-300">Current Level</p>
                   <p className="text-3xl font-bold text-gold-400 font-display">{progress.current_level}</p>
                 </div>

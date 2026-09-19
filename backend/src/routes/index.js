@@ -26,6 +26,7 @@ router.use('/classroom/curriculum', require('./curriculumRoutes'));
 router.use('/classroom/migrate', require('./migrationRoutes'));
 router.use('/classroom',     require('./classroomRoutes'));
 router.use('/referrals',     require('./referralRoutes'));
+router.use('/gifting',       require('./giftingRoutes'));
 router.use('/search',        require('./searchRoutes'));
 router.use('/',              require('./boqRevisionRoutes'));
 

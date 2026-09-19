@@ -167,7 +167,8 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+        <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 sm:w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+          {/* sm+: anchored dropdown · <sm: full-width sheet under the header */}
           {selectedNotification ? (
             <div className="border-b border-gray-100 bg-gray-50/60">
               <div className="px-4 py-3 flex items-start gap-3">

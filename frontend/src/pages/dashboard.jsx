@@ -127,21 +127,21 @@ export default function DashboardPage() {
             style={{ background: 'linear-gradient(135deg, #1a3c5e 0%, #0f2744 100%)' }}
             className="!rounded-2xl"
           >
-            <Row justify="space-between" align="middle">
-              <Col>
+            <Row justify="space-between" align="middle" gutter={[16, 16]}>
+              <Col flex="auto" style={{ minWidth: 0 }}>
                 <p className="text-primary-300 text-sm m-0">{greeting}</p>
-                <h1 className="font-display text-2xl font-bold mt-1 text-white">
+                <h1 className="font-display text-xl sm:text-2xl font-bold mt-1 text-white">
                   Welcome back, {user?.name?.split(' ')[0]}
                 </h1>
-                <p className="text-primary-200 text-sm mt-1 capitalize m-0">
+                <p className="text-primary-200 text-sm mt-1 capitalize m-0 truncate">
                   {user?.company_name || user?.university_name || 'QSToolkit Professional'} · {planName()} plan
                 </p>
               </Col>
               {rank && (
-                <Col className="hidden md:block">
-                  <div className="bg-white/10 rounded-xl px-6 py-4 text-center">
-                    <span className="text-3xl font-bold font-display text-gold-400">#{rank.rank_by_rating}</span>
-                    <p className="text-xs text-primary-200 mt-1 m-0">Leaderboard Rank</p>
+                <Col>
+                  <div className="bg-white/10 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-center">
+                    <span className="text-2xl sm:text-3xl font-bold font-display text-gold-400">#{rank.rank_by_rating}</span>
+                    <p className="text-[11px] sm:text-xs text-primary-200 mt-1 m-0">Leaderboard Rank</p>
                     <p className="text-sm text-white mt-0.5 m-0">{rank.avg_rating}/10</p>
                   </div>
                 </Col>
@@ -226,13 +226,16 @@ export default function DashboardPage() {
                     </Link>
                   </div>
                 ) : (
-                  <Table
-                    dataSource={recentProjects}
-                    columns={PROJECT_COLUMNS}
-                    rowKey="id"
-                    pagination={false}
-                    size="small"
-                  />
+                  <div className="overflow-x-auto -mx-1 px-1">
+                    <Table
+                      dataSource={recentProjects}
+                      columns={PROJECT_COLUMNS}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      scroll={{ x: 'max-content' }}
+                    />
+                  </div>
                 )}
               </Card>
             </Col>
@@ -253,13 +256,13 @@ export default function DashboardPage() {
                   </p>
                   <Row gutter={[8, 8]}>
                     {AI_PROMPTS.map(q => (
-                      <Col span={12} key={q}>
+                      <Col xs={24} sm={12} key={q}>
                         <Button
                           block
                           size="small"
                           style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'transparent', color: '#fff', textAlign: 'left', height: 'auto', padding: '8px' }}
                           onClick={() => window.dispatchEvent(new CustomEvent('qst-ai-ask', { detail: q }))}
-                          className="!text-xs"
+                          className="!text-xs !whitespace-normal"
                         >
                           {q}
                         </Button>

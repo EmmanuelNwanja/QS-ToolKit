@@ -6,6 +6,7 @@ import {
   DashboardOutlined, RobotOutlined, FolderOutlined, CalculatorOutlined,
   ReadOutlined, TrophyOutlined, SettingOutlined, FileTextOutlined,
   ReconciliationOutlined, StarOutlined, RocketOutlined, ApartmentOutlined,
+  GiftOutlined,
 } from '@ant-design/icons';
 import useAuthStore from '../context/authStore';
 import NotificationBell from './NotificationBell';
@@ -56,6 +57,7 @@ const NAV_GROUPS = [
     label: 'Community',
     items: [
       { key: '/leaderboard', icon: <TrophyOutlined />, label: 'Leaderboard', href: '/leaderboard' },
+      { key: '/gifting', icon: <GiftOutlined />, label: 'Gift a Subscription', href: '/gifting' },
     ],
   },
   {
@@ -197,23 +199,23 @@ export default function Layout({ children, title }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden text-gray-500 hover:text-primary-700 p-1" onClick={() => setSidebarOpen(true)}>
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 sticky top-0 z-10">
+          <div className="flex items-center gap-2 min-w-0">
+            <button className="lg:hidden text-gray-500 hover:text-primary-700 p-2 -ml-2" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            {title && <h1 className="font-display text-lg font-bold text-primary-800">{title}</h1>}
+            {title && <h1 className="font-display text-base sm:text-lg font-bold text-primary-800 truncate">{title}</h1>}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div data-tour="search">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            <div data-tour="search" className="hidden sm:block">
               <Search />
             </div>
             {installPrompt && (
               <button onClick={handleInstall}
-                className="hidden sm:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
+                className="hidden lg:inline-flex items-center gap-1 text-xs text-primary-600 border border-primary-200 bg-primary-50 px-2.5 py-1.5 rounded-full hover:bg-primary-100 transition-colors"
                 title="Install QSToolkit as an app"
               >
                 Install
@@ -224,7 +226,7 @@ export default function Layout({ children, title }) {
             </div>
             <div data-tour="subscription">
               <Link href="/subscription" className="btn-gold text-xs px-3 py-1.5 hidden md:inline-flex">
-                {planName() === 'free' ? '⬆ Upgrade' : `✅ ${PLAN_DISPLAY_NAMES[planName()] || planName()}`}
+                {planName() === 'free' ? 'Upgrade' : PLAN_DISPLAY_NAMES[planName()] || planName()}
               </Link>
             </div>
             <button
@@ -232,7 +234,7 @@ export default function Layout({ children, title }) {
               aria-label="Replay product tour"
               title="Replay product tour"
               onClick={() => window.dispatchEvent(new Event('qst:replay-tour'))}
-              className="text-gray-400 hover:text-primary-700 transition-colors p-1.5 rounded-full hover:bg-gray-100"
+              className="hidden sm:inline-flex text-gray-400 hover:text-primary-700 transition-colors p-1.5 rounded-full hover:bg-gray-100"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />

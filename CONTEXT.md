@@ -69,6 +69,15 @@ A SHA-256 hash chain stored in Supabase, providing tamper-evident proof of docum
 ### Dr. Q
 The AI assistant persona. Customer-facing for QS practitioners. Admin-facing for platform analytics.
 
+### Gift Batch
+One donor checkout that pays for N beneficiaries' subscriptions in a single Flutterwave payment (`gift_batches`, tx_ref prefix `gift-`). Donor identity is optional (anonymous gifting). Payment reference is the idempotency key.
+
+### Gift Recipient
+One beneficiary row fanned out from a Gift Batch (`gift_recipients`), carrying its own state machine: `pending → activated | failed | removed`. Each recipient activates independently; one failure never blocks siblings.
+
+### Giftable User
+A user eligible to receive a gift: `user_type ∈ {student, professional}`, `account_status='active'`, `is_verified=true`, and no currently-active subscription. The public directory exposes only redacted views (`First L.` display name, `em***@domain.co` email); full emails are matched server-side only.
+
 ### Subscription Tier
 - **Free**: Limited projects, basic calculators, no AI
 - **Basic**: More projects, AI chat, basic drawing analysis
@@ -126,4 +135,4 @@ The AI assistant persona. Customer-facing for QS practitioners. Admin-facing for
 
 ---
 
-*Version: 1.0.0 | QSToolkit V1.10 Domain Model*
+*Version: 1.1.0 | QSToolkit V1.20 Domain Model*

@@ -709,6 +709,96 @@ exports.sendDowngradeNotice = async ({ email, name, previousPlan }) => {
 // ════════════════════════════════════════════════════════════════
 //  PHILANTHROPIST — DONOR CONFIRMATION
 // ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  GIFTING — DONOR RECEIPT (batch model, V1.20)
+// ══════════════════════════════════════════════════════
+const PLAN_GIFT_LABELS = { basic: 'Starter', student: 'Starter', pro: 'Pro', enterprise: 'Elite' };
+
+exports.sendGiftDonorConfirmation = async (batch, recipients = []) => {
+  if (!batch?.donor_email || batch.is_anonymous) return;
+
+  const planLabel = PLAN_GIFT_LABELS[batch.plan_name] || batch.plan_name;
+  const cycleLabel = batch.billing_cycle === 'annual' ? 'Annual' : 'Monthly';
+  const rows = recipients.map((r) =>
+    infoRow(
+      r.recipient_name || r.recipient_email,
+      `${r.status === 'activated' ? '✅ Activated' : r.status === 'failed' ? '⚠️ Failed' : '⏳ Pending'}${r.expires_at ? ` · expires ${new Date(r.expires_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
+    )
+  ).join('');
+
+  const html = layout({
+    preheader: `Your gift of ${planLabel} (${cycleLabel}) for ${recipients.length} ${recipients.length === 1 ? 'person' : 'people'} was successful`,
+    body: `
+      ${heroSection({ emoji: '🎁', title: 'Your Gift Was Delivered!', subtitle: 'Thank you for supporting the QS profession.' })}
+      ${bodySection(`
+        ${bodyText(`Hi ${batch.donor_name || 'there'}, your payment was successful and the gifted ${planLabel} (${cycleLabel}) subscription${recipients.length === 1 ? ' has' : 's have'} been activated.`)}
+        ${sectionTitle('Gift Summary')}
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${infoRow('Plan', `${planLabel} · ${cycleLabel}`)}
+          ${infoRow('Recipients', String(recipients.length))}
+          ${infoRow('Amount', `₦${Number(batch.amount_paid || batch.amount_ngn || 0).toLocaleString()}`)}
+          ${infoRow('Reference', batch.payment_reference || '—')}
+        </table>
+        ${sectionTitle('Recipients')}
+        <table cellpadding="0" cellspacing="0" width="100%">${rows}</table>
+        ${batch.donor_note ? `
+          <div style="background:${BRAND.light};border-radius:8px;padding:16px;margin:20px 0;">
+            <p style="margin:0 0 6px;color:${BRAND.muted};font-size:12px;text-transform:uppercase;letter-spacing:1px;">Your note</p>
+            <p style="margin:0;color:${BRAND.text};font-size:14px;font-style:italic;">"${batch.donor_note}"</p>
+          </div>` : ''}
+        ${ctaButton('Gift Another Subscription →', `${BRAND.url}/gifting`)}
+      `)}
+    `
+  });
+
+  return send({
+    to: batch.donor_email,
+    subject: `🎁 Your gift to ${recipients.length} QSToolkit ${recipients.length === 1 ? 'member' : 'members'} is confirmed`,
+    html
+  });
+};
+
+// ══════════════════════════════════════════════════════
+//  GIFTING — RECIPIENT NOTIFICATION (donor info or anonymous)
+// ══════════════════════════════════════════════════════
+exports.sendGiftNotification = async (beneficiary, batch) => {
+  if (!beneficiary?.email) return;
+
+  const firstName  = beneficiary.name?.split(' ')[0] || 'there';
+  const planLabel  = PLAN_GIFT_LABELS[batch.plan_name] || batch.plan_name;
+  const cycleLabel = batch.billing_cycle === 'annual' ? 'annual' : 'monthly';
+
+  // Donor attribution: named when available, anonymous otherwise
+  const donorLabel = batch.is_anonymous || !batch.donor_name
+    ? 'An anonymous donor'
+    : batch.donor_name;
+  const donorDetail = (!batch.is_anonymous && (batch.donor_title || batch.donor_company || batch.donor_role))
+    ? [batch.donor_role, batch.donor_title, batch.donor_company].filter(Boolean).join(', ')
+    : null;
+
+  const html = layout({
+    preheader: `${batch.is_anonymous ? 'Someone' : batch.donor_name} just gifted you a QSToolkit ${planLabel} subscription!`,
+    body: `
+      ${heroSection({ emoji: '🎁', title: 'You received a gift!', subtitle: `${batch.is_anonymous ? 'Someone' : batch.donor_name} paid for your QSToolkit subscription.` })}
+      ${bodySection(`
+        ${bodyText(`Hi ${firstName}, great news — <strong>${donorLabel}</strong>${donorDetail ? ` (${donorDetail})` : ''} has gifted you a <strong>${planLabel} (${cycleLabel})</strong> subscription on QSToolkit. It's now active on your account.`)}
+        ${batch.donor_note ? `
+          <div style="background:${BRAND.light};border-left:4px solid ${BRAND.gold};border-radius:0 8px 8px 0;padding:16px;margin:20px 0;">
+            <p style="margin:0 0 6px;color:${BRAND.muted};font-size:12px;text-transform:uppercase;letter-spacing:1px;">Message from the donor</p>
+            <p style="margin:0;color:${BRAND.text};font-size:15px;line-height:1.7;font-style:italic;">"${batch.donor_note}"</p>
+          </div>` : ''}
+        ${ctaButton('Go to My Dashboard →', `${BRAND.url}/dashboard`)}
+      `)}
+    `
+  });
+
+  return send({
+    to: beneficiary.email,
+    subject: `🎁 ${batch.is_anonymous ? 'An anonymous donor' : donorLabel} gifted you a QSToolkit ${planLabel} subscription!`,
+    html
+  });
+};
+
 exports.sendPhilanthropistDonorConfirmation = async (meta) => {
   if (!meta?.donor_email) return;
 

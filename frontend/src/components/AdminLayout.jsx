@@ -7,7 +7,7 @@ import {
   TagsOutlined, NotificationOutlined, BarChartOutlined, ReadOutlined,
   FileTextOutlined, SafetyCertificateOutlined, TeamOutlined,
   RobotOutlined, SettingOutlined, SafetyOutlined, BookOutlined,
-  ThunderboltOutlined, FlagOutlined,
+  ThunderboltOutlined, FlagOutlined, GiftOutlined,
 } from '@ant-design/icons';
 import useAuthStore from '../context/authStore';
 import { adminAPI } from '../services/api';
@@ -34,6 +34,7 @@ const NAV_GROUPS = [
       { key: '/admin/bank-transfer-settings', icon: <BankOutlined />, label: 'Bank Transfer', href: '/admin/bank-transfer-settings' },
       { key: '/admin/promo-codes', icon: <TagsOutlined />, label: 'Promo Codes', href: '/admin/promo-codes' },
       { key: '/admin/referral-discounts', icon: <TeamOutlined />, label: 'Referral Rewards', href: '/admin/referral-discounts', superAdminOnly: true },
+      { key: '/admin/gifting', icon: <GiftOutlined />, label: 'Gifting', href: '/admin/gifting' },
     ],
   },
   {
@@ -115,7 +116,7 @@ export default function AdminLayout({ children }) {
       )}
 
       <aside className={[
-        'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 flex flex-col',
+        'fixed inset-y-0 left-0 z-30 w-64 max-w-[85vw] bg-white border-r border-gray-200 flex flex-col',
         'transition-transform duration-300',
         'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
@@ -154,14 +155,14 @@ export default function AdminLayout({ children }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden text-gray-500 hover:text-primary-700 p-1" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <button className="lg:hidden text-gray-500 hover:text-primary-700 p-2 -ml-2" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-lg font-semibold text-gray-800">Admin Dashboard</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-gray-800 truncate">Admin Dashboard</h1>
             {process.env.NEXT_PUBLIC_STAGING === 'true' && (
               <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                 Staging
@@ -169,7 +170,7 @@ export default function AdminLayout({ children }) {
             )}
           </div>
           <Link href="/dashboard"
-            className="text-sm text-gray-500 hover:text-primary-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100">
+            className="text-sm text-gray-500 hover:text-primary-700 transition-colors px-2.5 sm:px-3 py-2 rounded-lg hover:bg-gray-100 whitespace-nowrap flex-shrink-0">
             ← User View
           </Link>
         </header>

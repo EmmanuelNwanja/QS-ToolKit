@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import FadeUp from '../components/ui/amicro/entrance/fade-up';
 import BlurText from '../components/ui/amicro/text/blur-text';
-import MagneticButton from '../components/ui/amicro/hover/magnetic-button';
-import TiltCard from '../components/ui/amicro/hover/tilt-card';
 
 /* ═══════════════════════════════════════════════════════════
    ANIMATION VARIANTS
@@ -50,7 +48,7 @@ const slideFromRight = {
    ═══════════════════════════════════════════════════════════ */
 
 const MARQUEE_ITEMS = [
-  'Nigerian Construction Standards',
+  'Global Construction Standards',
   '10+ QS Calculators',
   'PDF & Excel Exports',
   'BOQ Generator',
@@ -262,6 +260,8 @@ export default function LandingPage() {
         <meta name="description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator, project tracker & AI assistant. Free to start. Built for Nigerian construction standards." />
         <meta name="keywords" content="quantity surveying Nigeria, BOQ software, bill of quantities, QS calculators, construction invoices, project tracking, Nigerian QS professionals, quantity surveyor app" />
         <link rel="canonical" href="https://qs.solnuv.com" />
+        {/* Hero photo is the LCP element — preload it above the fold */}
+        <link rel="preload" as="image" href="/images/home/hero-site-sunset.jpg" />
         <meta property="og:title" content="QSToolkit - Quantity Surveying Without the Software Headaches" />
         <meta property="og:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker. Free to start." />
         <meta property="og:url" content="https://qs.solnuv.com" />
@@ -306,7 +306,7 @@ export default function LandingPage() {
         />
       </Head>
 
-      <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+      <div className="min-h-screen bg-white font-sans w-full max-w-[100vw]">
 
         {/* ═══════════════════════════════════════════════════════
             NAVBAR
@@ -315,7 +315,7 @@ export default function LandingPage() {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed top-0 left-0 right-0 z-50 bg-primary-900/80 backdrop-blur-md border-b border-white/5"
+          className="fixed top-0 left-0 right-0 z-50 bg-primary-900 border-b border-white/10"
         >
           <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 group">
@@ -325,9 +325,9 @@ export default function LandingPage() {
               {!installed && installPrompt && (
                 <button
                   onClick={handleInstall}
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-gold-400 border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 rounded-full hover:bg-gold-500/20 transition-colors"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-gold-400 border border-gold-500/40 bg-transparent px-3 py-1.5 rounded-full hover:bg-gold-500/10 transition-colors"
                 >
-                  ⬇ Install
+                  Install
                 </button>
               )}
               <Link href="/leaderboard" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
@@ -347,6 +347,16 @@ export default function LandingPage() {
             HERO
             ═══════════════════════════════════════════════════════ */}
         <section className="relative bg-primary-900 text-white pt-32 pb-20 md:pt-44 md:pb-28 px-4 overflow-hidden">
+          {/* Site photography — golden-hour site silhouettes, echoing the closing CTA */}
+          <img
+            src="/images/home/hero-site-sunset.jpg"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover object-[center_45%]"
+          />
+          {/* Navy scrim keeps headline contrast ≥ 4.5:1 and the brand dominant */}
+          <div className="absolute inset-0 bg-gradient-to-b from-primary-900/95 via-primary-900/88 to-primary-900/92" />
+
           {/* Background ambient shapes */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-gold-500/[0.03] blur-3xl" />
@@ -355,12 +365,14 @@ export default function LandingPage() {
           </div>
 
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <BlurText
-              text="Quantity Surveying. Without the spreadsheets."
-              className="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] mb-8 tracking-tight"
-              highlight="Without the spreadsheets."
-              highlightClassName="text-gold-400"
-            />
+            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] mb-8 tracking-tight">
+              <div>
+                <BlurText text="Quantity Surveying." />
+              </div>
+              <div>
+                <BlurText text="5x better than yesterday." className="text-gold-400" />
+              </div>
+            </h1>
 
             <motion.p
               variants={fadeUp}
@@ -374,13 +386,11 @@ export default function LandingPage() {
             </motion.p>
 
             <FadeUp delay={0.3}>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <MagneticButton>
-                  <Link href="/auth/register" className="btn-gold text-base px-8 py-3 inline-block">
-                    Start Free — No Card
-                  </Link>
-                </MagneticButton>
-                <Link href="/calculators" className="btn-ghost text-base px-8 py-3">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center">
+                <Link href="/auth/register" className="btn-gold text-base px-8 py-3 text-center">
+                  Start Free — No Card
+                </Link>
+                <Link href="/calculators" className="btn-ghost text-base px-8 py-3 text-center">
                   Try a Calculator →
                 </Link>
               </div>
@@ -388,11 +398,11 @@ export default function LandingPage() {
           </div>
 
           {/* Marquee */}
-          <div className="mt-16 md:mt-24 relative z-10 border-y border-white/5 bg-white/[0.02] overflow-hidden">
-            <div className="flex animate-marquee whitespace-nowrap py-3">
+          <div className="mt-16 md:mt-24 relative z-10 border-y border-white/10 bg-white/[0.03] overflow-hidden">
+            <div className="flex w-max animate-marquee whitespace-nowrap py-3">
               {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
-                <span key={i} className="inline-flex items-center mx-6 text-xs font-medium text-white/30 uppercase tracking-widest">
-                  <span className="w-1 h-1 rounded-full bg-gold-500/50 mr-3" />
+                <span key={i} className="inline-flex items-center mx-6 text-xs font-medium text-white/30 uppercase tracking-widest flex-shrink-0">
+                  <span className="w-1 h-1 rounded-full bg-gold-500/50 mr-3 flex-shrink-0" />
                   {item}
                 </span>
               ))}
@@ -422,22 +432,20 @@ export default function LandingPage() {
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={staggerContainer}
-              className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5"
+              className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 rounded-2xl overflow-hidden border border-white/10"
             >
               {PROBLEMS.map((p, i) => (
-                <TiltCard key={i}>
-                  <div className="bg-primary-900 p-8 md:p-10 card-shine group hover:bg-primary-800/50 transition-colors duration-500">
-                    <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5 group-hover:bg-gold-500/20 transition-colors">
-                      <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
-                    </div>
-                    <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-3">
-                      {p.title}
-                    </h3>
-                    <p className="text-sm md:text-base text-white/40 leading-relaxed">
-                      {p.body}
-                    </p>
+                <div key={i} className="bg-primary-900 p-8 md:p-10 group hover:bg-primary-800/60 transition-colors duration-300">
+                  <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center mb-5">
+                    <span className="text-gold-400 text-lg font-bold">0{i + 1}</span>
                   </div>
-                </TiltCard>
+                  <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-3">
+                    {p.title}
+                  </h3>
+                  <p className="text-sm md:text-base text-white/50 leading-relaxed">
+                    {p.body}
+                  </p>
+                </div>
               ))}
             </motion.div>
           </div>
@@ -534,8 +542,16 @@ export default function LandingPage() {
                 className="relative"
               >
                 {/* Hub diagram */}
-                <div className="relative bg-primary-900/60 border border-white/5 rounded-2xl p-8 md:p-10">
-                  <div className="flex flex-col items-center gap-4">
+                <div className="relative bg-primary-900 border border-white/10 rounded-2xl p-8 md:p-10 overflow-hidden">
+                  <img
+                    src="/images/home/texture-blueprint.jpg"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover opacity-[0.12] mix-blend-luminosity"
+                  />
+                  <div className="absolute inset-0 bg-primary-900/80" />
+                  <div className="relative flex flex-col items-center gap-4">
                     {/* Input layer */}
                     <div className="grid grid-cols-3 gap-3 w-full">
                       {['Dimensions', 'Specs', 'Rates'].map((t) => (
@@ -706,7 +722,7 @@ export default function LandingPage() {
               whileInView="visible"
               viewport={{ once: true, margin: '-50px' }}
               variants={staggerContainer}
-              className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12"
+              className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-8 md:gap-x-12"
             >
               {STATS.map((stat) => (
                 <motion.div
@@ -766,6 +782,20 @@ export default function LandingPage() {
                 </motion.div>
               ))}
             </motion.div>
+          </div>
+
+          {/* Divider band — the skyline this platform is built for */}
+          <div className="mt-20 relative">
+            <img
+              src="/images/home/band-lagos-aerial.jpg"
+              alt="Aerial view of a Lagos construction site and skyline"
+              loading="lazy"
+              className="w-full h-56 md:h-72 object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-transparent to-white/70" />
+            <p className="absolute bottom-3 right-4 text-[10px] uppercase tracking-widest text-white bg-primary-900/70 rounded px-2 py-1">
+              Lagos, Nigeria
+            </p>
           </div>
         </section>
 
@@ -875,11 +905,15 @@ export default function LandingPage() {
         {/* ═══════════════════════════════════════════════════════
             FINAL CTA
             ═══════════════════════════════════════════════════════ */}
-        <section className="bg-primary-800 py-24 md:py-32 px-4 relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-white/[0.03]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-white/[0.02]" />
-          </div>
+        <section className="bg-primary-900 py-24 md:py-32 px-4 relative overflow-hidden">
+          <img
+            src="/images/home/cta-crane-sunset.jpg"
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover object-bottom"
+          />
+          <div className="absolute inset-0 bg-primary-900/85" />
 
           <div className="max-w-3xl mx-auto text-center relative z-10">
             <motion.div

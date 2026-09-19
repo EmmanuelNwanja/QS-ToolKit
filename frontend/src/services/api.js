@@ -170,6 +170,15 @@ export const leaderboardAPI = {
   getMe:  ()       => api.get('/leaderboard/me')
 };
 
+// ─── Gifting (public — guests allowed) ────────────────────────
+export const giftingAPI = {
+  directory:       (params)                 => api.get('/gifting/directory', { params }),
+  lookupByEmail:   (email)                  => api.post('/gifting/lookup', { email }),
+  initiate:        (payload)                => api.post('/gifting/initiate', payload),
+  confirm:         (reference)              => api.get(`/gifting/confirm?reference=${encodeURIComponent(reference)}`),
+  adminAnalytics:  ()                       => api.get('/gifting/admin/analytics')
+};
+
 // ─── Subscriptions ─────────────────────────────────────────────
 export const subscriptionAPI = {
   getPlans:             ()                         => api.get('/subscriptions/plans'),

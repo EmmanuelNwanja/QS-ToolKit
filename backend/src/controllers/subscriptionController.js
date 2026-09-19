@@ -799,6 +799,20 @@ exports.flutterwaveWebhook = async (req, res, next) => {
         return res.sendStatus(200);
       }
 
+      // Gift batch payment (public gifting flow)
+      if (meta.product_type === 'gift_batch' && meta.gift_batch_id) {
+        const giftService = require('../services/giftSubscriptionService');
+        const giftResult = await giftService.finalizeGiftBatch({
+          batchId: meta.gift_batch_id,
+          successful: true,
+          reference: txRef,
+          amountPaid: data.amount,
+          flwTransactionId: flwTxId,
+        });
+        logger.info('Gift batch finalized via Flutterwave webhook', { batchId: meta.gift_batch_id, ...giftResult });
+        return res.sendStatus(200);
+      }
+
       // Core platform subscription
       if (meta.user_id && meta.plan_id) {
         const billingCycle = meta.billing_cycle || 'monthly';

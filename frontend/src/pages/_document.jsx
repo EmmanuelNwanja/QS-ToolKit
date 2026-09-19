@@ -17,6 +17,9 @@ export default function Document() {
         {/* Theme & mobile */}
         <meta name="theme-color" content="#1a3c5e" />
         <meta name="mobile-web-app-capable" content="yes" />
+        {/* Viewport: without width=device-width mobile browsers render at ~980px
+            and scale down — the root cause of tiny text and side-scrolling. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
         {/* iOS PWA */}
         <meta name="apple-mobile-web-app-capable" content="yes" />

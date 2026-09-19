@@ -9,11 +9,19 @@
 
 @layer base {
   * { @apply border-gray-200; }
+  html, body {
+    /* Belt-and-braces against stray side-scroll: long words, emails, pasted
+       URLs and wide tables must wrap or scroll *inside* their container,
+       never widen the page. */
+    overflow-x: clip;
+  }
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
     font-family: var(--font-body);
+    min-width: 320px;
   }
   h1, h2, h3 { font-family: var(--font-display); }
+  img, svg, video { max-width: 100%; }
 }
 
 @layer components {
@@ -119,6 +127,11 @@
   .nav-link.active {
     @apply bg-primary-50 text-primary-700;
   }
+
+  /* Children of CSS-grid/flex tracks refuse to shrink below their content by
+     default — this is the classic cause of mobile side-scroll. Any direct
+     child of a grid row may now shrink and let its own contents wrap/scroll. */
+  .grid > *, .flex > * { min-width: 0; }
 }
 
 @layer utilities {
@@ -134,6 +147,22 @@
 }
 .animate-marquee {
   animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+/* The marquee track is wider than its container by design — confine the
+   overflow to the strip itself so it can never become page side-scroll. */
+.marquee-clip { overflow: hidden; }
+
+/* ── Reduced motion: honour the OS setting without freezing state UI ──
+   Decorative ambient loops stop. The marquee is a content ticker, so it
+   slows down rather than stopping. Deliberately NO blanket * kill — that
+   also froze spinners/skeletons that communicate loading state. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-glow-pulse,
+  .animate-gradient-shift { animation: none; }
+  .card-shine::before { display: none; }
+  .animate-marquee { animation-duration: 90s; }
 }
 
 /* ── Glow pulse ──────────────────────────────────────────── */
@@ -204,23 +233,25 @@
 .delay-700 { animation-delay: 0.7s; }
 .delay-800 { animation-delay: 0.8s; }
 
-/* ── Card shine on hover ─────────────────────────────────── */
-.card-shine {
-  position: relative;
-  overflow: hidden;
-}
-.card-shine::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -75%;
-  width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
-  transform: skewX(-20deg);
-  transition: left 0.7s ease;
-  pointer-events: none;
-}
-.card-shine:hover::before {
-  left: 125%;
+/* ── Card shine on hover (desktop pointers only) ─────────── */
+@media (hover: hover) and (pointer: fine) {
+  .card-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-shine::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -75%;
+    width: 50%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.7s ease;
+    pointer-events: none;
+  }
+  .card-shine:hover::before {
+    left: 125%;
+  }
 }
 
 
