@@ -116,9 +116,15 @@ exports.getProfile = async (req, res, next) => {
 // ─── Update profile ───────────────────────────────────────────
 exports.updateProfile = async (req, res, next) => {
   try {
-    const allowed = ['name', 'phone', 'company_name', 'qs_cert_no', 'company_address', 'university_name'];
+    const allowed = ['name', 'phone', 'company_name', 'qs_cert_no', 'company_address', 'university_name', 'study_level', 'year_of_study'];
     const updates = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+
+    // ponytail: allow student → professional upgrade only
+    if (req.body.user_type && req.user.user_type === 'student' && req.body.user_type === 'professional') {
+      updates.user_type = 'professional';
+    }
+
     updates.updated_at = new Date();
 
     const { data } = await supabase.from('users').update(updates).eq('id', req.user.id).select('*, subscription_plans(*)').single();
@@ -208,6 +214,34 @@ exports.inviteMember = async (req, res, next) => {
     // Only super_admin and admin can invite
     if (!['super_admin', 'admin'].includes(req.user.org_role)) {
       return res.status(403).json(error('Only admins can invite members'));
+    }
+
+    // ponytail: check plan team limit before inviting
+    const { data: planRow } = await supabase
+      .from('users')
+      .select('subscription_plans(name, max_users)')
+      .eq('id', req.user.id)
+      .single();
+
+    const maxUsers = planRow?.subscription_plans?.max_users || 1;
+    const planName = planRow?.subscription_plans?.name || 'free';
+
+    const { count: memberCount } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', req.user.organization_id);
+
+    const { count: inviteCount } = await supabase
+      .from('invitations')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', req.user.organization_id)
+      .is('accepted_at', null);
+
+    if ((memberCount || 0) + (inviteCount || 0) >= maxUsers) {
+      return res.status(402).json(error(
+        `Team limit reached. Your ${planName} plan allows ${maxUsers} user(s). Upgrade for more.`,
+        { code: 'TEAM_LIMIT_REACHED', limit: maxUsers, plan: planName }
+      ));
     }
 
     const token = crypto.randomUUID();

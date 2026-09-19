@@ -810,6 +810,27 @@ export default function SettingsPage() {
                 )}
               </div>
 
+              {/* ponytail: student → professional upgrade prompt */}
+              {user?.user_type === 'student' && (
+                <div className="card space-y-3">
+                  <h2 className="section-title">🎓 Upgrade to Professional</h2>
+                  <p className="text-sm text-gray-500">Graduated? Switch to a professional account to access invoicing, client feedback, and business features.</p>
+                  <button onClick={async () => {
+                    if (!confirm('Switch to professional account? You&#39;ll gain access to invoicing, client feedback, and business features.')) return;
+                    setSaving(true);
+                    try {
+                      await userAPI.updateProfile({ user_type: 'professional' });
+                      await refreshUser();
+                      toast.success('Upgraded to professional account!');
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Could not upgrade');
+                    } finally { setSaving(false); }
+                  }} disabled={saving} className="btn-primary text-sm">
+                    {saving ? 'Upgrading...' : 'Switch to Professional'}
+                  </button>
+                </div>
+              )}
+
               <div className="card space-y-4">
                 <h2 className="section-title">🧾 Account Management</h2>
                 <p className="text-sm text-gray-500">Hibernate pauses account activity. Delete permanently anonymizes account data.</p>

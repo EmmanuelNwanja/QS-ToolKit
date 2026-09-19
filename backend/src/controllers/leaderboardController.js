@@ -44,9 +44,11 @@ exports.getLeaderboard = async (req, res, next) => {
       .order(sortField, { ascending: true })
       .range(offset, offset + limit - 1);
 
-    // Category filter: student | professional | company
+    // ponytail: leaderboard is for students only; filter by user_type
     if (category && category !== 'all') {
       query = query.eq('user_type', category);
+    } else {
+      query = query.eq('user_type', 'student');
     }
 
     const { data, count, error: err } = await query;

@@ -13,7 +13,9 @@ export default function OnboardingPage() {
     company_name:    user?.company_name    || '',
     company_address: user?.company_address || '',
     qs_cert_no:      user?.qs_cert_no      || '',
-    phone:           user?.phone           || ''
+    phone:           user?.phone           || '',
+    study_level:     user?.study_level     || '',
+    year_of_study:   user?.year_of_study   || ''
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -60,6 +62,33 @@ export default function OnboardingPage() {
                 <label className="label">Phone Number</label>
                 <input className="input" placeholder="080xxxxxxxx" value={form.phone} onChange={e => set('phone', e.target.value)} />
               </div>
+              {user?.user_type === 'student' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Study Level</label>
+                    <select className="input" value={form.study_level} onChange={e => set('study_level', e.target.value)}>
+                      <option value="">Select level</option>
+                      <option value="ND">ND (National Diploma)</option>
+                      <option value="HND">HND (Higher National Diploma)</option>
+                      <option value="BSc">BSc (Bachelor&#39;s)</option>
+                      <option value="MSc">MSc (Master&#39;s)</option>
+                      <option value="PhD">PhD</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Year of Study</label>
+                    <select className="input" value={form.year_of_study} onChange={e => set('year_of_study', e.target.value)}>
+                      <option value="">Select year</option>
+                      <option value="1">100 Level</option>
+                      <option value="2">200 Level</option>
+                      <option value="3">300 Level</option>
+                      <option value="4">400 Level</option>
+                      <option value="5">500 Level</option>
+                      <option value="6">600 Level</option>
+                    </select>
+                  </div>
+                </div>
+              )}
               {user?.user_type !== 'student' && (
                 <>
                   <div>

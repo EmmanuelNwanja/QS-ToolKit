@@ -19,7 +19,8 @@ export default function RegisterPage() {
   const [emailIssueAlert, setEmailIssueAlert] = useState(false);
   const [form, setForm]   = useState({
     user_type: '', name: '', email: '', phone: '', password: '', confirmPassword: '',
-    university_name: '', company_name: '', qs_cert_no: '', company_address: '', business_reg_no: '',
+    university_name: '', study_level: '', year_of_study: '',
+    company_name: '', qs_cert_no: '', company_address: '', business_reg_no: '',
     ref: router.query.ref || ''
   });
 
@@ -159,10 +160,37 @@ export default function RegisterPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <h2 className="font-display text-lg font-bold text-primary-800 mb-2">Professional Info</h2>
                 {form.user_type === 'student' && (
-                  <div>
-                    <label className="label">University Name</label>
-                    <input className="input" placeholder="e.g. University of Lagos" value={form.university_name} onChange={e => set('university_name', e.target.value)} />
-                  </div>
+                  <>
+                    <div>
+                      <label className="label">University Name</label>
+                      <input className="input" placeholder="e.g. University of Lagos" value={form.university_name} onChange={e => set('university_name', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Study Level</label>
+                        <select className="input" value={form.study_level} onChange={e => set('study_level', e.target.value)}>
+                          <option value="">Select level</option>
+                          <option value="ND">ND (National Diploma)</option>
+                          <option value="HND">HND (Higher National Diploma)</option>
+                          <option value="BSc">BSc (Bachelor&#39;s)</option>
+                          <option value="MSc">MSc (Master&#39;s)</option>
+                          <option value="PhD">PhD</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Year of Study</label>
+                        <select className="input" value={form.year_of_study} onChange={e => set('year_of_study', e.target.value)}>
+                          <option value="">Select year</option>
+                          <option value="1">100 Level</option>
+                          <option value="2">200 Level</option>
+                          <option value="3">300 Level</option>
+                          <option value="4">400 Level</option>
+                          <option value="5">500 Level</option>
+                          <option value="6">600 Level</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
                 )}
                 {(form.user_type === 'professional' || form.user_type === 'company') && (
                   <>

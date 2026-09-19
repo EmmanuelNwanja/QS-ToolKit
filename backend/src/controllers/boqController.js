@@ -241,14 +241,7 @@ exports.exportPdf = async (req, res, next) => {
     const boq = await getFullBoq(req.params.id, req.user.id);
     if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
 
-    const validation = validateBoqForFinalization(boq);
-    if (!validation.ok) {
-      return res.status(422).json(error('BOQ compliance checks failed. Export blocked.', {
-        code: 'BOQ_COMPLIANCE_FAILED',
-        errors: validation.errors
-      }));
-    }
-
+    // ponytail: export without compliance gate — drafts should be exportable
     const branding = await getBrandingForUser(req.user.id);
 
     const pdfBuffer = await pdfService.generateBoqPdf(boq, branding);
@@ -273,14 +266,7 @@ exports.exportExcel = async (req, res, next) => {
     const boq = await getFullBoq(req.params.id, req.user.id);
     if (!boq) return res.status(404).json(error('BOQ not found', { code: 'BOQ_NOT_FOUND' }));
 
-    const validation = validateBoqForFinalization(boq);
-    if (!validation.ok) {
-      return res.status(422).json(error('BOQ compliance checks failed. Export blocked.', {
-        code: 'BOQ_COMPLIANCE_FAILED',
-        errors: validation.errors
-      }));
-    }
-
+    // ponytail: export without compliance gate — drafts should be exportable
     const branding = await getBrandingForUser(req.user.id);
 
     const buffer = await excelService.generateBoqExcel(boq, branding);
