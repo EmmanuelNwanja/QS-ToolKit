@@ -47,6 +47,7 @@ const BRAND = {
   name:       'QSToolkit',
   url:        'https://qs.solnuv.com',
   email:      'qstoolkit@solnuv.com',
+  logo:       'https://qs.solnuv.com/qs-toolkit-logo.png',
   tagline:    "Nigeria's Quantity Surveying Platform"
 };
 
@@ -426,9 +427,8 @@ function layout({ preheader = '', body }) {
           <td align="center" style="padding-bottom:24px;">
             <table cellpadding="0" cellspacing="0">
               <tr>
-                <td style="background:${BRAND.primary};border-radius:12px;padding:10px 20px;">
-                  <span style="color:${BRAND.gold};font-size:18px;font-weight:700;letter-spacing:-0.5px;">QS</span>
-                  <span style="color:#ffffff;font-size:18px;font-weight:700;margin-left:4px;">Toolkit</span>
+                <td style="background:${BRAND.primary};border-radius:12px;padding:12px 24px;">
+                  <img src="${BRAND.logo}" alt="QSToolkit" style="height:36px;width:auto;display:block;" />
                 </td>
               </tr>
             </table>

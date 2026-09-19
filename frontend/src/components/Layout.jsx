@@ -29,14 +29,6 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Learning',
-    items: [
-      { key: '/classroom', icon: <ReadOutlined />, label: 'Classroom', href: '/classroom', disabled: true, comingSoon: true },
-      { key: '/academy', icon: <ReadOutlined />, label: 'QS Academy', href: '/academy', disabled: true, comingSoon: true },
-      { key: '/exam-prep', icon: <ReadOutlined />, label: 'Exam Prep', href: '/exam-prep', disabled: true, comingSoon: true },
-    ],
-  },
-  {
     label: 'Projects',
     items: [
       { key: '/projects', icon: <FolderOutlined />, label: 'Projects', href: '/projects' },
@@ -49,6 +41,14 @@ const NAV_GROUPS = [
     items: [
       { key: '/invoices', icon: <ReconciliationOutlined />, label: 'Invoices & Quotes', href: '/invoices' },
       { key: '/feedback', icon: <StarOutlined />, label: 'Client Feedback', href: '/feedback' },
+    ],
+  },
+  {
+    label: 'Learning',
+    items: [
+      { key: '/classroom', icon: <ReadOutlined />, label: 'Classroom', href: '/classroom', disabled: true, comingSoon: true },
+      { key: '/academy', icon: <ReadOutlined />, label: 'QS Academy', href: '/academy', disabled: true, comingSoon: true },
+      { key: '/exam-prep', icon: <ReadOutlined />, label: 'Exam Prep', href: '/exam-prep', disabled: true, comingSoon: true },
     ],
   },
   {
