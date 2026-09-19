@@ -197,10 +197,17 @@ exports.adminUserLookup = async (req, res, next) => {
 
 exports.adminGetReferralStats = async (req, res, next) => {
   try {
-    const [{ count: totalSignups }, { count: totalConversions }, { data: topReferrers }] = await Promise.all([
-      supabase.from('referral_signups').select('*', { count: 'exact', head: true }),
-      supabase.from('referral_signups').select('*', { count: 'exact', head: true }).eq('discount_applied', true),
-      supabase.rpc('get_top_referrers', {}).then(({ data }) => data).catch(() => [])
+    // Each stats leg is independent and optional: a leg that fails or resolves
+    // null must degrade to a zeroed value, never crash the endpoint.
+    // (Prod incident 2026-09-19: get_top_referrers RPC absent → PostgREST error
+    // path resolved null → "Cannot read properties of null (reading 'data')".)
+    const safeCount = (p) => Promise.resolve(p).then((r) => r?.count ?? 0).catch(() => 0);
+    const safeList = (p) => Promise.resolve(p).then((r) => r?.data ?? []).catch(() => []);
+
+    const [totalSignups, totalConversions, topReferrers] = await Promise.all([
+      safeCount(supabase.from('referral_signups').select('*', { count: 'exact', head: true })),
+      safeCount(supabase.from('referral_signups').select('*', { count: 'exact', head: true }).eq('discount_applied', true)),
+      safeList(supabase.rpc('get_top_referrers', { limit_count: 5 }))
     ]);
 
     return res.json(success('Referral platform stats', {
