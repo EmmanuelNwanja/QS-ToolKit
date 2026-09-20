@@ -89,9 +89,8 @@ export default function RegisterPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center py-12 px-4">
         <div className="w-full max-w-lg">
           <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-9 w-auto" />
-              <span className="font-display text-2xl font-bold text-primary-800">QSToolkit</span>
+            <Link href="/" className="inline-block mb-4">
+              <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-12 w-auto" />
             </Link>
             <h1 className="font-display text-2xl font-bold text-primary-800">Create Your Account</h1>
             <p className="text-gray-500 text-sm mt-1">Join Nigeria&apos;s QS professional community</p>
