@@ -28,6 +28,11 @@
     "tailwind-merge": "^3.7.0",
     "zustand": "^4.5.0"
   },
+  "browserslist": [
+    "> 0.5%",
+    "iOS >= 15.4",
+    "not dead"
+  ],
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@types/react": "^18.3.31",

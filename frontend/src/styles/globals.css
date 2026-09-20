@@ -13,6 +13,7 @@
     /* Belt-and-braces against stray side-scroll: long words, emails, pasted
        URLs and wide tables must wrap or scroll *inside* their container,
        never widen the page. */
+    overflow-x: hidden; /* fallback for Safari < 16 */
     overflow-x: clip;
   }
   body {
@@ -647,3 +648,20 @@
 .sek-hit:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--bg, #f9fafb), 0 0 0 4px rgba(var(--ink-rgb, 17, 24, 39), 0.4);}
+
+/* === Safari Compatibility === */
+
+/* aspect-ratio fallback for Safari < 15 */
+@supports not (aspect-ratio: 16/9) {
+  .aspect-video { padding-top: 56.25%; position: relative; }
+}
+
+/* Webkit backdrop-filter prefix for Tailwind backdrop-blur classes */
+.backdrop-blur-sm { -webkit-backdrop-filter: blur(4px) var(--tw-backdrop-brightness, brightness(1)) var(--tw-backdrop-contrast, contrast(1)) var(--tw-backdrop-saturate, saturate(1)); }
+.backdrop-blur { -webkit-backdrop-filter: blur(8px) var(--tw-backdrop-brightness, brightness(1)) var(--tw-backdrop-contrast, contrast(1)) var(--tw-backdrop-saturate, saturate(1)); }
+.backdrop-blur-md { -webkit-backdrop-filter: blur(12px) var(--tw-backdrop-brightness, brightness(1)) var(--tw-backdrop-contrast, contrast(1)) var(--tw-backdrop-saturate, saturate(1)); }
+.backdrop-blur-lg { -webkit-backdrop-filter: blur(16px) var(--tw-backdrop-brightness, brightness(1)) var(--tw-backdrop-contrast, contrast(1)) var(--tw-backdrop-saturate, saturate(1)); }
+
+/* Safe area inset for iPhone notch / home indicator */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }

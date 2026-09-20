@@ -46,6 +46,8 @@ export default function SubscriptionPage() {
 
   // Add-on payment loading state
   const [addOnPaying, setAddOnPaying] = useState('');
+  const [academyBilling, setAcademyBilling] = useState('weekly');
+  const [examBilling, setExamBilling] = useState('weekly');
 
   // Philanthropist modal state
   const [showPhilModal, setShowPhilModal] = useState(false);
@@ -95,9 +97,7 @@ export default function SubscriptionPage() {
 
 
   const handleAddOnSubscribe = async (addOnType) => {
-    const billingCycle = addOnType === 'academy'
-      ? (document.querySelector('input[name="academy_billing"]:checked')?.value || 'weekly')
-      : (document.querySelector('input[name="exam_billing"]:checked')?.value || 'weekly');
+    const billingCycle = addOnType === 'academy' ? academyBilling : examBilling;
 
     setAddOnPaying(addOnType);
     try {
@@ -475,16 +475,16 @@ export default function SubscriptionPage() {
                   </div>
                 </div>
                 <div className="space-y-2 mb-3">
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
-                    <input type="radio" name="academy_billing" value="weekly" defaultChecked className="accent-purple-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${academyBilling === 'weekly' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}>
+                    <input type="radio" name="academy_billing" value="weekly" checked={academyBilling === 'weekly'} onChange={() => setAcademyBilling('weekly')} className="accent-purple-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Weekly</span><span className="text-sm font-bold text-primary-700 ml-2">₦2,000/wk</span></div>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
-                    <input type="radio" name="academy_billing" value="monthly" className="accent-purple-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${academyBilling === 'monthly' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}>
+                    <input type="radio" name="academy_billing" value="monthly" checked={academyBilling === 'monthly'} onChange={() => setAcademyBilling('monthly')} className="accent-purple-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Monthly</span><span className="text-sm font-bold text-primary-700 ml-2">₦7,600/mo</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 5%</span></div>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-300 cursor-pointer transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
-                    <input type="radio" name="academy_billing" value="annual" className="accent-purple-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${academyBilling === 'annual' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}>
+                    <input type="radio" name="academy_billing" value="annual" checked={academyBilling === 'annual'} onChange={() => setAcademyBilling('annual')} className="accent-purple-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Annual</span><span className="text-sm font-bold text-primary-700 ml-2">₦93,600/yr</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 10%</span></div>
                   </label>
                 </div>
@@ -509,16 +509,16 @@ export default function SubscriptionPage() {
                   </div>
                 </div>
                 <div className="space-y-2 mb-3">
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
-                    <input type="radio" name="exam_billing" value="weekly" defaultChecked className="accent-emerald-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${examBilling === 'weekly' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'}`}>
+                    <input type="radio" name="exam_billing" value="weekly" checked={examBilling === 'weekly'} onChange={() => setExamBilling('weekly')} className="accent-emerald-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Weekly</span><span className="text-sm font-bold text-primary-700 ml-2">₦2,000/wk</span></div>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
-                    <input type="radio" name="exam_billing" value="monthly" className="accent-emerald-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${examBilling === 'monthly' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'}`}>
+                    <input type="radio" name="exam_billing" value="monthly" checked={examBilling === 'monthly'} onChange={() => setExamBilling('monthly')} className="accent-emerald-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Monthly</span><span className="text-sm font-bold text-primary-700 ml-2">₦7,600/mo</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 5%</span></div>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition-colors has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
-                    <input type="radio" name="exam_billing" value="annual" className="accent-emerald-600" />
+                  <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${examBilling === 'annual' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'}`}>
+                    <input type="radio" name="exam_billing" value="annual" checked={examBilling === 'annual'} onChange={() => setExamBilling('annual')} className="accent-emerald-600" />
                     <div className="flex-1"><span className="text-sm font-medium text-gray-900">Annual</span><span className="text-sm font-bold text-primary-700 ml-2">₦93,600/yr</span><span className="text-[10px] text-emerald-600 font-semibold ml-1">Save 10%</span></div>
                   </label>
                 </div>

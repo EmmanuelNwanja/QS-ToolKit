@@ -8,6 +8,7 @@ import pushNotificationService from '../../services/pushNotificationService';
 import { userAPI, pushAPI, subscriptionAPI, referralAPI, authAPI } from '../../services/api';
 import PasswordInput from '../../components/PasswordInput';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { copyToClipboard } from '../../utils/clipboard';
 
 const TABS = ['Profile', 'Branding', 'Team', 'Notifications', 'Subscription', 'Referrals', 'Account'];
 const DEFAULT_INCOME_RATES = { basic: 1.0, pro: 0.6, enterprise: 0.3 };
@@ -631,7 +632,7 @@ export default function SettingsPage() {
                   <p className="text-xs text-gray-500 mb-1">Your Referral Link</p>
                   <div className="flex items-center gap-2">
                     <input className="input flex-1 text-sm" value={referral.link} readOnly />
-                    <button type="button" onClick={() => { navigator.clipboard.writeText(referral.link); toast.success('Copied!'); }} className="btn-secondary text-sm whitespace-nowrap">Copy</button>
+                    <button type="button" onClick={async () => { await copyToClipboard(referral.link); toast.success('Copied!'); }} className="btn-secondary text-sm whitespace-nowrap">Copy</button>
                   </div>
                 </div>
                 <div className="text-xs text-gray-400">

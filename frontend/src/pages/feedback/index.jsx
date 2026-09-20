@@ -5,6 +5,7 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { feedbackAPI, projectAPI } from '../../services/api';
 import { formatDate } from '../../utils/helpers';
+import { copyToClipboard } from '../../utils/clipboard';
 
 export default function FeedbackPage() {
   const [links, setLinks]       = useState([]);
@@ -32,7 +33,7 @@ export default function FeedbackPage() {
       const { data } = await feedbackAPI.createLink(createForm);
       setLinks(l => [data.link, ...l]);
       setShowCreate(false);
-      await navigator.clipboard.writeText(data.link.feedback_url);
+      await copyToClipboard(data.link.feedback_url);
       toast.success('Feedback link created and copied to clipboard!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not create link');
@@ -48,7 +49,7 @@ export default function FeedbackPage() {
   };
 
   const copyLink = async (url) => {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     toast.success('Link copied!');
   };
 

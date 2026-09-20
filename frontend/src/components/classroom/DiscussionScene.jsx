@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { classroomAPI } from '../../services/classroomAPI';
 import toast from 'react-hot-toast';
 
+// ponytail: safeId() unavailable on Safari < 15.4
+const safeId = () => crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
+
 const AGENT_AVATARS = {
   dr_q: '🎓',
   practitioner: '👷',
@@ -21,7 +24,7 @@ export default function DiscussionScene({ scene, onComplete }) {
   const content = scene?.content || {};
   const [messages, setMessages] = useState(() => {
     if (content.initial_messages?.length) {
-      return content.initial_messages.map(m => ({ ...m, id: crypto.randomUUID() }));
+      return content.initial_messages.map(m => ({ ...m, id: safeId() }));
     }
     return [];
   });
@@ -41,7 +44,7 @@ export default function DiscussionScene({ scene, onComplete }) {
       const data = res.data;
       setDiscussionId(data.session_id);
       if (data.initial_messages?.length) {
-        setMessages(data.initial_messages.map(m => ({ ...m, id: crypto.randomUUID() })));
+        setMessages(data.initial_messages.map(m => ({ ...m, id: safeId() })));
       }
     } catch {
       toast.error('Failed to start discussion');
@@ -53,7 +56,7 @@ export default function DiscussionScene({ scene, onComplete }) {
     if (!text || sending) return;
     setInput('');
 
-    const userMsg = { id: crypto.randomUUID(), role: 'user', agent: 'student', text, timestamp: new Date().toISOString() };
+    const userMsg = { id: safeId(), role: 'user', agent: 'student', text, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setSending(true);
 
@@ -64,7 +67,7 @@ export default function DiscussionScene({ scene, onComplete }) {
       const res = await classroomAPI.continueDiscussion(scene.id, discussionId, { message: text });
       const data = res.data;
       if (data.messages?.length) {
-        setMessages(prev => [...prev, ...data.messages.map(m => ({ ...m, id: crypto.randomUUID() }))]);
+        setMessages(prev => [...prev, ...data.messages.map(m => ({ ...m, id: safeId() }))]);
       }
     } catch {
       toast.error('Failed to get response');

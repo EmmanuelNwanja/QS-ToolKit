@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Check, Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { copyToClipboard } from "../../utils/clipboard";
 
 const COPIED_RESET_MS = 1600;
 const ACTION_STAGGER_MS = 30;
@@ -79,7 +80,7 @@ const AIMessage = ({
       return;
     }
     try {
-      await navigator.clipboard.writeText(copyText);
+      await copyToClipboard(copyText);
       setHasCopied(true);
     } catch {
       // A blocked clipboard is not worth interrupting the conversation over.

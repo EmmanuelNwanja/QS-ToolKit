@@ -3,6 +3,7 @@ import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI, userActionsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { copyToClipboard } from '../../utils/clipboard';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -558,7 +559,7 @@ export default function AdminUsers() {
                         type="button"
                         onClick={async () => {
                           try {
-                            await navigator.clipboard.writeText(otpResult.oneTimePassword);
+                            await copyToClipboard(otpResult.oneTimePassword);
                             toast.success('One-time password copied');
                           } catch {
                             toast.error('Unable to copy. Please copy manually.');

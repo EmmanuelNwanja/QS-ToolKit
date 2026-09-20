@@ -7,6 +7,7 @@ import Layout from '../../../components/Layout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { projectAPI, feedbackAPI } from '../../../services/api';
 import { formatNaira, formatDate, statusBadge } from '../../../utils/helpers';
+import { copyToClipboard } from '../../../utils/clipboard';
 import ForecastCard from '../../../components/ForecastCard';
 import DrawingUploader from '../../../components/DrawingUploader';
 
@@ -40,7 +41,7 @@ export default function ProjectDetailPage() {
         client_name: project?.client_name,
         client_email: project?.client_email
       });
-      await navigator.clipboard.writeText(data.link.feedback_url);
+      await copyToClipboard(data.link.feedback_url);
       toast.success('Feedback link copied to clipboard!');
     } catch { toast.error('Could not create feedback link'); }
   };

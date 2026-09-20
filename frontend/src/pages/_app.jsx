@@ -159,7 +159,7 @@ export default function App({ Component, pageProps }) {
 
       {/* Update available banner - shown when a new service worker is waiting */}
       {updateReady && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-primary-800 px-5 py-3 text-white shadow-xl">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-primary-800 px-5 py-3 text-white shadow-xl pb-safe">
           <span className="text-sm font-medium">A new version of QSToolkit is available.</span>
           <button
             onClick={applyUpdate}
