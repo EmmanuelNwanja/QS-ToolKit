@@ -151,6 +151,12 @@ export default function LoginPage() {
         }
       }, 100);
     } catch (err) {
+      console.warn('[Login] Error:', {
+        code: err.code,
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+      });
       toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
       if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
         setShowResendVerification(true);

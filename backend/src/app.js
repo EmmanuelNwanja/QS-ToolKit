@@ -16,7 +16,10 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── Security ──────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // ── PostHog Analytics Middleware ──────────────────────────────
 app.use((req, res, next) => {
@@ -36,7 +39,8 @@ const ALLOWED_ORIGINS = [
 app.use(cors({
   origin: (incomingOrigin, callback) => {
     // Allow server-to-server / Postman / cron (no Origin header)
-    if (!incomingOrigin) return callback(null, true);
+    // Allow 'null' origin from Safari private browsing and Brave shields
+    if (!incomingOrigin || incomingOrigin === 'null') return callback(null, true);
     // Allow any Vercel preview deployment automatically
     if (incomingOrigin.endsWith('.vercel.app')) return callback(null, true);
     // Allow whitelisted origins
