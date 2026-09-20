@@ -3,7 +3,7 @@ import { projectAPI, boqAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 /* ═══════════════════════════════════════════════════════════════
-   QS ITEM DATA — All 70 measurement items
+   QS ITEM DATA - All 70 measurement items
    ═══════════════════════════════════════════════════════════════ */
 
 const SUBSTRUCTURE_ITEMS = [
@@ -381,7 +381,7 @@ function ProjectSelection({ project, onNext }) {
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-gray-400 text-sm">
-              {search ? 'No projects match your search' : 'No projects yet — create one below'}
+              {search ? 'No projects match your search' : 'No projects yet - create one below'}
             </p>
           </div>
         ) : (
@@ -731,7 +731,7 @@ function CalculationStep({ title, groups, results, onResultsChange, onNext }) {
                         results[currentItem.carryForwardFrom] ? (
                           <>{results[currentItem.carryForwardFrom].quantity} <span className="text-sm font-normal text-gray-500">m³ (carried forward)</span></>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">-</span>
                         )
                       ) : (
                         <>{liveResult} <span className="text-sm font-normal text-gray-500">{currentItem.unit}</span></>
@@ -876,7 +876,7 @@ function BOQCreationStep({ project, subResults, superResults, onBack, onFinish }
     try {
       const sections = buildBoqPayload();
       const boqData = {
-        title: `BOQ — ${project.title}`,
+        title: `BOQ - ${project.title}`,
         project_id: project.id,
         client_name: project.client_name,
         location: project.location,
@@ -1047,7 +1047,7 @@ function BOQCreationStep({ project, subResults, superResults, onBack, onFinish }
         </div>
       ) : (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-blue-700">No existing BOQs — a new one will be created</p>
+          <p className="text-sm text-blue-700">No existing BOQs - a new one will be created</p>
         </div>
       )}
 

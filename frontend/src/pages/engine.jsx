@@ -326,13 +326,13 @@ export default function EnginePage() {
                           <select id="rev-a" className="input flex-1">
                             <option value="">Older revision...</option>
                             {revisions.slice(0, -1).map((r) => (
-                              <option key={r.id} value={r.id}>Rev {r.revision_number} — {formatDate(r.created_at)}</option>
+                              <option key={r.id} value={r.id}>Rev {r.revision_number} - {formatDate(r.created_at)}</option>
                             ))}
                           </select>
                           <select id="rev-b" className="input flex-1">
                             <option value="">Newer revision...</option>
                             {revisions.slice(1).map((r) => (
-                              <option key={r.id} value={r.id}>Rev {r.revision_number} — {formatDate(r.created_at)}</option>
+                              <option key={r.id} value={r.id}>Rev {r.revision_number} - {formatDate(r.created_at)}</option>
                             ))}
                           </select>
                           <button
@@ -403,15 +403,15 @@ export default function EnginePage() {
                                           {c.type === 'modified' ? 'mod' : c.type}
                                         </span>
                                       </td>
-                                      <td className="px-3 py-2 text-gray-600">{c.section_title || c.field || '—'}</td>
+                                      <td className="px-3 py-2 text-gray-600">{c.section_title || c.field || '-'}</td>
                                       <td className="px-3 py-2 text-gray-900">{c.level === 'item' ? (c.description || `Item ${c.item_no || ''}`) : c.level}</td>
                                       <td className="px-3 py-2 text-gray-500">
                                         {c.before !== undefined ? String(c.before) :
-                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.before}`).join(', ') : '—'}
+                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.before}`).join(', ') : '-'}
                                       </td>
                                       <td className="px-3 py-2 text-gray-900">
                                         {c.after !== undefined ? String(c.after) :
-                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.after}`).join(', ') : '—'}
+                                         c.changes ? Object.entries(c.changes).map(([f, v]) => `${f}: ${v.after}`).join(', ') : '-'}
                                       </td>
                                     </tr>
                                   ))}

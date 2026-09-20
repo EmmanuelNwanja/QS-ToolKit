@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 /**
- * MarkdownRenderer — renders AI responses with rich formatting
+ * MarkdownRenderer - renders AI responses with rich formatting
  * Supports: bold, italic, headers, lists, code blocks, tables, blockquotes
  */
 export default function MarkdownRenderer({ content, className = '' }) {

@@ -246,7 +246,7 @@ function PracticeResults({ result, onRetry }) {
                 <span className="text-xs text-gray-500">{d.topic}</span>
                 {!d.is_correct && (
                   <span className="text-xs text-red-600 ml-auto">
-                    Your answer: {d.user_answer || '—'} · Correct: {d.correct_answer}
+                    Your answer: {d.user_answer || '-'} · Correct: {d.correct_answer}
                   </span>
                 )}
               </div>
@@ -312,14 +312,14 @@ export default function PracticeExamPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Practice Exam — QSToolkit</title></Head>
+      <Head><title>Practice Exam - QSToolkit</title></Head>
       <Layout title="📚 Personalized Practice">
         <div className="max-w-3xl space-y-6">
           <Link href="/exam-prep" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
             &larr; Back to Exam Prep
           </Link>
 
-          {/* Idle state — show generate button */}
+          {/* Idle state - show generate button */}
           {phase === 'idle' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}

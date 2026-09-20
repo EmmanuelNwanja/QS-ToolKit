@@ -118,7 +118,7 @@ export default function CourseDetail() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{course.title} — QSToolkit</title></Head>
+      <Head><title>{course.title} - QSToolkit</title></Head>
       <Layout title={`${course.icon} ${course.title}`}>
         <div className="max-w-3xl space-y-6">
           <Link href="/classroom" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
@@ -162,7 +162,7 @@ export default function CourseDetail() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Current level: <strong>{LEVEL_LABELS[currentLevel]}</strong></span>
-                  <span className="text-gray-500">{completedInLevel} lessons · {avgScore != null ? `${avgScore}%` : '—'}</span>
+                  <span className="text-gray-500">{completedInLevel} lessons · {avgScore != null ? `${avgScore}%` : '-'}</span>
                 </div>
 
                 <div className="flex gap-2">

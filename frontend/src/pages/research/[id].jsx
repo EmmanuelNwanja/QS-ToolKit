@@ -112,7 +112,7 @@ export default function ResearchWorkspace() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{project.title} — QS Research</title></Head>
+      <Head><title>{project.title} - QS Research</title></Head>
       <Layout title="QS Research Pipeline">
         <div className="max-w-6xl space-y-6">
           <Link href="/research" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -127,7 +127,7 @@ export default function ResearchWorkspace() {
                 {project.description && <p className="text-sm text-gray-500 mt-1">{project.description}</p>}
                 <div className="flex items-center gap-3 mt-2">
                   <span className="badge badge-indigo text-xs capitalize">{project.research_type.replace(/_/g, ' ')}</span>
-                  <span className="text-xs text-gray-400">Stage {activeStage}/10 — {STAGES[activeStage - 1]?.name}</span>
+                  <span className="text-xs text-gray-400">Stage {activeStage}/10 - {STAGES[activeStage - 1]?.name}</span>
                 </div>
               </div>
               {project.status !== 'completed' && (
@@ -235,7 +235,7 @@ export default function ResearchWorkspace() {
                           <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <p className="font-medium text-sm">{s.title}</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {s.authors?.join(', ')} ({s.year}) — {s.type}
+                              {s.authors?.join(', ')} ({s.year}) - {s.type}
                             </p>
                             {s.notes && <p className="text-xs text-gray-400 mt-1 italic">{s.notes}</p>}
                             <div className="flex items-center gap-1 mt-2">
@@ -336,7 +336,7 @@ export default function ResearchWorkspace() {
                           <div key={i} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                             <div>
                               <p className="font-medium text-sm">{d.source}</p>
-                              <p className="text-xs text-gray-500">{d.value_type} — {d.unit}</p>
+                              <p className="text-xs text-gray-500">{d.value_type} - {d.unit}</p>
                             </div>
                             <span className="text-xs text-gray-400">{d.region}</span>
                           </div>

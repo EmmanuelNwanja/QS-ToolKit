@@ -28,7 +28,7 @@ const BOTTOM_THRESHOLD_PX = 48;
  * Scroll container for a thread.
  *
  * It follows the bottom **only while the reader is already there**. Scrolling up
- * during a stream is an explicit act — the user wants to read something — and
+ * during a stream is an explicit act - the user wants to read something - and
  * dragging them back down is the single most common way chat UIs become
  * unusable. When it stops following, a pill appears to offer the trip back.
  *

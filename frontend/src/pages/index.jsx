@@ -87,7 +87,7 @@ const CAPABILITIES = [
   {
     num: '02',
     title: 'BOQs in minutes.',
-    body: 'Input your quantities, get a professional itemised document. Export to PDF or Excel — with your logo and branding.'
+    body: 'Input your quantities, get a professional itemised document. Export to PDF or Excel - with your logo and branding.'
   },
   {
     num: '03',
@@ -97,7 +97,7 @@ const CAPABILITIES = [
   {
     num: '04',
     title: 'Project history.',
-    body: 'Every BOQ, every invoice, every rate — logged and searchable. Your entire history, one search away.'
+    body: 'Every BOQ, every invoice, every rate - logged and searchable. Your entire history, one search away.'
   },
   {
     num: '05',
@@ -129,7 +129,7 @@ const FAQS = [
   },
   {
     q: 'Can I export BOQs and invoices with my company logo?',
-    a: 'Yes. Upload your logo and brand colours in Settings. Every PDF and Excel export carries your identity — professionally formatted and ready to send to clients.'
+    a: 'Yes. Upload your logo and brand colours in Settings. Every PDF and Excel export carries your identity - professionally formatted and ready to send to clients.'
   },
   {
     q: 'Is there a free trial?',
@@ -137,7 +137,7 @@ const FAQS = [
   },
   {
     q: 'How does the client feedback system work?',
-    a: 'Generate a unique link for each client. They rate you on quality, timeliness, and communication. Your average score feeds into the live leaderboard — turning reputation into a competitive edge.'
+    a: 'Generate a unique link for each client. They rate you on quality, timeliness, and communication. Your average score feeds into the live leaderboard - turning reputation into a competitive edge.'
   },
   {
     q: 'Can I use QSToolkit on my phone?',
@@ -260,7 +260,7 @@ export default function LandingPage() {
         <meta name="description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator, project tracker & AI assistant. Free to start. Built for Nigerian construction standards." />
         <meta name="keywords" content="quantity surveying Nigeria, BOQ software, bill of quantities, QS calculators, construction invoices, project tracking, Nigerian QS professionals, quantity surveyor app" />
         <link rel="canonical" href="https://qs.solnuv.com" />
-        {/* Hero photo is the LCP element — preload it above the fold */}
+        {/* Hero photo is the LCP element - preload it above the fold */}
         <link rel="preload" as="image" href="/images/home/hero-site-sunset.jpg" />
         <meta property="og:title" content="QSToolkit - Quantity Surveying Without the Software Headaches" />
         <meta property="og:description" content="Nigeria's #1 quantity surveying platform. 70+ QS calculators, BOQ generator, invoice creator & project tracker. Free to start." />
@@ -330,9 +330,6 @@ export default function LandingPage() {
                   Install
                 </button>
               )}
-              <Link href="/leaderboard" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
-                Leaderboard
-              </Link>
               <Link href="/gifting" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
                 Gifting
               </Link>
@@ -350,7 +347,7 @@ export default function LandingPage() {
             HERO
             ═══════════════════════════════════════════════════════ */}
         <section className="relative bg-primary-900 text-white pt-32 pb-20 md:pt-44 md:pb-28 px-4 overflow-hidden">
-          {/* Site photography — golden-hour site silhouettes, echoing the closing CTA */}
+          {/* Site photography - golden-hour site silhouettes, echoing the closing CTA */}
           <img
             src="/images/home/hero-site-sunset.jpg"
             alt=""
@@ -391,7 +388,7 @@ export default function LandingPage() {
             <FadeUp delay={0.3}>
               <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center">
                 <Link href="/auth/register" className="btn-gold text-base px-8 py-3 text-center">
-                  Start Free — No Card
+                  Start Free - No Card
                 </Link>
                 <Link href="/calculators" className="btn-ghost text-base px-8 py-3 text-center">
                   Try a Calculator →
@@ -523,7 +520,7 @@ export default function LandingPage() {
                   <span className="text-gold-400">Every QS task.</span>
                 </h2>
                 <p className="text-white/40 text-lg leading-relaxed mb-8 max-w-lg">
-                  From concrete to invoice — one system, one login, zero installation.
+                  From concrete to invoice - one system, one login, zero installation.
                 </p>
                 <ul className="space-y-4">
                   {['Concrete, blockwork, steel, plastering & more', 'BOQs with your branding', 'Invoices, quotes, valuations', 'Client feedback collection', 'Live national leaderboard'].map((item) => (
@@ -787,7 +784,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Divider band — the skyline this platform is built for */}
+          {/* Divider band - the skyline this platform is built for */}
           <div className="mt-20 relative">
             <img
               src="/images/home/band-lagos-aerial.jpg"
@@ -803,7 +800,7 @@ export default function LandingPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════
-            QS AI ENGINE — LIVE
+            QS AI ENGINE - LIVE
             ═══════════════════════════════════════════════════════ */}
         <section className="bg-white py-24 md:py-32 px-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gold-500/[0.04] blur-3xl pointer-events-none" />
@@ -839,7 +836,7 @@ export default function LandingPage() {
               {[
                 { title: 'Auto-BOQ', body: 'Upload architectural drawings. Get draft BOQs with rooms, dimensions, and material takeoff in seconds.', icon: '🏗️' },
                 { title: 'Cost Forecasting', body: 'Predict final project costs based on your historical overrun patterns. Spot overruns before they happen.', icon: '🔮' },
-                { title: 'Variance Detection', body: 'Compare any two BOQ revisions side-by-side. See exactly what changed — items, rates, quantities.', icon: '📊' },
+                { title: 'Variance Detection', body: 'Compare any two BOQ revisions side-by-side. See exactly what changed - items, rates, quantities.', icon: '📊' },
                 { title: 'Dr. Q Assistant', body: 'Ask anything in plain English. "How many blocks for a 12m wall?" Get instant, accurate answers.', icon: '🤖' }
               ].map((feat, i) => (
                 <motion.div

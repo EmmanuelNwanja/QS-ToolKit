@@ -46,7 +46,7 @@ export default function ExamAnalytics() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Exam Analytics — QS Exam Prep</title></Head>
+      <Head><title>Exam Analytics - QS Exam Prep</title></Head>
       <Layout title="📊 Exam Analytics">
         <div className="max-w-7xl space-y-6">
           {/* Overall Stats */}

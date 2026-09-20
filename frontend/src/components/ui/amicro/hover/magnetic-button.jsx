@@ -3,7 +3,7 @@ import { motion, useSpring } from "framer-motion";
 
 /**
  * A button that pulls slightly towards the user's cursor.
- * Amicro (MIT) — converted from TSX to JSX for QSToolkit.
+ * Amicro (MIT) - converted from TSX to JSX for QSToolkit.
  *
  * QSToolkit: use on primary CTAs, "Get Started" buttons,
  * or any button that benefits from magnetic pull feedback.

@@ -120,7 +120,7 @@ export default function ContestPage() {
   if (submitted && results) {
     return (
       <ProtectedRoute>
-        <Head><title>Contest Results — QS Academy</title></Head>
+        <Head><title>Contest Results - QS Academy</title></Head>
         <Layout title="Contest Results">
           <div className="max-w-3xl mx-auto space-y-6">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card text-center py-10">
@@ -178,7 +178,7 @@ export default function ContestPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{contest.topic} — QS Arena</title></Head>
+      <Head><title>{contest.topic} - QS Arena</title></Head>
       <Layout title={contest.topic}>
         <div className="max-w-3xl space-y-4">
           {/* Contest header */}

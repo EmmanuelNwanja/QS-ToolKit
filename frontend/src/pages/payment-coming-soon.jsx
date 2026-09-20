@@ -8,7 +8,7 @@ export default function PaymentComingSoon() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Online Payments — Coming Soon | QSToolkit</title></Head>
+      <Head><title>Online Payments - Coming Soon | QSToolkit</title></Head>
       <Layout title="Online Payments">
         <div className="max-w-lg mx-auto py-16 px-4 text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-6">

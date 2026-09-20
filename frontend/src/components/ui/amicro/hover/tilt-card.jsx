@@ -3,7 +3,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 /**
  * 3D parallax tilt effect following mouse cursor.
- * Amicro (MIT) — converted from TSX to JSX for QSToolkit.
+ * Amicro (MIT) - converted from TSX to JSX for QSToolkit.
  *
  * QSToolkit: use on feature cards, pricing cards, or any card
  * that benefits from depth/interaction on hover.

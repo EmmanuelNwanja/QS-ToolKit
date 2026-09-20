@@ -105,7 +105,7 @@ export default function ProjectDetailPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{project.title} — QSToolkit</title></Head>
+      <Head><title>{project.title} - QSToolkit</title></Head>
       <Layout title={project.title}>
         <div className="max-w-5xl space-y-6">
 
@@ -119,7 +119,7 @@ export default function ProjectDetailPage() {
                   {project.is_verified && <span className="badge badge-green">✓ Verified</span>}
                 </div>
                 <p className="text-gray-500 text-sm">
-                  {project.project_type || 'Project'} · {project.state || project.location || '—'}
+                  {project.project_type || 'Project'} · {project.state || project.location || '-'}
                 </p>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -134,7 +134,7 @@ export default function ProjectDetailPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
               {[
-                { label: 'Client', value: project.client_name || '—' },
+                { label: 'Client', value: project.client_name || '-' },
                 { label: 'Estimated Value', value: formatNaira(project.estimated_value) },
                 { label: 'Final Value', value: formatNaira(project.final_value) },
                 { label: 'Start Date', value: formatDate(project.start_date) }

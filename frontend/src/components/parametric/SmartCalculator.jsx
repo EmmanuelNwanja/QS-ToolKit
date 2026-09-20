@@ -5,7 +5,7 @@
  * [x] Buttons → btn-primary, btn-secondary, btn-ghost (no custom buttons)
  * [x] Inputs  → .input class (from globals.css)
  * [x] Cards   → .card, .card-md (from globals.css)
- * [x] Spacing → Tailwind scale (p-*, gap-*, m-*) — no arbitrary px values
+ * [x] Spacing → Tailwind scale (p-*, gap-*, m-*) - no arbitrary px values
  * [x] Icons   → Emoji-based (matching existing app pattern)
  * [x] Layout  → Renders inside <Layout> from parent; uses same sidebar/nav
  * [x] Dark    → No special dark mode needed (app uses bg-gray-50, cards stay white)
@@ -478,7 +478,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
     </div>
   );
 
-  // ──── RENDER: STEP 1 — Element Selection ─────────────────────
+  // ──── RENDER: STEP 1 - Element Selection ─────────────────────
   const renderStep1 = () => {
     const categories = [...new Set(ELEMENTS.map(e => e.category))];
     const catLabel = { beam: 'Beams', column: 'Columns', slab: 'Slabs', foundation: 'Foundations', wall: 'Walls', stair: 'Stairs' };
@@ -517,7 +517,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
     );
   };
 
-  // ──── RENDER: STEP 2 — Input & Standard ──────────────────────
+  // ──── RENDER: STEP 2 - Input & Standard ──────────────────────
   const renderStep2 = () => {
     if (!el) return null;
     const isBeam = config.element_type === 'beam';
@@ -551,7 +551,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
             className="input w-full text-sm" min={100} step={100} />
         </div>
 
-        {/* Circular Column — diameter dropdown */}
+        {/* Circular Column - diameter dropdown */}
         {isCircCol && (
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -722,7 +722,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
     );
   };
 
-  // ──── RENDER: STEP 3 — Review & Override ────────────────────
+  // ──── RENDER: STEP 3 - Review & Override ────────────────────
   const renderStep3 = () => {
     if (!result) return (
       <div className="text-center py-8 text-gray-400 text-sm">
@@ -805,7 +805,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
                     className="input flex-1 text-sm py-1" step={5} />
                 </div>
                 {color === 'red' && (
-                  <p className="text-[10px] text-red-600 mt-1">⚠ Below code minimum — BOQ injection blocked</p>
+                  <p className="text-[10px] text-red-600 mt-1">⚠ Below code minimum - BOQ injection blocked</p>
                 )}
               </div>
             );
@@ -884,8 +884,8 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
             {/* Circular column specific */}
             {derived.diameter_mm && result.circular_details && (
               <div className="grid grid-cols-2 gap-2 bg-primary-50 rounded-lg p-2 text-[11px]">
-                <div><span className="text-gray-500">Long. bars:</span> <strong>{result.circular_details.longitudinal_bar_count || derived.long_bar_count || '—'}</strong></div>
-                <div><span className="text-gray-500">Spiral ties:</span> <strong>{result.circular_details.spiral_tie_count || derived.spiral_count || '—'}</strong></div>
+                <div><span className="text-gray-500">Long. bars:</span> <strong>{result.circular_details.longitudinal_bar_count || derived.long_bar_count || '-'}</strong></div>
+                <div><span className="text-gray-500">Spiral ties:</span> <strong>{result.circular_details.spiral_tie_count || derived.spiral_count || '-'}</strong></div>
               </div>
             )}
 
@@ -921,7 +921,7 @@ export default function SmartCalculator({ onCalculate: _onCalculate, loading, pr
     );
   };
 
-  // ──── RENDER: STEP 4 — Actions ──────────────────────────────
+  // ──── RENDER: STEP 4 - Actions ──────────────────────────────
   const renderStep4 = () => {
     if (!result) return renderStep3();
     return (

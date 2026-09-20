@@ -53,7 +53,7 @@ export default function LessonsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>AI Lessons — QS Academy</title></Head>
+      <Head><title>AI Lessons - QS Academy</title></Head>
       <Layout title="📚 AI Lessons">
         <div className="max-w-7xl space-y-6">
           {/* Progress Summary */}

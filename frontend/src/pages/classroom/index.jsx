@@ -66,7 +66,7 @@ export default function ClassroomDashboard() {
   return (
     <ProtectedRoute>
       <ComingSoonGate>
-        <Head><title>Classroom — QSToolkit</title></Head>
+        <Head><title>Classroom - QSToolkit</title></Head>
         <Layout title="🎓 Classroom">
         <div className="max-w-5xl space-y-8">
 
@@ -127,7 +127,7 @@ export default function ClassroomDashboard() {
                       {/* Progress or action */}
                       {completed ? (
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-emerald-600 font-semibold">✓ Completed — {score}%</span>
+                          <span className="text-xs text-emerald-600 font-semibold">✓ Completed - {score}%</span>
                           <button
                             onClick={() => handleContinueCourse(course.id)}
                             className="text-xs text-primary-600 hover:text-primary-800 font-medium"
@@ -139,7 +139,7 @@ export default function ClassroomDashboard() {
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs text-gray-500">{prog.completed_lessons} lessons · </span>
-                            <span className="text-xs font-semibold text-primary-700">{score != null ? `${score}%` : '—'}</span>
+                            <span className="text-xs font-semibold text-primary-700">{score != null ? `${score}%` : '-'}</span>
                           </div>
                           <button
                             onClick={() => handleContinueCourse(course.id)}

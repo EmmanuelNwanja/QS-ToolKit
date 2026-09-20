@@ -96,7 +96,7 @@ export default function ArenaPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Arena — QS Academy</title></Head>
+      <Head><title>Arena - QS Academy</title></Head>
       <Layout title="⚔️ Knowledge Arena">
         <div className="max-w-6xl space-y-6">
           <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">

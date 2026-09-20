@@ -40,10 +40,10 @@ export default function ProjectParametricPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Smart Parametric — QSToolkit</title></Head>
+      <Head><title>Smart Parametric - QSToolkit</title></Head>
       <Layout title="🧠 Smart Parametric Calculator">
         <div className="max-w-5xl">
-          {/* Breadcrumb — matches projects/[id] pattern */}
+          {/* Breadcrumb - matches projects/[id] pattern */}
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
             <Link href="/projects" className="hover:text-primary-700">Projects</Link>
             <span>/</span>

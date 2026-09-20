@@ -80,7 +80,7 @@ export default function CostDataExplorer() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Cost Data Explorer — QS Research</title></Head>
+      <Head><title>Cost Data Explorer - QS Research</title></Head>
       <Layout title="Cost Data Explorer">
         <div className="max-w-6xl space-y-6">
           <Link href="/research" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -168,7 +168,7 @@ export default function CostDataExplorer() {
                         <p className="font-semibold text-sm text-indigo-800">{r.region}</p>
                         <p className="text-lg font-bold text-primary-700 mt-1">₦{r.avg_rate?.toLocaleString()}</p>
                         <p className="text-[10px] text-gray-500 mt-1">
-                          Range: ₦{r.min_rate?.toLocaleString()} — ₦{r.max_rate?.toLocaleString()} ({r.count} data points)
+                          Range: ₦{r.min_rate?.toLocaleString()} - ₦{r.max_rate?.toLocaleString()} ({r.count} data points)
                         </p>
                       </div>
                     ))}
@@ -223,7 +223,7 @@ export default function CostDataExplorer() {
                         <td className="py-2 text-gray-500">{c.unit}</td>
                         <td className="py-2 text-right font-semibold text-primary-700">₦{parseFloat(c.rate_ngn).toLocaleString()}</td>
                         <td className="py-2 text-gray-500">{c.region}</td>
-                        <td className="py-2 text-gray-400 text-xs">{c.source || '—'}</td>
+                        <td className="py-2 text-gray-400 text-xs">{c.source || '-'}</td>
                         <td className="py-2 text-gray-400 text-xs">{c.date_collected}</td>
                       </tr>
                     ))}

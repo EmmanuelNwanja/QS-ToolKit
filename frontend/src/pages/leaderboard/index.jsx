@@ -82,7 +82,7 @@ export default function LeaderboardPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Leaderboard — QSToolkit</title></Head>
+      <Head><title>Leaderboard - QSToolkit</title></Head>
       <Layout title="🏆 Leaderboard">
         <div className="max-w-5xl space-y-6">
 

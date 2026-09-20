@@ -6,7 +6,7 @@ import { searchAPI } from '../../services/api';
    A search icon that becomes a search field with live results.
 
    ONE OBJECT, NOT TWO. The icon and the field are both
-   inside it the whole time — the box's WIDTH is the state.
+   inside it the whole time - the box's WIDTH is the state.
 
    QSToolkit: tokens mapped to tailwind gray scale + font-body.
    Live results: queries /search as the user types (min 3 chars),

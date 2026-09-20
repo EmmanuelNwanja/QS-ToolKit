@@ -18,7 +18,7 @@ export default function AnalyticsDashboard() {
     ? new Date(data.generated_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
     : '';
 
-  // Fetch data based on active tab — each tab uses its own dedicated endpoint
+  // Fetch data based on active tab - each tab uses its own dedicated endpoint
   const fetchData = async (tab) => {
     try {
       setLoading(true);
@@ -43,7 +43,7 @@ export default function AnalyticsDashboard() {
     } catch (err) {
       console.error('Analytics error:', err);
       if (err.response?.status === 401 || err.response?.status === 403) {
-        setError('Unauthorized — Admin access with view_analytics permission required');
+        setError('Unauthorized - Admin access with view_analytics permission required');
       } else {
         setError(err.response?.data?.message || err.message);
       }
@@ -416,7 +416,7 @@ function EmptyState({ tab }) {
     growth:        'No growth data in the selected date range. Try a wider date range.',
     revenue:       'No revenue data in the selected date range. Transactions are recorded when subscriptions are activated via Flutterwave.',
     subscriptions: 'No subscription data in the selected date range. Subscription metrics appear once users upgrade.',
-    cohorts:       'No cohort data yet. Cohort analysis groups users by the month they signed up and tracks how many retain active subscriptions over time — useful for measuring long-term product health.'
+    cohorts:       'No cohort data yet. Cohort analysis groups users by the month they signed up and tracks how many retain active subscriptions over time - useful for measuring long-term product health.'
   };
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">

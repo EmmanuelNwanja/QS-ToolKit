@@ -29,7 +29,7 @@ export default function NewLessonPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>New Lesson — QSToolkit</title></Head>
+      <Head><title>New Lesson - QSToolkit</title></Head>
       <Layout title="🎓 New Lesson">
         <div className="max-w-lg space-y-6">
           <Link href="/classroom" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">

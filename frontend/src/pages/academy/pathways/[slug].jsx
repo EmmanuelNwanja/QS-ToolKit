@@ -117,7 +117,7 @@ export default function PathwayDetailPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{pathway.title} — QS Academy</title></Head>
+      <Head><title>{pathway.title} - QS Academy</title></Head>
       <Layout title={pathway.title}>
         <div className="max-w-4xl space-y-6">
           {/* Back button */}
@@ -151,7 +151,7 @@ export default function PathwayDetailPage() {
             {progress && (
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs text-primary-300 mb-1">
-                  <span>Progress — {completedCount} modules completed</span>
+                  <span>Progress - {completedCount} modules completed</span>
                   <span>Level {progress.current_level} of {pathway.levels?.length || 5}</span>
                 </div>
                 <div className="w-full bg-white/20 rounded-full h-2">

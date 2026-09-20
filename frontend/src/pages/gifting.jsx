@@ -3,45 +3,55 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
+import {
+  Row, Col, Card, Avatar, Tag, Segmented, Input, InputNumber, Skeleton, Space,
+  Button, Checkbox, Pagination, Collapse, Empty, Modal, Statistic, Typography, ConfigProvider,
+} from 'antd';
+import {
+  SearchOutlined, ThunderboltOutlined, EyeInvisibleOutlined, GiftOutlined,
+  AimOutlined, CloseOutlined, CheckCircleFilled,
+} from '@ant-design/icons';
 import { giftingAPI, subscriptionAPI } from '../services/api';
 import useAuthStore from '../context/authStore';
 import PublicNav from '../components/PublicNav';
 import toast from 'react-hot-toast';
 
 /* ═══════════════════════════════════════════════════════════════
-   Gifting — public page (guests welcome, e-commerce checkout style)
-   - Directory of giftable users (server-redacted: "Emmanuel N.", em***@x.co)
-   - Filter by account type · full-email donor lookup · multi-select
-   - Auto-select N random recipients · 1 Month/1 Year billing · Flutterwave
-   - Anonymous or full donor identity
+   Gifting - public page (guests welcome, e-commerce checkout style)
+   Directory of privacy-redacted members · full-email lookup ·
+   multi-select or auto-select · Starter/Pro · 1 Month/1 Year ·
+   anonymous or named donor · Flutterwave checkout
+   UI: antd components + Tailwind layout utilities
    ═══════════════════════════════════════════════════════════════ */
+
+const { Text } = Typography;
 
 const SITE_URL = 'https://qs.solnuv.com';
 
 const FAQS = [
   {
     q: 'What is QSToolkit gifting?',
-    a: 'Gifting lets you sponsor a QSToolkit subscription for a student or professional quantity surveyor. One payment activates every recipient you select — instantly and independently.',
+    a: 'You sponsor a QSToolkit subscription for a student or professional QS. One payment activates every recipient you select - instantly.',
   },
   {
-    q: 'Who can I gift a subscription to?',
-    a: 'Any verified QSToolkit member without an active paid subscription. Browse the public directory (names and emails are privacy-redacted) or paste a full email address to find someone specific.',
+    q: 'Who can I gift to?',
+    a: 'Any verified member without an active subscription. Browse the privacy-redacted directory, or search by full email.',
   },
   {
     q: 'Can I gift anonymously?',
-    a: 'Yes. Tick “Give anonymously” and recipients will simply see “An anonymous donor” — your name, email and company stay private.',
+    a: 'Yes. Recipients see “An anonymous donor” - your details stay private.',
   },
   {
     q: 'How does auto-select work?',
-    a: 'Enter how many people you want to sponsor and click Auto-select. We randomly pick that many giftable members from the current directory results, so you can spread opportunity without choosing individuals.',
+    a: 'Enter a number and we randomly pick that many giftable members from your current results.',
   },
   {
     q: 'How much does a gift cost?',
-    a: 'The price is the normal plan rate — Starter or Pro, billed monthly (1 Month) or yearly (1 Year) — multiplied by the number of recipients. One Flutterwave checkout covers the whole batch.',
+    a: 'The normal plan rate - Starter or Pro, 1 Month or 1 Year - times the number of recipients. One checkout covers the batch.',
   },
   {
-    q: 'Do recipients need to do anything to activate the gift?',
-    a: 'No. Subscriptions activate automatically the moment your payment succeeds, and each recipient gets an email notification. One failed activation never blocks the others.',
+    q: 'Do recipients need to do anything?',
+    a: 'No. Gifts activate the moment payment succeeds, and each recipient is emailed. One failed activation never blocks the rest.',
   },
 ];
 
@@ -84,53 +94,67 @@ const fadeUp = {
   visible: (delay = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }
-  })
+    transition: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] },
+  }),
 };
 
 const ACCOUNT_TYPES = [
-  { value: '', label: 'All', icon: '👥' },
-  { value: 'student', label: 'Students', icon: '🎓' },
-  { value: 'professional', label: 'Professionals', icon: '📐' },
+  { value: '', label: 'All' },
+  { value: 'student', label: 'Students' },
+  { value: 'professional', label: 'Professionals' },
 ];
 
-function PlanBadge({ plan }) {
-  const labels = { basic: 'Starter', student: 'Starter', pro: 'Pro' };
+/* Gold CTA on demand: the app theme's primary is navy (see _app.jsx). */
+const GoldProvider = ({ children }) => (
+  <ConfigProvider theme={{ token: { colorPrimary: '#d97706' } }}>{children}</ConfigProvider>
+);
+
+function PlanTag({ plan }) {
   return (
-    <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${plan === 'pro' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-      {labels[plan] || plan}
-    </span>
+    <Tag color={plan === 'pro' ? 'gold' : 'geekblue'} style={{ marginInlineEnd: 0 }}>
+      {plan === 'pro' ? 'Pro' : 'Starter'}
+    </Tag>
   );
 }
 
 function UserCard({ user, selected, onToggle }) {
+  const initials = user.display_name?.split(' ').map((w) => w[0]).join('').slice(0, 2) || '?';
   return (
-    <motion.button
-      type="button"
-      variants={fadeUp}
-      onClick={() => onToggle(user)}
-      className={`text-left rounded-xl border p-4 transition-all duration-200 relative ${
-        selected
-          ? 'border-gold-500 bg-gold-50 shadow-md ring-1 ring-gold-400'
-          : 'border-gray-200 bg-white hover:border-gold-300 hover:shadow-sm'
-      }`}
-      aria-pressed={selected}
-    >
-      {selected && (
-        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-gold-500 text-white text-xs flex items-center justify-center">✓</span>
-      )}
-      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-700 to-primary-900 text-white flex items-center justify-center font-bold text-sm mb-3">
-        {user.display_name?.split(' ').map(w => w[0]).join('').slice(0, 2) || '?'}
-      </div>
-      <p className="font-semibold text-gray-900 text-sm">{user.display_name}</p>
-      <p className="text-xs text-gray-400 truncate" title={user.email_masked}>{user.email_masked}</p>
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        <PlanBadge plan={user.user_type === 'student' ? 'student' : 'pro'} />
-        <span className="text-[10px] text-gray-400">
-          {user.user_type === 'student' ? (user.university_name || 'Student') : (user.company_name || 'Professional')}
-        </span>
-      </div>
-    </motion.button>
+    <motion.div variants={fadeUp}>
+      <Card
+        hoverable
+        size="small"
+        onClick={() => onToggle(user)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(user); }
+        }}
+        role="button"
+        aria-pressed={selected}
+        tabIndex={0}
+        className={selected ? 'border-gold-500 ring-1 ring-gold-400' : ''}
+      >
+        {selected && (
+          <CheckCircleFilled className="absolute top-2 right-2 z-10 text-gold-500" aria-label="Selected" />
+        )}
+        <div className="flex items-start gap-3">
+          <Avatar size={44} style={{ backgroundColor: '#1a3c5e', fontWeight: 600, flexShrink: 0 }}>
+            {initials}
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <Text strong ellipsis className="block text-sm">{user.display_name}</Text>
+            <Text type="secondary" ellipsis className="block text-xs" title={user.email_masked}>
+              {user.email_masked}
+            </Text>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <PlanTag plan={user.user_type === 'student' ? 'student' : 'pro'} />
+              <Text type="secondary" ellipsis className="text-[11px]" style={{ maxWidth: 140 }}>
+                {user.user_type === 'student' ? (user.university_name || 'Student') : (user.company_name || 'Professional')}
+              </Text>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -172,8 +196,8 @@ export default function GiftingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
 
-  const selectedIds = selected.map(u => u.id);
-  const selectedEmails = selected.map(u => u._email).filter(Boolean);
+  const selectedIds = selected.map((u) => u.id);
+  const selectedEmails = selected.map((u) => u._email).filter(Boolean);
 
   // Load directory
   const loadDirectory = useCallback(async () => {
@@ -210,12 +234,6 @@ export default function GiftingPage() {
     }
   }, [user]);
 
-  // Debounced name search
-  useEffect(() => {
-    const t = setTimeout(() => setPage(1), 0); // search handled via loadDirectory dependency
-    return () => clearTimeout(t);
-  }, [search]);
-
   // Browser-return from Flutterwave: verify then celebrate
   useEffect(() => {
     if (!router.isReady) return;
@@ -225,7 +243,7 @@ export default function GiftingPage() {
       giftingAPI.confirm(reference)
         .then(({ data }) => {
           if (data?.success) {
-            toast.success(`🎁 Gift delivered — ${data.activated ?? 0} subscription(s) activated!`);
+            toast.success(`🎁 Gift delivered - ${data.activated ?? 0} subscription(s) activated!`);
             setSelected([]);
             setShowSignupPrompt(!user); // guests are nudged to join
           }
@@ -237,8 +255,8 @@ export default function GiftingPage() {
   }, [router.isReady]);
 
   // Full-email lookup (donor pastes an address)
-  const runLookup = async () => {
-    const email = emailLookup.trim();
+  const runLookup = async (value) => {
+    const email = (value ?? emailLookup).trim();
     if (!email || !email.includes('@')) return;
     setLookingUp(true);
     try {
@@ -254,14 +272,15 @@ export default function GiftingPage() {
   };
 
   const addToSelection = (user) => {
-    setSelected(prev => (prev.some(u => u.id === user.id) ? prev : [...prev, user]));
+    setSelected((prev) => (prev.some((u) => u.id === user.id) ? prev : [...prev, user]));
   };
 
   const toggleSelection = (user) => {
-    setSelected(prev => (prev.some(u => u.id === user.id)
-      ? prev.filter(u => u.id !== user.id)
+    setSelected((prev) => (prev.some((u) => u.id === user.id)
+      ? prev.filter((u) => u.id !== user.id)
       : [...prev, user]));
   };
+
   // Donor gifts either plan to any giftable member.
   const [planChoice, setPlanChoice] = useState('basic');
   const planPrice = planChoice === 'pro'
@@ -296,7 +315,7 @@ export default function GiftingPage() {
       return [...prev, ...fresh];
     });
     if (picks.length < count) {
-      toast.success(`Selected ${picks.length} of ${count} requested — only ${picks.length} giftable members on this page. Try another filter or page for more.`);
+      toast.success(`Selected ${picks.length} of ${count} requested - only ${picks.length} giftable members on this page. Try another filter or page for more.`);
     } else {
       toast.success(`🎁 ${count} recipients auto-selected`);
     }
@@ -347,27 +366,29 @@ export default function GiftingPage() {
   return (
     <>
       <Head>
-        <title>Gift a Subscription | Sponsor a Young QS Professional — QSToolkit</title>
-        <meta name="description" content="Sponsor a QSToolkit subscription for a student or professional quantity surveyor in Nigeria. Auto-select multiple recipients, gift 1 Month or 1 Year of Starter or Pro, and stay anonymous if you prefer. Instant activation." />
-        <meta name="keywords" content="gift subscription, sponsor a student, quantity surveyor Nigeria, QS donation, QSToolkit gift, NIQS support, pay it forward QS" />
+        <title>Gift a Subscription | Sponsor a Young QS Professional - QSToolkit</title>
+        <meta name="description" content="Sponsor a QSToolkit subscription for a young quantity surveyor in Nigeria. One checkout covers one person or many, with instant activation and an anonymous option." />
         <link rel="canonical" href={`${SITE_URL}/gifting`} />
         <meta name="robots" content="index, follow, max-image-preview:large" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="Gift a Subscription | Sponsor a Young QS Professional — QSToolkit" />
-        <meta property="og:description" content="One payment can change a young quantity surveyor's career. Sponsor one person or many — instantly activated, anonymous option available." />
+        <meta property="og:title" content="Gift a Subscription | Sponsor a Young QS Professional - QSToolkit" />
+        <meta property="og:description" content="One payment can change a young quantity surveyor's career. Sponsor one or many - instant activation, anonymous if you prefer." />
         <meta property="og:url" content={`${SITE_URL}/gifting`} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.svg`} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
         <meta property="og:image:alt" content="Gift a QSToolkit subscription" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:site_name" content="QSToolkit" />
         <meta property="og:locale" content="en_NG" />
 
         {/* Twitter / X */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gift a Subscription | Sponsor a Young QS Professional — QSToolkit" />
+        <meta name="twitter:title" content="Gift a Subscription | Sponsor a Young QS Professional - QSToolkit" />
         <meta name="twitter:description" content="Sponsor one or many QS practitioners with a single checkout. Instant activation, anonymous option." />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.svg`} />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
 
         {/* GEO: AI-answer-engine structured data */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
@@ -386,14 +407,14 @@ export default function GiftingPage() {
                 Gift a subscription to a<br className="hidden md:block" /> young QS professional
               </h1>
               <p className="mt-4 text-primary-100 max-w-2xl text-sm md:text-base">
-                Sponsor one person or many at once. Choose monthly or annual support, add a note of
-                encouragement, and stay anonymous if you prefer. Every gift activates instantly after payment.
+                Sponsor one person or many. Monthly or annual, a note of encouragement,
+                anonymous if you prefer - every gift activates instantly.
               </p>
             </motion.div>
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.15} className="mt-8 flex flex-wrap gap-6 text-sm">
-              <div className="flex items-center gap-2"><span className="text-gold-400 text-lg">🎁</span> One payment, many recipients</div>
-              <div className="flex items-center gap-2"><span className="text-gold-400 text-lg">⚡</span> Instant activation</div>
-              <div className="flex items-center gap-2"><span className="text-gold-400 text-lg">🕶️</span> Anonymous option</div>
+              <div className="flex items-center gap-2"><GiftOutlined className="text-gold-400 text-lg" /> One payment, many recipients</div>
+              <div className="flex items-center gap-2"><ThunderboltOutlined className="text-gold-400 text-lg" /> Instant activation</div>
+              <div className="flex items-center gap-2"><EyeInvisibleOutlined className="text-gold-400 text-lg" /> Anonymous option</div>
             </motion.div>
           </div>
         </section>
@@ -401,229 +422,257 @@ export default function GiftingPage() {
         {/* ── Directory + summary ── */}
         <section className="max-w-7xl mx-auto px-4 py-10 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           <div>
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
-                {ACCOUNT_TYPES.map(t => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => { setAccountType(t.value); setPage(1); }}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${accountType === t.value ? 'bg-primary-800 text-white' : 'text-gray-500 hover:text-gray-800'}`}
-                  >
-                    {t.icon} {t.label}
-                  </button>
-                ))}
-              </div>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search by display name…"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none"
-              />
-            </div>
-
-            {/* Auto-select random recipients */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-gray-700">Not sure who to sponsor?</p>
-                <p className="text-xs text-gray-400 mt-0.5">Tell us how many people to support and we&rsquo;ll randomly pick giftable members from the results below.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={autoSelectCount}
-                  onChange={(e) => setAutoSelectCount(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && runAutoSelect()}
-                  placeholder="No. of recipients"
-                  className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400"
-                />
-                <button
-                  type="button"
-                  onClick={runAutoSelect}
-                  disabled={autoSelecting || loading || users.length === 0}
-                  className="btn-primary text-xs px-4 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap"
-                >
-                  {autoSelecting ? 'Selecting…' : '🎲 Auto-select'}
-                </button>
-              </div>
-            </div>
-
-            {/* Email lookup strip */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-              <p className="text-xs font-semibold text-gray-700 mb-2">Know someone&rsquo;s email? Paste it to find them</p>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={emailLookup}
-                  onChange={(e) => setEmailLookup(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && runLookup()}
-                  placeholder="emmanuel.n@architecture.co"
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400"
-                />
-                <button type="button" onClick={runLookup} disabled={lookingUp || !emailLookup.trim()}
-                  className="btn-primary text-xs px-4 py-2 rounded-lg disabled:opacity-50">
-                  {lookingUp ? 'Searching…' : 'Find'}
-                </button>
-              </div>
-              {lookupResult?.miss && (
-                <p className="text-xs text-gray-400 mt-2">
-                  No giftable member matches that email right now — they may already have an active subscription.
-                </p>
-              )}
-              {lookupResult?.user && (
-                <p className="text-xs text-emerald-600 mt-2">✓ Found and added: {lookupResult.user.display_name}</p>
-              )}
-            </div>
+            {/* Toolbar: filter · search · email lookup · auto-select */}
+            <Card size="small" className="mb-6">
+              <Row gutter={[12, 12]}>
+                <Col xs={24} md={9}>
+                  <Segmented
+                    block
+                    value={accountType}
+                    onChange={(v) => { setAccountType(v); setPage(1); }}
+                    options={ACCOUNT_TYPES}
+                  />
+                </Col>
+                <Col xs={24} md={15}>
+                  <Input
+                    allowClear
+                    prefix={<SearchOutlined />}
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    placeholder="Search by display name…"
+                  />
+                </Col>
+                <Col xs={24} md={14}>
+                  <Input.Search
+                    type="email"
+                    allowClear
+                    enterButton="Find"
+                    value={emailLookup}
+                    onChange={(e) => setEmailLookup(e.target.value)}
+                    onSearch={runLookup}
+                    loading={lookingUp}
+                    placeholder="Know their email? Paste it to find them"
+                  />
+                </Col>
+                <Col xs={24} md={10}>
+                  <Space.Compact className="w-full">
+                    <InputNumber
+                      min={1}
+                      max={100}
+                      value={autoSelectCount}
+                      onChange={setAutoSelectCount}
+                      onPressEnter={runAutoSelect}
+                      placeholder="No. of recipients"
+                      style={{ width: '45%' }}
+                    />
+                    <Button
+                      icon={<AimOutlined />}
+                      onClick={runAutoSelect}
+                      loading={autoSelecting}
+                      disabled={loading || users.length === 0}
+                    >
+                      Auto-select
+                    </Button>
+                  </Space.Compact>
+                </Col>
+                {(lookupResult?.miss || lookupResult?.user) && (
+                  <Col span={24}>
+                    {lookupResult?.miss && (
+                      <Text type="secondary" className="text-xs">
+                        No giftable member matches that email - they may already have an active subscription.
+                      </Text>
+                    )}
+                    {lookupResult?.user && (
+                      <Text type="success" className="text-xs">
+                        ✓ Found and added: {lookupResult.user.display_name}
+                      </Text>
+                    )}
+                  </Col>
+                )}
+              </Row>
+            </Card>
 
             {/* Grid */}
             {loading ? (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <Row gutter={[16, 16]}>
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-40 rounded-xl bg-gray-100 animate-pulse" />
+                  <Col xs={24} sm={12} xl={8} key={i}>
+                    <Card size="small">
+                      <Skeleton active title={false} paragraph={{ rows: 2 }} />
+                    </Card>
+                  </Col>
                 ))}
-              </div>
+              </Row>
             ) : users.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <p className="text-4xl mb-3">🎁</p>
-                <p className="text-sm">No giftable members found for this filter.</p>
-              </div>
+              <Card>
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No giftable members found for this filter." />
+              </Card>
             ) : (
-              <motion.div variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }} initial="hidden" animate="visible" className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {users.map(u => (
-                  <UserCard key={u.id} user={u} selected={selected.some(s => s.id === u.id)} onToggle={() => toggleSelection(u)} />
-                ))}
+              <motion.div
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+                initial="hidden"
+                animate="visible"
+              >
+                <Row gutter={[16, 16]}>
+                  {users.map((u) => (
+                    <Col xs={24} sm={12} xl={8} key={u.id}>
+                      <UserCard
+                        user={u}
+                        selected={selected.some((s) => s.id === u.id)}
+                        onToggle={() => toggleSelection(u)}
+                      />
+                    </Col>
+                  ))}
+                </Row>
               </motion.div>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
-                <button type="button" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40">← Prev</button>
-                <span className="px-3 py-1.5 text-xs text-gray-500">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40">Next →</button>
+              <div className="flex justify-center mt-8">
+                <Pagination
+                  current={page}
+                  pageSize={24}
+                  total={total}
+                  onChange={(p) => setPage(p)}
+                  showSizeChanger={false}
+                />
               </div>
             )}
           </div>
 
           {/* ── Sticky summary / checkout ── */}
           <div className="lg:sticky lg:top-6 space-y-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h2 className="font-semibold text-gray-900 mb-1">Your gift</h2>
-              <p className="text-xs text-gray-400 mb-4">{selected.length} {selected.length === 1 ? 'person' : 'people'} selected</p>
-
+            <Card
+              title={<span className="text-sm font-semibold text-gray-900">Your gift</span>}
+              extra={<Text type="secondary" className="text-xs">{selected.length} {selected.length === 1 ? 'person' : 'people'}</Text>}
+            >
               {selected.length > 0 && (
                 <ul className="space-y-1.5 mb-4 max-h-32 overflow-y-auto">
-                  {selected.map(u => (
+                  {selected.map((u) => (
                     <li key={u.id} className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5">
                       <span className="truncate">{u.display_name}</span>
-                      <button type="button" onClick={() => toggleSelection(u)} className="text-red-400 hover:text-red-600 ml-2">✕</button>
+                      <button
+                        type="button"
+                        onClick={() => toggleSelection(u)}
+                        className="text-red-400 hover:text-red-600 ml-2"
+                        aria-label={`Remove ${u.display_name}`}
+                      >
+                        <CloseOutlined style={{ fontSize: 11 }} />
+                      </button>
                     </li>
                   ))}
                 </ul>
               )}
 
-              {/* Plan */}
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Subscription</label>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <button type="button" onClick={() => setPlanChoice('basic')}
-                  className={`border rounded-lg px-3 py-2 text-xs font-medium ${planChoice === 'basic' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  Starter
-                </button>
-                <button type="button" onClick={() => setPlanChoice('pro')}
-                  className={`border rounded-lg px-3 py-2 text-xs font-medium ${planChoice === 'pro' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  Pro
-                </button>
+              <p className="text-xs font-semibold text-gray-700 mb-1.5">Subscription</p>
+              <Segmented
+                block
+                value={planChoice}
+                onChange={(v) => setPlanChoice(v)}
+                options={[
+                  { label: 'Starter', value: 'basic' },
+                  { label: 'Pro', value: 'pro' },
+                ]}
+                className="mb-3"
+              />
+
+              <p className="text-xs font-semibold text-gray-700 mb-1.5">Billing</p>
+              <Segmented
+                block
+                value={billingCycle}
+                onChange={(v) => setBillingCycle(v)}
+                options={[
+                  { label: '1 Month', value: 'monthly' },
+                  { label: '1 Year −12%', value: 'annual' },
+                ]}
+                className="mb-4"
+              />
+
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3 mb-4">
+                <Text type="secondary">Total</Text>
+                <Statistic
+                  value={totalAmount}
+                  formatter={(v) => `₦${Number(v || 0).toLocaleString()}`}
+                  valueStyle={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}
+                />
               </div>
 
-              {/* Cycle */}
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Billing</label>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <button type="button" onClick={() => setBillingCycle('monthly')}
-                  className={`border rounded-lg px-3 py-2 text-xs font-medium ${billingCycle === 'monthly' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  1 Month
-                </button>
-                <button type="button" onClick={() => setBillingCycle('annual')}
-                  className={`border rounded-lg px-3 py-2 text-xs font-medium ${billingCycle === 'annual' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  1 Year <span className="text-emerald-600">−12%</span>
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between border-t pt-3 mb-4">
-                <span className="text-sm text-gray-500">Total</span>
-                <span className="text-xl font-bold text-gray-900">₦{totalAmount.toLocaleString()}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={startCheckout}
-                disabled={submitting || selected.length === 0 || !planPrice}
-                className="btn-gold w-full py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-              >
-                {submitting ? 'Starting checkout…' : `🎁 Gift ${selected.length > 0 ? `${selected.length} ${selected.length === 1 ? 'subscription' : 'subscriptions'}` : ''}`}
-              </button>
+              <GoldProvider>
+                <Button
+                  type="primary"
+                  size="large"
+                  block
+                  icon={<GiftOutlined />}
+                  onClick={startCheckout}
+                  loading={submitting}
+                  disabled={selected.length === 0 || !planPrice}
+                >
+                  {selected.length > 0
+                    ? `Gift ${selected.length} ${selected.length === 1 ? 'subscription' : 'subscriptions'}`
+                    : 'Gift a subscription'}
+                </Button>
+              </GoldProvider>
 
               {!user && (
                 <p className="text-[11px] text-gray-400 mt-3 text-center">
                   New here?{' '}
                   <Link href="/auth/register" className="text-primary-700 font-medium hover:underline">Create a free account</Link>
-                  {' '}to gift as yourself and track it — or continue as a guest.
+                  {' '}to gift as yourself and track it - or continue as a guest.
                 </p>
               )}
-            </div>
+            </Card>
 
             {/* Donor identity */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">Your identity</h3>
-                <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                  <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="accent-gold-500" />
+            <Card
+              title={<span className="text-sm font-semibold text-gray-900">Your identity</span>}
+              extra={
+                <Checkbox checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="text-xs">
                   Give anonymously
-                </label>
-              </div>
+                </Checkbox>
+              }
+            >
               {anonymous ? (
-                <p className="text-xs text-gray-400">Recipients will see &ldquo;An anonymous donor&rdquo; — your details stay private.</p>
+                <Text type="secondary" className="text-xs">
+                  Recipients will see “An anonymous donor” - your details stay private.
+                </Text>
               ) : (
                 <div className="space-y-2.5">
-                  <input value={donorName} onChange={(e) => setDonorName(e.target.value)} placeholder="Full name" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400" />
-                  <input value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} type="email" placeholder="Email (for your receipt)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input value={donorTitle} onChange={(e) => setDonorTitle(e.target.value)} placeholder="Title (e.g. MNIQS)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400" />
-                    <input value={donorRole} onChange={(e) => setDonorRole(e.target.value)} placeholder="Role" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400" />
-                  </div>
-                  <input value={donorCompany} onChange={(e) => setDonorCompany(e.target.value)} placeholder="Company" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400" />
-                  <textarea value={donorNote} onChange={(e) => setDonorNote(e.target.value)} rows={3}
-                    placeholder="Why I chose to support young QS professionals…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400 resize-none" />
+                  <Input value={donorName} onChange={(e) => setDonorName(e.target.value)} placeholder="Full name" />
+                  <Input value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} type="email" placeholder="Email (for your receipt)" />
+                  <Row gutter={8}>
+                    <Col span={12}><Input value={donorTitle} onChange={(e) => setDonorTitle(e.target.value)} placeholder="Title (e.g. MNIQS)" /></Col>
+                    <Col span={12}><Input value={donorRole} onChange={(e) => setDonorRole(e.target.value)} placeholder="Role" /></Col>
+                  </Row>
+                  <Input value={donorCompany} onChange={(e) => setDonorCompany(e.target.value)} placeholder="Company" />
+                  <Input.TextArea
+                    value={donorNote}
+                    onChange={(e) => setDonorNote(e.target.value)}
+                    rows={3}
+                    placeholder="A note of encouragement (optional)…"
+                  />
                 </div>
               )}
-            </div>
+            </Card>
           </div>
         </section>
 
         {/* ── FAQ (matches FAQPage JSON-LD for AI answer engines) ── */}
         <section className="max-w-3xl mx-auto px-4 pb-16">
           <h2 className="text-xl md:text-2xl font-bold text-primary-900 mb-6 text-center">Gifting FAQs</h2>
-          <div className="space-y-3">
-            {FAQS.map((f) => (
-              <details key={f.q} className="group bg-white border border-gray-200 rounded-xl px-4 py-3">
-                <summary className="text-sm font-semibold text-gray-800 cursor-pointer list-none flex items-center justify-between">
-                  {f.q}
-                  <span className="text-gray-300 group-open:rotate-45 transition-transform">＋</span>
-                </summary>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{f.a}</p>
-              </details>
-            ))}
-          </div>
+          <Collapse
+            items={FAQS.map((f) => ({
+              key: f.q,
+              label: <span className="text-sm font-semibold text-gray-800">{f.q}</span>,
+              children: <p className="text-sm text-gray-500 leading-relaxed m-0">{f.a}</p>,
+            }))}
+          />
         </section>
 
         {/* ── Footer ── */}
         <footer className="bg-primary-900 border-t border-white/5 py-10 px-4">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-white/20">© {new Date().getFullYear()} QSToolkit — Built by Fudo Greentech Ltd.</p>
+            <p className="text-xs text-white/20">© {new Date().getFullYear()} QSToolkit - Built by Fudo Greentech Ltd.</p>
             <div className="flex items-center gap-6 text-sm text-white/40">
               <Link href="/" className="hover:text-white transition-colors">Home</Link>
               <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
@@ -634,19 +683,23 @@ export default function GiftingPage() {
         </footer>
 
         {/* Signup prompt modal after successful guest gifting */}
-        {showSignupPrompt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowSignupPrompt(false)}>
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center" onClick={(e) => e.stopPropagation()}>
-              <p className="text-4xl mb-2">🎉</p>
-              <h3 className="font-bold text-gray-900 mb-1">Your gift is live!</h3>
-              <p className="text-sm text-gray-500 mb-5">Create a free account to gift again easily, follow your impact, and access QS tools yourself.</p>
-              <div className="flex flex-col gap-2">
-                <Link href="/auth/register" className="btn-gold py-2 rounded-lg text-sm font-semibold">Create free account</Link>
-                <button type="button" onClick={() => setShowSignupPrompt(false)} className="text-xs text-gray-400 hover:text-gray-600 py-1">Continue browsing</button>
-              </div>
+        <Modal
+          open={showSignupPrompt}
+          onCancel={() => setShowSignupPrompt(false)}
+          footer={null}
+          centered
+          width={380}
+        >
+          <div className="text-center py-2">
+            <p className="text-4xl mb-2">🎉</p>
+            <h3 className="font-bold text-gray-900 mb-1">Your gift is live!</h3>
+            <p className="text-sm text-gray-500 mb-5">Create a free account to track your gifts and use QSToolkit yourself.</p>
+            <div className="flex flex-col gap-2">
+              <Link href="/auth/register" className="btn-gold py-2 rounded-lg text-sm font-semibold">Create free account</Link>
+              <Button type="text" size="small" onClick={() => setShowSignupPrompt(false)}>Continue browsing</Button>
             </div>
           </div>
-        )}
+        </Modal>
       </div>
     </>
   );

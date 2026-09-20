@@ -65,7 +65,7 @@ export default function LessonViewer() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{lesson.title} — QS Academy</title></Head>
+      <Head><title>{lesson.title} - QS Academy</title></Head>
       <Layout title="">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}

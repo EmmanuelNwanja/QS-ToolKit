@@ -93,7 +93,7 @@ export default function ExamDetailPage() {
       if (id) {
         router.push(`/exam-prep/professional/${slug}?examId=${id}&active=1`);
       } else {
-        toast.error('Failed to start exam — no exam ID returned');
+        toast.error('Failed to start exam - no exam ID returned');
       }
       setShowConfirm(false);
     } catch (err) {
@@ -107,11 +107,11 @@ export default function ExamDetailPage() {
     setExamResult(result);
   }, []);
 
-  // Exam in progress — show ExamInterface
+  // Exam in progress - show ExamInterface
   if (isActive && questions.length > 0 && !examResult) {
     return (
       <ProtectedRoute>
-        <Head><title>Exam in Progress — QSToolkit</title></Head>
+        <Head><title>Exam in Progress - QSToolkit</title></Head>
         <ExamInterface
           examId={examId}
           questions={questions}
@@ -122,11 +122,11 @@ export default function ExamDetailPage() {
     );
   }
 
-  // Exam completed — show results
+  // Exam completed - show results
   if (examResult) {
     return (
       <ProtectedRoute>
-        <Head><title>Exam Results — QSToolkit</title></Head>
+        <Head><title>Exam Results - QSToolkit</title></Head>
         <Layout title="Exam Results">
           <div className="max-w-3xl space-y-6">
             <Link href="/exam-prep/professional" className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
@@ -151,7 +151,7 @@ export default function ExamDetailPage() {
   if (isActive && questionsLoading) {
     return (
       <ProtectedRoute>
-        <Head><title>Loading Exam — QSToolkit</title></Head>
+        <Head><title>Loading Exam - QSToolkit</title></Head>
         <Layout title="Loading Exam...">
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -174,7 +174,7 @@ export default function ExamDetailPage() {
   if (!examInfo && !loading) {
     return (
       <ProtectedRoute>
-        <Head><title>Exam Not Found — QSToolkit</title></Head>
+        <Head><title>Exam Not Found - QSToolkit</title></Head>
         <Layout title="Exam Not Found">
           <div className="text-center py-16">
             <p className="text-4xl mb-4">🔍</p>
@@ -188,7 +188,7 @@ export default function ExamDetailPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{examInfo?.exam_name || 'Exam'} — QSToolkit</title></Head>
+      <Head><title>{examInfo?.exam_name || 'Exam'} - QSToolkit</title></Head>
       <Layout title={examInfo?.exam_name || 'Loading...'}>
         <div className="max-w-3xl space-y-6">
 
@@ -228,7 +228,7 @@ export default function ExamDetailPage() {
                   {[
                     { label: 'Format', value: examInfo?.format || 'MCQ', icon: '📝' },
                     { label: 'Duration', value: `${examInfo?.time_limit_minutes || 60} min`, icon: '⏱️' },
-                    { label: 'Pass Mark', value: examInfo?.passing_score > 0 ? `${examInfo.passing_score}%` : '—', icon: '🎯' },
+                    { label: 'Pass Mark', value: examInfo?.passing_score > 0 ? `${examInfo.passing_score}%` : '-', icon: '🎯' },
                     { label: 'Body', value: examInfo?.body || examInfo?.category, icon: '🏛️' }
                   ].map(d => (
                     <div key={d.label} className="bg-gray-50 rounded-lg p-3 text-center">

@@ -62,7 +62,7 @@ export default function SimulationsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>QS Simulations — QS Academy</title></Head>
+      <Head><title>QS Simulations - QS Academy</title></Head>
       <Layout title="🧮 QS Simulations">
         <div className="max-w-7xl space-y-6">
           {/* Generate Cards */}

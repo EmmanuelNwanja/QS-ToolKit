@@ -164,7 +164,7 @@ export default function CourseExamPage() {
   if (step === 'loading') {
     return (
       <ProtectedRoute>
-        <Head><title>Loading — QSToolkit</title></Head>
+        <Head><title>Loading - QSToolkit</title></Head>
         <Layout title="Loading...">
           <div className="max-w-2xl mx-auto space-y-4 py-8">
             <div className="h-6 bg-gray-100 rounded w-1/3 animate-pulse" />
@@ -192,7 +192,7 @@ export default function CourseExamPage() {
 
     return (
       <ProtectedRoute>
-        <Head><title>Select Exam — QSToolkit</title></Head>
+        <Head><title>Select Exam - QSToolkit</title></Head>
         <Layout title="Select Exam">
           <div className="max-w-2xl space-y-6">
             <Link href={`/exam-prep/students/${universityId}`} className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">
@@ -204,7 +204,7 @@ export default function CourseExamPage() {
                 {course?.title || 'Exam'}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                {university?.name ? `${university.name} — ` : ''}
+                {university?.name ? `${university.name} - ` : ''}
                 Select a past question year to begin your {timedMode ? 'timed exam' : 'practice session'}
               </p>
             </div>
@@ -234,7 +234,7 @@ export default function CourseExamPage() {
                                 {exam.exam_name}
                               </h3>
                               <p className="text-xs text-gray-500 mt-1">
-                                {exam.total_questions || '—'} questions · {exam.time_limit_minutes || 60} min · Pass: {exam.passing_score || 50}%
+                                {exam.total_questions || '-'} questions · {exam.time_limit_minutes || 60} min · Pass: {exam.passing_score || 50}%
                               </p>
                             </div>
                             <span className={`badge ${
@@ -264,7 +264,7 @@ export default function CourseExamPage() {
 
     return (
       <ProtectedRoute>
-        <Head><title>Exam — QSToolkit</title></Head>
+        <Head><title>Exam - QSToolkit</title></Head>
         <Layout title={selectedExam?.exam_name || 'Exam'}>
           <div className="max-w-2xl space-y-6">
 
@@ -324,7 +324,7 @@ export default function CourseExamPage() {
 
               {!timedMode && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
-                  Practice mode — take your time
+                  Practice mode - take your time
                 </div>
               )}
             </motion.div>
@@ -401,7 +401,7 @@ export default function CourseExamPage() {
   if (step === 'submitting') {
     return (
       <ProtectedRoute>
-        <Head><title>Submitting — QSToolkit</title></Head>
+        <Head><title>Submitting - QSToolkit</title></Head>
         <Layout title="Submitting...">
           <div className="max-w-md text-center py-16">
             <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4" />
@@ -421,7 +421,7 @@ export default function CourseExamPage() {
 
     return (
       <ProtectedRoute>
-        <Head><title>Results — QSToolkit</title></Head>
+        <Head><title>Results - QSToolkit</title></Head>
         <Layout title="Exam Results">
           <div className="max-w-2xl space-y-6">
             <Link href={`/exam-prep/students/${universityId}`} className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1">

@@ -41,7 +41,7 @@ const useAuthStore = create((set, get) => ({
       return;
     }
 
-    // Safely parse cached user — corrupted JSON must not freeze the app.
+    // Safely parse cached user - corrupted JSON must not freeze the app.
     let cachedUser = null;
     try { cachedUser = cached ? JSON.parse(cached) : null; } catch { /* ignore */ }
 

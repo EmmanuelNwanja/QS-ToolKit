@@ -92,7 +92,7 @@ export default function AdminAIEngine() {
     return (
       <ProtectedAdminRoute>
         <AdminLayout>
-          <Head><title>Admin AI Engine — QSToolkit</title></Head>
+          <Head><title>Admin AI Engine - QSToolkit</title></Head>
           <div className="max-w-2xl mx-auto mt-20 text-center">
             <div className="text-6xl mb-4">🔒</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
@@ -106,7 +106,7 @@ export default function AdminAIEngine() {
   return (
     <ProtectedAdminRoute>
       <AdminLayout>
-        <Head><title>Admin AI Engine — QSToolkit</title></Head>
+        <Head><title>Admin AI Engine - QSToolkit</title></Head>
         <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-50">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">

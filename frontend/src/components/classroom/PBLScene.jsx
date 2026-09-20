@@ -134,7 +134,7 @@ export default function PBLScene({ scene, onComplete }) {
             {content.rubric.map((r, i) => (
               <div key={i} className="text-xs">
                 <p className="font-medium text-blue-800">{r.criteria}</p>
-                <p className="text-blue-600">{r.description} — <span className="font-mono">{r.points} pts</span></p>
+                <p className="text-blue-600">{r.description} - <span className="font-mono">{r.points} pts</span></p>
               </div>
             ))}
           </div>

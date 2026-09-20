@@ -72,7 +72,7 @@ export default function SourcesBrowser() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Literature Sources — QS Research</title></Head>
+      <Head><title>Literature Sources - QS Research</title></Head>
       <Layout title="Literature Sources">
         <div className="max-w-6xl space-y-6">
           <Link href="/research" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -82,7 +82,7 @@ export default function SourcesBrowser() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-xl font-bold text-primary-800">Literature Sources</h1>
-              <p className="text-sm text-gray-500">Browse QS research sources — journals, books, NIQS bulletins, government data.</p>
+              <p className="text-sm text-gray-500">Browse QS research sources - journals, books, NIQS bulletins, government data.</p>
             </div>
             <button onClick={() => setShowAdd(!showAdd)} className="btn-primary text-sm">
               {showAdd ? 'Cancel' : '+ Add Source'}

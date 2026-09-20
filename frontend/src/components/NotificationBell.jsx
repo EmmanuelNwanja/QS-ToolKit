@@ -79,7 +79,7 @@ export default function NotificationBell() {
 
       setNotifications(combined);
     } catch {
-      // Silently ignore — user may not have any notifications yet
+      // Silently ignore - user may not have any notifications yet
     } finally {
       setLoading(false);
     }

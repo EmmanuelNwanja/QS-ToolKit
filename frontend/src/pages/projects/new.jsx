@@ -39,7 +39,7 @@ export default function NewProjectPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>New Project — QSToolkit</title></Head>
+      <Head><title>New Project - QSToolkit</title></Head>
       <Layout title="New Project">
         <div className="max-w-2xl">
           <form onSubmit={handleSubmit} className="card space-y-5">
@@ -47,7 +47,7 @@ export default function NewProjectPage() {
 
             <div>
               <label className="label">Project Title <span className="text-red-500">*</span></label>
-              <input className="input" placeholder="e.g. 4-Bedroom Duplex — Lekki" value={form.title} onChange={e => set('title', e.target.value)} required />
+              <input className="input" placeholder="e.g. 4-Bedroom Duplex - Lekki" value={form.title} onChange={e => set('title', e.target.value)} required />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">

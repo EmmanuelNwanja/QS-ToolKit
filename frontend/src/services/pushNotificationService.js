@@ -54,7 +54,7 @@ class PushNotificationService {
         if (this.vapidPublicKey) {
           console.log('[Push] VAPID key loaded');
         } else {
-          console.warn('[Push] VAPID key not available — push may not be configured on server');
+          console.warn('[Push] VAPID key not available - push may not be configured on server');
         }
       } catch (err) {
         console.warn('[Push] Failed to fetch VAPID key:', err);

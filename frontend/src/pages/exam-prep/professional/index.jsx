@@ -113,7 +113,7 @@ export default function ProfessionalExamsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Professional Exams — QSToolkit</title></Head>
+      <Head><title>Professional Exams - QSToolkit</title></Head>
       <Layout title="🏗️ Professional Exams">
         <div className="max-w-5xl space-y-6">
 

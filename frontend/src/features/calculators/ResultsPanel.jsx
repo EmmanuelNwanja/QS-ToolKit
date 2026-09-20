@@ -25,7 +25,7 @@ export default function ResultsPanel({ result, calculatorId, calculatorLabel, on
     try {
       await calcAPI.save({
         calculator_type: calculatorId,
-        title: `${calculatorLabel} — ${new Date().toLocaleDateString('en-NG')}`,
+        title: `${calculatorLabel} - ${new Date().toLocaleDateString('en-NG')}`,
         inputs: result.inputs,
         outputs: data
       });
@@ -135,7 +135,7 @@ function NestedBlock({ data }) {
 }
 
 function renderCell(val) {
-  if (val === null || val === undefined) return '—';
+  if (val === null || val === undefined) return '-';
   if (typeof val === 'object' && !Array.isArray(val)) return <NestedBlock data={val} />;
   if (Array.isArray(val)) return <ArrayBlock data={val} />;
   return <span className="font-semibold text-primary-700">{String(val)}</span>;

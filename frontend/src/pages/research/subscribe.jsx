@@ -72,7 +72,7 @@ export default function ResearchSubscribe() {
   if (hasActive) {
     return (
       <ProtectedRoute>
-        <Head><title>Research Subscription — QSToolkit</title></Head>
+        <Head><title>Research Subscription - QSToolkit</title></Head>
         <Layout title="Research Subscription">
           <div className="max-w-lg mx-auto text-center py-16">
             <div className="text-5xl mb-4">✅</div>
@@ -87,7 +87,7 @@ export default function ResearchSubscribe() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Subscribe to Research — QSToolkit</title></Head>
+      <Head><title>Subscribe to Research - QSToolkit</title></Head>
       <Layout title="QS Research Subscription">
         <div className="max-w-2xl mx-auto space-y-6">
           <Link href="/research" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -153,7 +153,7 @@ export default function ResearchSubscribe() {
               disabled={subscribing}
               className="btn-gold text-base px-8 py-3"
             >
-              {subscribing ? 'Processing...' : `Subscribe — ₦${PLANS.find(p => p.cycle === selected)?.amount.toLocaleString()}`}
+              {subscribing ? 'Processing...' : `Subscribe - ₦${PLANS.find(p => p.cycle === selected)?.amount.toLocaleString()}`}
             </button>
             <p className="text-xs text-gray-400 mt-3">Cancel anytime. Access continues until end of billing period.</p>
           </div>

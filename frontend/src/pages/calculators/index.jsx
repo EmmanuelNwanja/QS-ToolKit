@@ -98,7 +98,7 @@ export default function CalculatorsPage() {
 
           {/* Tip */}
           <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-800">
-            <strong>💡 Pro tip:</strong> Save any calculation to a project, then import the results directly into a BOQ item — no re-typing needed.
+            <strong>💡 Pro tip:</strong> Save any calculation to a project, then import the results directly into a BOQ item - no re-typing needed.
           </div>
         </div>
       </Layout>

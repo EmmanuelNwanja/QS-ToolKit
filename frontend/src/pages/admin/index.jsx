@@ -141,7 +141,7 @@ export default function AdminDashboard() {
   ];
 
   const quickActions = [
-    { href: '/admin/ai-engine', icon: <RobotOutlined />, title: 'AI Engine', desc: 'Dr. Q Admin — platform analytics, user insights, revenue', color: '#1a3c5e' },
+    { href: '/admin/ai-engine', icon: <RobotOutlined />, title: 'AI Engine', desc: 'Dr. Q Admin - platform analytics, user insights, revenue', color: '#1a3c5e' },
     { href: '/admin/promo-codes', icon: <TagsOutlined />, title: 'Manage Promo Codes', desc: 'Create and manage discount codes', color: '#3b82f6' },
     { href: '/admin/users', icon: <TeamOutlined />, title: 'Manage Users', desc: 'View and manage user accounts', color: '#10b981' },
     { href: '/admin/direct-payments', icon: <BankOutlined />, title: 'Direct Payments', desc: 'Review bank transfer submissions', color: '#f59e0b' },

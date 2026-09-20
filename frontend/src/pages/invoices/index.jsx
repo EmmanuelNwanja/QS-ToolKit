@@ -35,7 +35,7 @@ export default function InvoicesListPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Invoices & Quotes — QSToolkit</title></Head>
+      <Head><title>Invoices & Quotes - QSToolkit</title></Head>
       <Layout title="🧾 Invoices & Quotes">
         <div className="max-w-5xl space-y-5">
 

@@ -73,7 +73,7 @@ export default function SimulationRunner() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{simulation.title} — QS Academy</title></Head>
+      <Head><title>{simulation.title} - QS Academy</title></Head>
       <Layout title="">
         <div className="max-w-4xl mx-auto space-y-6">
           <motion.div {...fadeUp}>
@@ -107,7 +107,7 @@ export default function SimulationRunner() {
           {/* BOQ Scenario */}
           {attempt && isBOQ && !results && (
             <motion.div {...fadeUp} className="card">
-              <h3 className="font-semibold text-primary-800 mb-4">📋 Bill of Quantities — Enter Your Quantities & Rates</h3>
+              <h3 className="font-semibold text-primary-800 mb-4">📋 Bill of Quantities - Enter Your Quantities & Rates</h3>
               <p className="text-sm text-slate-500 mb-4">Fill in your estimated quantities and rates for each item</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

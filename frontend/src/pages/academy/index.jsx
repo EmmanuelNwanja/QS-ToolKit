@@ -90,7 +90,7 @@ export default function AcademyDashboard() {
   return (
     <ProtectedRoute>
       <ComingSoonGate>
-        <Head><title>QS Academy — QSToolkit</title></Head>
+        <Head><title>QS Academy - QSToolkit</title></Head>
         <Layout title="🎓 QS Academy">
         <div className="max-w-7xl space-y-6">
 
@@ -142,7 +142,7 @@ export default function AcademyDashboard() {
                 ].map((s) => (
                   <div key={s.label} className="stat-card">
                     <span className="text-2xl mb-1">{s.icon}</span>
-                    <p className={`stat-value ${s.color}`}>{loading ? '—' : s.value}</p>
+                    <p className={`stat-value ${s.color}`}>{loading ? '-' : s.value}</p>
                     <p className="stat-label">{s.label}</p>
                   </div>
                 ))}

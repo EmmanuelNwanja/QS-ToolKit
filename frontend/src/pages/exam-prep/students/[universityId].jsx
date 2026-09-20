@@ -40,7 +40,7 @@ export default function UniversityPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{university?.name || 'University'} — QSToolkit</title></Head>
+      <Head><title>{university?.name || 'University'} - QSToolkit</title></Head>
       <Layout title={university?.name || 'Loading...'}>
         <div className="max-w-4xl space-y-6">
 
@@ -176,7 +176,7 @@ export default function UniversityPage() {
                   onClick={e => e.stopPropagation()}
                 >
                   <h3 className="font-display text-lg font-bold text-primary-800 mb-1">Select Mode</h3>
-                  <p className="text-sm text-gray-500 mb-5">{modeModal.code} — {modeModal.title}</p>
+                  <p className="text-sm text-gray-500 mb-5">{modeModal.code} - {modeModal.title}</p>
 
                   <div className="space-y-3">
                     <button

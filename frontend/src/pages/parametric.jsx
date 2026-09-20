@@ -28,7 +28,7 @@ export default function ParametricIndexPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Smart Parametric — QSToolkit</title></Head>
+      <Head><title>Smart Parametric - QSToolkit</title></Head>
       <Layout title="🧠 Smart Parametric Calculator">
         <div className="max-w-4xl space-y-5">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">

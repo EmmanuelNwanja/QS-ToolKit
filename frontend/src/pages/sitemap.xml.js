@@ -53,7 +53,7 @@ export async function getServerSideProps({ res }) {
     }
   } catch (e) { /* continue */ }
 
-  // Dynamic project pages (if public — skip for now since projects are private)
+  // Dynamic project pages (if public - skip for now since projects are private)
 
   xml += `</urlset>`;
 

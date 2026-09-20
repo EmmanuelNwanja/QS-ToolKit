@@ -76,7 +76,7 @@ export default function ExamPrepDashboard() {
   return (
     <ProtectedRoute>
       <ComingSoonGate>
-        <Head><title>Exam Prep — QSToolkit</title></Head>
+        <Head><title>Exam Prep - QSToolkit</title></Head>
       <Layout title="📝 Exam Prep">
         <div className="max-w-6xl space-y-6">
           <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -134,7 +134,7 @@ export default function ExamPrepDashboard() {
               </div>
               <div className="flex-1">
                 <p className="font-bold text-gold-800">1 Free Exam Available!</p>
-                <p className="text-sm text-gold-700">Try any professional exam once for free — no subscription required.</p>
+                <p className="text-sm text-gold-700">Try any professional exam once for free - no subscription required.</p>
               </div>
             </motion.div>
           )}
@@ -148,7 +148,7 @@ export default function ExamPrepDashboard() {
             ].map(s => (
               <motion.div key={s.label} variants={card} initial="hidden" animate="show" className="stat-card text-center">
                 <span className="text-2xl mb-1">{s.icon}</span>
-                <p className={`stat-value ${s.color} text-xl`}>{loading ? '—' : s.value}</p>
+                <p className={`stat-value ${s.color} text-xl`}>{loading ? '-' : s.value}</p>
                 <p className="stat-label text-xs">{s.label}</p>
               </motion.div>
             ))}

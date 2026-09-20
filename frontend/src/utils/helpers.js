@@ -6,7 +6,7 @@ export const formatNaira = (amount) => {
 
 // Format dates in Nigerian style
 export const formatDate = (date) => {
-  if (!date) return '—';
+  if (!date) return '-';
   return new Date(date).toLocaleDateString('en-NG', {
     day: '2-digit', month: 'short', year: 'numeric'
   });

@@ -1,7 +1,7 @@
 /**
  * Design Compliance Checklist:
  * ─────────────────────────────
- * [x] No UI — pure API wrapper, no tokens needed
+ * [x] No UI - pure API wrapper, no tokens needed
  * [x] Imports existing shared api client (no modification)
  * [x] Feature-flag gated (defaults to noop when disabled)
  * [x] Routes under /parametric/ (matching backend /api/v1/parametric/)

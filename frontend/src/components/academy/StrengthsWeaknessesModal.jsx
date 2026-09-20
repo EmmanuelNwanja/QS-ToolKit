@@ -44,7 +44,7 @@ export default function StrengthsWeaknessesModal({ open, onComplete, existingPro
           setWeaknesses(profile.weaknesses || []);
         }
       } catch {
-        // Silently fail — user starts fresh
+        // Silently fail - user starts fresh
       } finally {
         setLoadingProfile(false);
       }

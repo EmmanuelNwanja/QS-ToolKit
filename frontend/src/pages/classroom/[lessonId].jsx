@@ -101,7 +101,7 @@ export default function LessonPlayer() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{lesson?.title || lesson?.topic || 'Lesson'} — QSToolkit</title></Head>
+      <Head><title>{lesson?.title || lesson?.topic || 'Lesson'} - QSToolkit</title></Head>
       <Layout title={lesson?.title || lesson?.topic || 'Lesson'}>
         <div className="max-w-5xl">
           <Link href={isCourseLesson ? `/classroom/courses/${lesson.course_id}` : '/classroom'} className="text-sm text-primary-600 hover:underline inline-flex items-center gap-1 mb-4">

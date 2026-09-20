@@ -83,7 +83,7 @@ export default function App({ Component, pageProps }) {
         const installing = registration.installing;
         if (!installing) return;
         installing.addEventListener('statechange', () => {
-          // New worker installed and waiting — show prompt instead of forcing reload
+          // New worker installed and waiting - show prompt instead of forcing reload
           if (installing.state === 'installed' && navigator.serviceWorker.controller) {
             if (!isMounted) return;
             setWaitingWorker(installing);
@@ -157,7 +157,7 @@ export default function App({ Component, pageProps }) {
     <div className={`${dmSans.variable} ${dmSerif.variable}`}>
       {getLayout(<Component {...pageProps} />)}
 
-      {/* Update available banner — shown when a new service worker is waiting */}
+      {/* Update available banner - shown when a new service worker is waiting */}
       {updateReady && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-primary-800 px-5 py-3 text-white shadow-xl">
           <span className="text-sm font-medium">A new version of QSToolkit is available.</span>

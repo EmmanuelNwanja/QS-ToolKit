@@ -61,7 +61,7 @@ export default function DrawingUploader({ projectId, onSuccess }) {
         toast.success(`Image compressed: ${(file.size / 1024).toFixed(0)}KB → ${(processedFile.size / 1024).toFixed(0)}KB`);
       }
     } catch {
-      // Compression failed — proceed with original
+      // Compression failed - proceed with original
     }
 
     const reader = new FileReader();
@@ -91,7 +91,7 @@ export default function DrawingUploader({ projectId, onSuccess }) {
             { duration: 6000, icon: '⚠️' }
           );
         } else {
-          toast.success(`Analysis complete — Confidence: ${data.confidence}`);
+          toast.success(`Analysis complete - Confidence: ${data.confidence}`);
         }
       } catch (err) {
         toast.error(err.response?.data?.message || 'Analysis failed');
@@ -127,7 +127,7 @@ export default function DrawingUploader({ projectId, onSuccess }) {
       }));
 
       const { data } = await boqAPI.create({
-        title: `AI Draft — ${result.rooms?.[0]?.name || 'Project'}`,
+        title: `AI Draft - ${result.rooms?.[0]?.name || 'Project'}`,
         project_id: projectId || '',
         measurement_standard: 'SMM7',
         notes: `Auto-generated from drawing analysis. Confidence: ${result.confidence}. Warnings: ${result.warnings?.join(', ') || 'none'}`,

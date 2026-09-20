@@ -54,7 +54,7 @@ export default function StudentExamsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Student Exams — QSToolkit</title></Head>
+      <Head><title>Student Exams - QSToolkit</title></Head>
       <Layout title="🎓 Student Exams">
         <div className="max-w-5xl space-y-8">
 

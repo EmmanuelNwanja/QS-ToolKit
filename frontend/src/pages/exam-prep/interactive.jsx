@@ -78,7 +78,7 @@ export default function InteractivePractice() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Interactive Practice — QS Exam Prep</title></Head>
+      <Head><title>Interactive Practice - QS Exam Prep</title></Head>
       <Layout title="🎯 Interactive Practice">
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Setup */}

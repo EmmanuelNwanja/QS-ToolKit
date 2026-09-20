@@ -2,10 +2,10 @@ import { useState, useMemo } from 'react';
 import { suggestBrcDpm } from './dimensionSuggestions';
 
 const BRC_TYPES = [
-  { value: 'A142', label: 'A142 — 2.22 kg/m² (6mm @ 200c/c)', note: 'Oversite slabs, light duty' },
-  { value: 'A193', label: 'A193 — 3.02 kg/m² (7mm @ 200c/c)', note: 'Ground slabs, medium duty' },
-  { value: 'A252', label: 'A252 — 3.95 kg/m² (8mm @ 200c/c)', note: 'Raft foundations' },
-  { value: 'A393', label: 'A393 — 6.16 kg/m² (10mm @ 200c/c)', note: 'Heavy duty/raft slabs' }
+  { value: 'A142', label: 'A142 - 2.22 kg/m² (6mm @ 200c/c)', note: 'Oversite slabs, light duty' },
+  { value: 'A193', label: 'A193 - 3.02 kg/m² (7mm @ 200c/c)', note: 'Ground slabs, medium duty' },
+  { value: 'A252', label: 'A252 - 3.95 kg/m² (8mm @ 200c/c)', note: 'Raft foundations' },
+  { value: 'A393', label: 'A393 - 6.16 kg/m² (10mm @ 200c/c)', note: 'Heavy duty/raft slabs' }
 ];
 
 export default function BrcDpmForm({ onCalculate, loading }) {

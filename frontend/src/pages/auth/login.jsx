@@ -162,7 +162,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <Head><title>Sign In — QSToolkit</title></Head>
+      <Head><title>Sign In - QSToolkit</title></Head>
       <div className="min-h-screen bg-gray-50 flex">
         {/* Left panel */}
         <div className="hidden lg:flex lg:w-1/2 bg-primary-800 flex-col justify-center items-center p-12 text-white">
@@ -175,7 +175,7 @@ export default function LoginPage() {
             </div>
             <h2 className="font-display text-3xl font-bold mb-4">Nigeria&apos;s #1 QS Platform</h2>
             <p className="text-primary-300 leading-relaxed mb-8">
-              Professional tools for Quantity Surveyors — from Lagos to Kano. Calculate, track, invoice, and grow your practice.
+              Professional tools for Quantity Surveyors - from Lagos to Kano. Calculate, track, invoice, and grow your practice.
             </p>
             <div className="space-y-3">
               {['10+ professional calculators', 'BOQ generator with PDF/Excel export', 'Branded invoices & quotations', 'Client feedback & live leaderboard'].map(f => (

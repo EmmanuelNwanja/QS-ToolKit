@@ -38,7 +38,7 @@ export default function ProjectsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Projects — QSToolkit</title></Head>
+      <Head><title>Projects - QSToolkit</title></Head>
       <Layout title="Projects">
         <div className="max-w-6xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -73,10 +73,10 @@ export default function ProjectsPage() {
                     <tr key={p.id}>
                       <td>
                         <Link href={`/projects/${p.id}`} className="font-semibold text-primary-700 hover:underline">{p.title}</Link>
-                        <p className="text-xs text-gray-400">{p.project_type || '—'}</p>
+                        <p className="text-xs text-gray-400">{p.project_type || '-'}</p>
                       </td>
-                      <td>{p.client_name || '—'}</td>
-                      <td>{p.state || p.location || '—'}</td>
+                      <td>{p.client_name || '-'}</td>
+                      <td>{p.state || p.location || '-'}</td>
                       <td className="font-medium">{formatNaira(p.final_value || p.estimated_value)}</td>
                       <td><span className={statusBadge(p.status)}>{p.status}</span></td>
                       <td className="text-gray-400 text-xs">{formatDate(p.created_at)}</td>

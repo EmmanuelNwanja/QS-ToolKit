@@ -52,7 +52,7 @@ export default function PathwaysPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Pathways — QS Academy</title></Head>
+      <Head><title>Pathways - QS Academy</title></Head>
       <Layout title="🛤️ Pathways">
         <div className="max-w-6xl space-y-6">
           <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">

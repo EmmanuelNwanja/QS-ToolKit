@@ -166,7 +166,7 @@ export default function ReferralDiscounts() {
     if (!confirm('Revoke this custom reward percentage? The user reverts to system defaults (Basic 1.0%, Pro 0.6%, Enterprise 0.3%).')) return;
     try {
       await referralAPI.adminRevokeIncomeRate(id);
-      toast.success('Reward percentage revoked — user reverted to system standard');
+      toast.success('Reward percentage revoked - user reverted to system standard');
       fetchData();
     } catch { toast.error('Failed to revoke income rate'); }
   };

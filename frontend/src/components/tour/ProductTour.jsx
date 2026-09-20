@@ -4,7 +4,7 @@ import SpotlightTour from './SpotlightTour';
 import { dashboardTour, DASHBOARD_TOUR_KEY, DASHBOARD_TOUR_RESUME_KEY } from './tours';
 
 /**
- * ProductTour — first-login floating product tour for QSToolkit.
+ * ProductTour - first-login floating product tour for QSToolkit.
  *
  * Mount this ONCE inside Layout (user shell). On first visit to the dashboard
  * it plays the guided tour and stores completion in localStorage. The user can
@@ -57,7 +57,7 @@ export default function ProductTour() {
     } catch { /* ignore */ }
     if (completed) {
       // Gentle nudge toward first project creation after the tour completes.
-      // (No navigation — the user is already on the dashboard.)
+      // (No navigation - the user is already on the dashboard.)
     }
   };
 

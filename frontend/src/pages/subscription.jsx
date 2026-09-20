@@ -259,7 +259,7 @@ export default function SubscriptionPage() {
   return (
     <ProtectedRoute>
       <Head>
-        <title>Subscription & Plans — QSToolkit</title>
+        <title>Subscription & Plans - QSToolkit</title>
         <meta name="description" content="Manage your QSToolkit subscription. Starter ₦8,999/mo, Pro ₦23,999/mo, Elite ₦84,999/mo. Upgrade, downgrade or view billing history." />
         <link rel="canonical" href="https://qs.solnuv.com/subscription" />
       </Head>
@@ -417,7 +417,7 @@ export default function SubscriptionPage() {
                         {promoResults[plan.name] && (
                           <div className="mt-1 space-y-1">
                             <p className="text-xs text-emerald-600 font-medium">
-                              ✅ {promoResults[plan.name].discount_percent}% off — {promoResults[plan.name].description}
+                              ✅ {promoResults[plan.name].discount_percent}% off - {promoResults[plan.name].description}
                             </p>
                             <p className="text-[11px] text-gray-500">
                               Discount applies to the first payment only. {renewalPrice(plan)}
@@ -459,7 +459,7 @@ export default function SubscriptionPage() {
             })}
           </div>
 
-          {/* Add-on Cards — Coming Soon, hidden for now */}
+          {/* Add-on Cards - Coming Soon, hidden for now */}
           {false && (
           <div className="mt-2">
             <h3 className="font-display text-lg font-bold text-primary-800 mb-4">Add-ons</h3>
@@ -557,7 +557,7 @@ export default function SubscriptionPage() {
                 ✕
               </button>
 
-              {/* Step 1 — choose method */}
+              {/* Step 1 - choose method */}
               {!paymentMethod && (
                 <div className="p-6">
                   <h2 className="font-display font-bold text-xl text-primary-800 mb-1">Choose Payment Method</h2>
@@ -578,7 +578,7 @@ export default function SubscriptionPage() {
                             <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Instant</span>
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            Pay via Flutterwave — card, bank transfer, USSD, or mobile money. Instant activation.
+                            Pay via Flutterwave - card, bank transfer, USSD, or mobile money. Instant activation.
                           </p>
                         </div>
                       </button>

@@ -3,13 +3,11 @@ import { useRouter } from 'next/router';
 
 const LINKS = [
   { href: '/', label: 'Home' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/gifting', label: 'Gift a Subscription' },
 ];
 
 /**
- * Public marketing navbar — used on standalone public pages (e.g. /gifting).
+ * Public marketing navbar - used on standalone public pages (e.g. /gifting).
  * Sticky (not fixed) so pages need no top-padding compensation.
  */
 export default function PublicNav() {

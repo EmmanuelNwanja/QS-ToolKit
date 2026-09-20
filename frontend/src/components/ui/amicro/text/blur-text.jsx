@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 /**
  * Blur transition for text container/headings.
- * Amicro (MIT) — converted from TSX to JSX for QSToolkit.
+ * Amicro (MIT) - converted from TSX to JSX for QSToolkit.
  */
 export function BlurText({
   text,

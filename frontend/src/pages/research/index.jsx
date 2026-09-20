@@ -66,7 +66,7 @@ export default function ResearchDashboard() {
 
   return (
     <ProtectedRoute>
-      <Head><title>QS Research — QSToolkit</title></Head>
+      <Head><title>QS Research - QSToolkit</title></Head>
       <Layout title="📚 QS Research">
         <div className="max-w-6xl space-y-6">
           <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">
@@ -168,7 +168,7 @@ export default function ResearchDashboard() {
             ].map(s => (
               <motion.div key={s.label} variants={card} initial="hidden" animate="show" className="stat-card text-center">
                 <span className="text-2xl mb-1">{s.icon}</span>
-                <p className={`stat-value ${s.color} text-xl`}>{loading ? '—' : s.value}</p>
+                <p className={`stat-value ${s.color} text-xl`}>{loading ? '-' : s.value}</p>
                 <p className="stat-label text-xs">{s.label}</p>
               </motion.div>
             ))}
@@ -180,7 +180,7 @@ export default function ResearchDashboard() {
               <Link href="/research/sources" className="card hover:shadow-card-md hover:border-indigo-200 transition-all group block border-l-4 border-l-indigo-500">
                 <div className="text-3xl mb-3">📖</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Literature Sources</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">Browse QS research sources — journals, books, NIQS bulletins, government data.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Browse QS research sources - journals, books, NIQS bulletins, government data.</p>
                 <div className="mt-3 text-xs font-semibold text-indigo-600 group-hover:text-indigo-700 flex items-center gap-1">
                   Browse Sources <span>&rarr;</span>
                 </div>
@@ -202,7 +202,7 @@ export default function ResearchDashboard() {
               <Link href="/research/methodology" className="card hover:shadow-card-md hover:border-emerald-200 transition-all group block border-l-4 border-l-emerald-500">
                 <div className="text-3xl mb-3">🔬</div>
                 <h3 className="font-display font-bold text-primary-800 group-hover:text-primary-600 mb-1">Methodology Templates</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">Pre-built research templates — literature review, case study, policy review.</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Pre-built research templates - literature review, case study, policy review.</p>
                 <div className="mt-3 text-xs font-semibold text-emerald-600 group-hover:text-emerald-700 flex items-center gap-1">
                   View Templates <span>&rarr;</span>
                 </div>

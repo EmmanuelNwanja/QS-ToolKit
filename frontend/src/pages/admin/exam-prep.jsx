@@ -116,7 +116,7 @@ export default function AdminExamPrep() {
                           <tr key={idx} className="border-b border-gray-100 last:border-0">
                             <td className="py-3 pr-4 text-gray-400 font-medium">{idx + 1}</td>
                             <td className="py-3 pr-4 font-semibold text-gray-900">{exam.name || exam.title}</td>
-                            <td className="py-3 pr-4 text-gray-600 capitalize">{exam.category || '—'}</td>
+                            <td className="py-3 pr-4 text-gray-600 capitalize">{exam.category || '-'}</td>
                             <td className="py-3 pr-4 text-gray-900">{(exam.attempts ?? 0).toLocaleString()}</td>
                             <td className="py-3">
                               <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ export default function AdminExamPrep() {
                                     style={{ width: `${parseFloat(exam.pass_rate ?? 0)}%` }}
                                   />
                                 </div>
-                                <span className="text-gray-900 font-medium">{exam.pass_rate ?? '—'}</span>
+                                <span className="text-gray-900 font-medium">{exam.pass_rate ?? '-'}</span>
                               </div>
                             </td>
                           </tr>
@@ -157,7 +157,7 @@ export default function AdminExamPrep() {
                             style={{ width: `${Math.min(parseFloat(item.pass_rate ?? 0), 100)}%` }}
                           />
                         </div>
-                        <span className="text-sm font-bold text-gray-900 w-12 text-right">{item.pass_rate ?? '—'}</span>
+                        <span className="text-sm font-bold text-gray-900 w-12 text-right">{item.pass_rate ?? '-'}</span>
                       </div>
                     ))}
                   </div>
@@ -196,7 +196,7 @@ export default function AdminExamPrep() {
                   <div className="space-y-3">
                     <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
                       <p className="text-sm text-gray-600">Average Score (All Exams)</p>
-                      <p className="text-2xl font-bold text-blue-600 mt-1">{data.avg_score ?? '—'}</p>
+                      <p className="text-2xl font-bold text-blue-600 mt-1">{data.avg_score ?? '-'}</p>
                     </div>
                     <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
                       <p className="text-sm text-gray-600">Total Attempts</p>
@@ -209,7 +209,7 @@ export default function AdminExamPrep() {
                           {data.score_trend.slice(-5).map((t, idx) => (
                             <div key={idx} className="flex justify-between text-sm">
                               <span className="text-gray-700">{t.period || t.date}</span>
-                              <span className="font-medium text-gray-900">{t.avg_score ?? '—'}</span>
+                              <span className="font-medium text-gray-900">{t.avg_score ?? '-'}</span>
                             </div>
                           ))}
                         </div>
@@ -239,7 +239,7 @@ export default function AdminExamPrep() {
                             <td className="py-3 pr-4 font-semibold text-gray-900">{uni.name || uni.university}</td>
                             <td className="py-3 pr-4 text-gray-900">{(uni.students ?? 0).toLocaleString()}</td>
                             <td className="py-3 pr-4 text-gray-900">{(uni.attempts ?? 0).toLocaleString()}</td>
-                            <td className="py-3 text-gray-900 font-medium">{uni.avg_score ?? '—'}</td>
+                            <td className="py-3 text-gray-900 font-medium">{uni.avg_score ?? '-'}</td>
                           </tr>
                         ))}
                       </tbody>

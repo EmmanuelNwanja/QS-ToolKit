@@ -81,7 +81,7 @@ export default function ResultsPage() {
       }));
   }, [attempts]);
 
-  // Weakness areas — derive from detailed_results in attempts
+  // Weakness areas - derive from detailed_results in attempts
   const weaknessAreas = useMemo(() => {
     const topicScores = {};
     attempts.forEach(a => {
@@ -101,7 +101,7 @@ export default function ResultsPage() {
   if (selectedAttempt || detailLoading) {
     return (
       <ProtectedRoute>
-        <Head><title>Exam Results — QSToolkit</title></Head>
+        <Head><title>Exam Results - QSToolkit</title></Head>
         <Layout title="📊 Exam Results">
           <div className="max-w-4xl space-y-6">
             <button
@@ -126,7 +126,7 @@ export default function ResultsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>My Results — QSToolkit</title></Head>
+      <Head><title>My Results - QSToolkit</title></Head>
       <Layout title="📊 My Results">
         <div className="max-w-5xl space-y-6">
 
@@ -238,7 +238,7 @@ export default function ResultsPage() {
                         {(a.percentage || a.score || 0) >= 50 ? 'Pass' : 'Fail'}
                       </span>
                     </td>
-                    <td className="text-gray-500">{a.time_spent_seconds ? `${Math.round(a.time_spent_seconds / 60)} min` : '—'}</td>
+                    <td className="text-gray-500">{a.time_spent_seconds ? `${Math.round(a.time_spent_seconds / 60)} min` : '-'}</td>
                     <td>
                       <button className="text-xs text-primary-600 hover:underline">View Details</button>
                     </td>

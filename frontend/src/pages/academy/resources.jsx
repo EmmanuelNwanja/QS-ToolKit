@@ -106,7 +106,7 @@ export default function ResourcesPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Resources — QS Academy</title></Head>
+      <Head><title>Resources - QS Academy</title></Head>
       <Layout title="📖 Resource Library">
         <div className="max-w-6xl space-y-6">
           {/* Filters */}

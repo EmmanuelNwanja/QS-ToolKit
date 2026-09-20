@@ -48,7 +48,7 @@ export default function MigratePage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Migrate to Classroom — QSToolkit</title></Head>
+      <Head><title>Migrate to Classroom - QSToolkit</title></Head>
       <Layout title="📦 Migrate to Classroom">
         <div className="max-w-2xl mx-auto space-y-6">
           <Link href="/classroom" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
- * SpotlightTour — anchored coach-mark tour engine for QSToolkit.
+ * SpotlightTour - anchored coach-mark tour engine for QSToolkit.
  *
  * Renders a dimmed backdrop with a rounded "spotlight" cutout over a real DOM
  * element (matched by CSS selector), plus a tooltip card pinned beside it with

@@ -56,7 +56,7 @@ export default function SettingsPage() {
     }
 
     try {
-      // init() only fetches the VAPID key and checks SW — does NOT request permission
+      // init() only fetches the VAPID key and checks SW - does NOT request permission
       await pushNotificationService.init();
       const res = await pushAPI.getSubscriptionStatus();
       // success() spreads flat: { success, message, isSubscribed, subscriptionCount }
@@ -344,7 +344,7 @@ export default function SettingsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Settings — QSToolkit</title></Head>
+      <Head><title>Settings - QSToolkit</title></Head>
       <Layout title="⚙️ Settings">
         <div className="max-w-3xl space-y-6">
 

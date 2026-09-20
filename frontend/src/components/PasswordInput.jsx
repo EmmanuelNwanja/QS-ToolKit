@@ -8,7 +8,7 @@ import { STRENGTH_META } from '../utils/passwordPolicy';
    A password field that is masked by default with an eye
    toggle to reveal what is being typed.
 
-   QSToolkit use: every password entry point — login,
+   QSToolkit use: every password entry point - login,
    registration, force-change, settings change-password and
    the forgot-password flow. Accepts the same props as a
    native <input> plus an optional `strength` object

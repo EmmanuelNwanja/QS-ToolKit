@@ -153,7 +153,7 @@ export default function MeasurementScene({ scene, onComplete }) {
                           <span className={diff ? 'text-emerald-600' : 'text-red-600'}>
                             {parseFloat(row.expectedQty).toFixed(2)} {diff ? '✓' : '✗'}
                           </span>
-                        ) : '—'}
+                        ) : '-'}
                       </td>
                     )}
                     <td className="py-1.5 px-2">
@@ -186,7 +186,7 @@ export default function MeasurementScene({ scene, onComplete }) {
         {showExpected && score !== null && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`card ${score >= 70 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
             <p className="text-sm font-semibold mb-1">{score >= 70 ? '✓ Good Measurement!' : '⚠ Review Needed'}</p>
-            <p className="text-xs text-gray-600">Your accuracy: <strong>{score}%</strong> — {score >= 90 ? 'Excellent!' : score >= 70 ? 'Well done.' : 'Double-check your dimensions and formulas.'}</p>
+            <p className="text-xs text-gray-600">Your accuracy: <strong>{score}%</strong> - {score >= 90 ? 'Excellent!' : score >= 70 ? 'Well done.' : 'Double-check your dimensions and formulas.'}</p>
           </motion.div>
         )}
       </AnimatePresence>

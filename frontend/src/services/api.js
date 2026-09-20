@@ -36,7 +36,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — redirect to login.
+// Handle 401 globally - redirect to login.
 // Excluded: /auth/me (handled by authStore.init() which guards against token races)
 // Excluded: any /auth/* page (user is mid-login; init() may still be resolving a stale token)
 api.interceptors.response.use(
@@ -170,7 +170,7 @@ export const leaderboardAPI = {
   getMe:  ()       => api.get('/leaderboard/me')
 };
 
-// ─── Gifting (public — guests allowed) ────────────────────────
+// ─── Gifting (public - guests allowed) ────────────────────────
 export const giftingAPI = {
   directory:       (params)                 => api.get('/gifting/directory', { params }),
   lookupByEmail:   (email)                  => api.post('/gifting/lookup', { email }),

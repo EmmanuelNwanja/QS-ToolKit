@@ -110,7 +110,7 @@ export default function CostPlanScene({ scene, onComplete }) {
                   <td className="py-1.5 px-2 text-right text-xs font-mono text-gray-700">
                     {row.pct ? parseFloat(row.pct).toFixed(1) : row.cost && computed.total ? ((parseFloat(row.cost) / computed.total) * 100).toFixed(1) : '0.0'}%
                   </td>
-                  <td className="py-1.5 px-2 text-right text-xs font-mono text-gray-500">—</td>
+                  <td className="py-1.5 px-2 text-right text-xs font-mono text-gray-500">-</td>
                   <td className="py-1.5 px-1">
                     <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 text-xs" disabled={computed.rows.length <= 1}>✕</button>
                   </td>

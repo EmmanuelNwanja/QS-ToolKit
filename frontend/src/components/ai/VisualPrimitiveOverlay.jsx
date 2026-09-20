@@ -338,7 +338,7 @@ export default function VisualPrimitiveOverlay({
                       <span className="font-medium text-gray-700">{section.title}</span>
                       {section.items?.slice(0, 2).map((item, i) => (
                         <p key={i} className="text-gray-500 ml-2">
-                          • {item.description} — {item.quantity} {item.unit}
+                          • {item.description} - {item.quantity} {item.unit}
                         </p>
                       ))}
                     </div>

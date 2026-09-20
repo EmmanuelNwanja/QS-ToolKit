@@ -104,7 +104,7 @@ export default function CalculatorPage() {
     } catch (err) {
       const msg = err.response?.data?.message || 'Calculation failed';
       if (err.response?.status === 402) {
-        toast.error(msg + ' — Upgrade your plan to continue.');
+        toast.error(msg + ' - Upgrade your plan to continue.');
         router.push('/subscription');
       } else {
         toast.error(msg);
@@ -116,7 +116,7 @@ export default function CalculatorPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>{calc.label} — QSToolkit</title></Head>
+      <Head><title>{calc.label} - QSToolkit</title></Head>
       <Layout title={`${calc.icon} ${calc.label}`}>
         <div className="max-w-5xl">
           {/* Breadcrumb */}

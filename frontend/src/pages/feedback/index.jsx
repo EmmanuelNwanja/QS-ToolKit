@@ -54,11 +54,11 @@ export default function FeedbackPage() {
 
   const avgRating = responses.length
     ? (responses.reduce((s, r) => s + r.rating, 0) / responses.length).toFixed(1)
-    : '—';
+    : '-';
 
   return (
     <ProtectedRoute>
-      <Head><title>Client Feedback — QSToolkit</title></Head>
+      <Head><title>Client Feedback - QSToolkit</title></Head>
       <Layout title="⭐ Client Feedback">
         <div className="max-w-5xl space-y-6">
 
@@ -71,7 +71,7 @@ export default function FeedbackPage() {
             ].map(s => (
               <div key={s.label} className="stat-card">
                 <span className="text-2xl">{s.icon}</span>
-                <p className="stat-value">{loading ? '—' : s.value}</p>
+                <p className="stat-value">{loading ? '-' : s.value}</p>
                 <p className="stat-label">{s.label}</p>
               </div>
             ))}

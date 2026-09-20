@@ -68,7 +68,7 @@ const COMPARISONS = [
   { feature: 'Invoices & quotes', starter: '2 each', pro: '5 each', elite: '50 each' },
   { feature: 'PDF & Excel exports', starter: '✓', pro: '✓', elite: '✓' },
   { feature: 'Users / devices', starter: '1 / 1', pro: '1 / 2', elite: '5 / 15' },
-  { feature: 'Team roles', starter: '—', pro: '—', elite: '✓' },
+  { feature: 'Team roles', starter: '-', pro: '-', elite: '✓' },
   { feature: 'Support', starter: 'Standard', pro: 'Priority', elite: 'Top priority' }
 ];
 
@@ -116,13 +116,20 @@ export default function PricingPage() {
   return (
     <>
       <Head>
-        <title>Pricing — QSToolkit | Plans from ₦8,999/mo</title>
+        <title>Pricing - QSToolkit | Plans from ₦8,999/mo</title>
         <meta name="description" content="Transparent pricing for quantity surveying professionals across 9 African countries. Plans from ₦8,999/mo in Nigeria, with local currency support via Flutterwave." />
         <meta name="keywords" content="QSToolkit pricing, quantity surveying software cost, QS software Nigeria, BOQ software price, construction software pricing" />
         <link rel="canonical" href="https://qs.solnuv.com/pricing" />
-        <meta property="og:title" content="Pricing — QSToolkit | Plans from ₦8,999/mo" />
+        <meta property="og:title" content="Pricing - QSToolkit | Plans from ₦8,999/mo" />
         <meta property="og:description" content="Simple, transparent pricing for Nigerian quantity surveying professionals." />
         <meta property="og:url" content="https://qs.solnuv.com/pricing" />
+        <meta property="og:image" content="https://qs.solnuv.com/og-image.png" />
+        <meta property="og:image:alt" content="QSToolkit - Plans from ₦8,999/mo" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://qs.solnuv.com/og-image.png" />
 
         {/* Product structured data */}
         <script

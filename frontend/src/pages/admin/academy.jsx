@@ -118,11 +118,11 @@ export default function AdminAcademy() {
                   </div>
                   <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Average Score</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{data.admission_avg_score ?? '—'}</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{data.admission_avg_score ?? '-'}</p>
                   </div>
                   <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Completion Rate</p>
-                    <p className="text-2xl font-bold text-purple-600 mt-1">{data.admission_completion_rate ?? '—'}</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-1">{data.admission_completion_rate ?? '-'}</p>
                   </div>
                 </div>
               </div>

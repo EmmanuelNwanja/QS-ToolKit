@@ -49,7 +49,7 @@ export default function QSFlowPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>QS Flow — QSToolkit</title></Head>
+      <Head><title>QS Flow - QSToolkit</title></Head>
       <Layout title="QS Flow">
         <div className="max-w-4xl mx-auto space-y-8 py-8">
           {/* Hero */}
@@ -61,7 +61,7 @@ export default function QSFlowPage() {
             <p className="text-gray-500 max-w-lg mx-auto">
               Execute the complete quantity surveying process from start to finish.
               Select a project, complete all substructure and superstructure measurements,
-              and generate a BOQ — all in one guided flow.
+              and generate a BOQ - all in one guided flow.
             </p>
           </div>
 

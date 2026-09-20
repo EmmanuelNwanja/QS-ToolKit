@@ -6,9 +6,11 @@
 const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE_NAME = `qstoolkit-${SW_VERSION}`;
 const STATIC_ASSETS = [
-  '/favicon.svg',
-  '/icons/icon.svg',
-  '/icons/maskable-icon.svg',
+  '/favicon-32.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/maskable-icon-512.png',
+  '/apple-touch-icon.png',
 ];
 
 function offlineFallbackResponse() {
@@ -140,19 +142,19 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Skip API requests — always go network
+  // Skip API requests - always go network
   if (url.pathname.startsWith('/api/')) return;
 
-  // Skip Next.js data requests — always go network
+  // Skip Next.js data requests - always go network
   if (url.pathname.startsWith('/_next/data/')) return;
 
   // Skip chrome-extension and non-http requests
   if (!url.protocol.startsWith('http')) return;
 
-  // Skip Next.js build artifacts — Next.js manages these via HTTP cache headers.
+  // Skip Next.js build artifacts - Next.js manages these via HTTP cache headers.
   if (url.pathname.startsWith('/_next/')) return;
 
-  // Always go network for HTML navigations — no cache
+  // Always go network for HTML navigations - no cache
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request));
     return;

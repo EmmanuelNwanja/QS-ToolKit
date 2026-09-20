@@ -6,10 +6,10 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        {/* Favicon */}
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="alternate icon" href="/favicon.svg" />
-        <link rel="apple-touch-icon" href="/icons/icon.svg" />
+        {/* Favicon (real logo mark on brand navy) */}
+        <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
 
         {/* PWA manifest */}
         <link rel="manifest" href="/manifest.json" />
@@ -18,7 +18,7 @@ export default function Document() {
         <meta name="theme-color" content="#1a3c5e" />
         <meta name="mobile-web-app-capable" content="yes" />
         {/* Viewport: without width=device-width mobile browsers render at ~980px
-            and scale down — the root cause of tiny text and side-scrolling. */}
+            and scale down - the root cause of tiny text and side-scrolling. */}
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
         {/* iOS PWA */}
@@ -38,7 +38,7 @@ export default function Document() {
         <meta property="og:title" content="QSToolkit - Your Quantity Surveying Toolkit" />
         <meta property="og:description" content="Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices & Project Tracking. Start free." />
         <meta property="og:url" content={SITE_URL} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.svg`} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
         <meta property="og:image:alt" content="QSToolkit - Nigeria's Quantity Surveying Platform" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -49,7 +49,7 @@ export default function Document() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="QSToolkit - Your Quantity Surveying Toolkit" />
         <meta name="twitter:description" content="Nigeria's Professional Quantity Surveying Platform. BOQs, Calculators, Invoices & Project Tracking." />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.svg`} />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
 
         {/* Organization structured data */}
         <script
@@ -60,7 +60,7 @@ export default function Document() {
               '@type': 'Organization',
               name: 'QSToolkit',
               url: SITE_URL,
-              logo: `${SITE_URL}/favicon.svg`,
+              logo: `${SITE_URL}/icons/icon-512.png`,
               description: "Nigeria's Professional Quantity Surveying Platform",
               foundingDate: '2024',
               address: {

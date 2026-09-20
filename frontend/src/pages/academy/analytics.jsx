@@ -57,7 +57,7 @@ export default function AnalyticsPage() {
 
   return (
     <ProtectedRoute>
-      <Head><title>Analytics — QS Academy</title></Head>
+      <Head><title>Analytics - QS Academy</title></Head>
       <Layout title="📊 Progress Analytics">
         <div className="max-w-6xl space-y-6">
           <Link href="/academy" className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium">

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 /**
  * Fade with upward translation.
- * Amicro (MIT) — converted from TSX to JSX for QSToolkit.
+ * Amicro (MIT) - converted from TSX to JSX for QSToolkit.
  */
 export function FadeUp({
   children,

@@ -36,7 +36,7 @@ export default function OnboardingPage() {
 
   return (
     <>
-      <Head><title>Complete Your Profile — QSToolkit</title></Head>
+      <Head><title>Complete Your Profile - QSToolkit</title></Head>
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-lg">
           <div className="flex items-center gap-2 mb-8 justify-center">

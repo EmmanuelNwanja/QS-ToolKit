@@ -1,4 +1,4 @@
-// Mirrors backend/src/utils/passwordValidator.js — keep in sync.
+// Mirrors backend/src/utils/passwordValidator.js - keep in sync.
 export const PASSWORD_RULES = [
   { key: 'length',  label: 'At least 8 characters',              test: (pw) => pw.length >= 8 },
   { key: 'upper',   label: 'One uppercase letter (A–Z)',          test: (pw) => /[A-Z]/.test(pw) },

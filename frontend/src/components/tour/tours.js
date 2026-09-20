@@ -7,7 +7,7 @@
  * pages/dashboard.jsx.
  */
 
-/** localStorage keys (stable — the tour completion + resume rely on them). */
+/** localStorage keys (stable - the tour completion + resume rely on them). */
 export const DASHBOARD_TOUR_KEY = 'qst_onboarding_guide_completed';
 export const DASHBOARD_TOUR_RESUME_KEY = 'qst_tour_resume_step';
 
@@ -15,7 +15,7 @@ export const dashboardTour = [
   {
     // Opening card, no anchor, centered.
     title: 'Welcome to QSToolkit 👋',
-    body: 'This is your Quantity Surveying command center — measure, cost, invoice and grow your practice. Here\'s a 60-second tour of the essentials.',
+    body: 'This is your Quantity Surveying command center - measure, cost, invoice and grow your practice. Here\'s a 60-second tour of the essentials.',
     placement: 'center',
   },
   {
@@ -34,13 +34,13 @@ export const dashboardTour = [
   {
     target: '[data-tour="nav-engine"]',
     title: 'AI Engine',
-    body: 'Dr. Q is your AI QS assistant — cost forecasts, variance detection and instant answers grounded in Nigerian market rates.',
+    body: 'Dr. Q is your AI QS assistant - cost forecasts, variance detection and instant answers grounded in Nigerian market rates.',
     placement: 'right',
   },
   {
     target: '[data-tour="nav-calculators"]',
     title: '10+ pro calculators',
-    body: 'Concrete, masonry, plastering, tiling, steel and more — all tuned to Nigerian standards (SMM7 / NRM2) with current material prices.',
+    body: 'Concrete, masonry, plastering, tiling, steel and more - all tuned to Nigerian standards (SMM7 / NRM2) with current material prices.',
     tip: 'Every calculator result can be saved straight into a BOQ.',
     placement: 'right',
   },
@@ -64,7 +64,7 @@ export const dashboardTour = [
   },
   {
     target: '[data-tour="chat-bot"]',
-    title: 'Dr. Q — your AI QS',
+    title: 'Dr. Q - your AI QS',
     body: 'Ask anything in plain language: "How many 9-inch blocks for a 12m × 10m wall?" Dr. Q answers with Nigerian standards in mind.',
     placement: 'left',
   },
