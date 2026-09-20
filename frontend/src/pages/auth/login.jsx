@@ -221,6 +221,10 @@ export default function LoginPage() {
                   placeholder="your@email.com"
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  inputMode="email"
                   required
                 />
               </div>
@@ -290,6 +294,10 @@ export default function LoginPage() {
                     placeholder="your@email.com"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="email"
+                    inputMode="email"
                   />
                   <button onClick={handleForgotSendOtp} disabled={forgotLoading} className="btn-primary w-full">
                     {forgotLoading ? 'Sending...' : 'Send Reset Code'}

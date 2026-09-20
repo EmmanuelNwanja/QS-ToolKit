@@ -217,17 +217,30 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
     const normalizedEmail = String(email || '').toLowerCase().trim();
 
+    logger.info('Login attempt', {
+      email: normalizedEmail,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      origin: req.get('origin'),
+      hasPassword: !!password,
+      passwordLength: password?.length || 0,
+    });
+
     const { data: user } = await supabase
       .from('users')
       .select('*, subscription_plans(*)')
       .eq('email', normalizedEmail)
       .single();
 
-    if (!user) return res.status(401).json(error('Invalid email or password', { code: 'INVALID_CREDENTIALS' }));
+    if (!user) {
+      logger.warn('Login failed: user not found', { email: normalizedEmail, ip: req.ip });
+      return res.status(401).json(error('Invalid email or password', { code: 'INVALID_CREDENTIALS' }));
+    }
 
     const validPassword = await bcrypt.compare(password, user.password_hash || '');
     const oneTimePasswordUsed = !validPassword && await consumeAdminOneTimePassword(user.id, password, req);
     if (!validPassword && !oneTimePasswordUsed) {
+      logger.warn('Login failed: wrong password', { email: normalizedEmail, userId: user.id, ip: req.ip });
       return res.status(401).json(error('Invalid email or password', { code: 'INVALID_CREDENTIALS' }));
     }
 
@@ -260,6 +273,7 @@ exports.login = async (req, res, next) => {
       sanitized.permissions = adminUser.permissions;
     }
 
+    logger.info('Login successful', { email: normalizedEmail, userId: user.id, ip: req.ip });
     return res.json(success('Login successful', {
       token,
       user: sanitized,
