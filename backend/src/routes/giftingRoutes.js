@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { body, query } = require('express-validator');
+const { body, query, oneOf } = require('express-validator');
 const ctrl = require('../controllers/giftingController');
 const { adminAuth, requirePermission } = require('../middlewares/adminMiddleware');
 const { paymentLimiter } = require('../middlewares/rateLimiter');
@@ -19,10 +19,22 @@ router.post('/lookup', paymentLimiter, [
 ], ctrl.lookupByEmail);
 
 router.post('/initiate', paymentLimiter, [
-  body('recipient_emails').isArray({ min: 1, max: 100 }).withMessage('recipient_emails must be a non-empty array (max 100)'),
+  // At least one recipient via directory IDs or pasted emails — never both
+  // required. The browser directory flow sends recipient_ids (directory cards
+  // carry masked emails only); the email-paste flow sends recipient_emails.
+  oneOf([
+    body('recipient_ids').isArray({ min: 1, max: 100 }),
+    body('recipient_emails').isArray({ min: 1, max: 100 }),
+  ], 'At least one recipient is required (recipient_ids or recipient_emails)'),
+  // Parent arrays are optional (absent = flow not used); wildcards are NOT
+  // optional — express-validator applies the optional modifier per-element,
+  // so .optional() on a wildcard would reject valid arrays.
+  body('recipient_ids').optional().isArray({ max: 100 }),
+  body('recipient_ids.*').isUUID().withMessage('recipient_ids must be valid user IDs'),
+  body('recipient_emails').optional().isArray({ max: 100 }),
   body('recipient_emails.*').isEmail().normalizeEmail(),
   body('plan_name').isIn(['basic', 'student', 'pro']).withMessage('Gifting is available for Starter and Pro plans'),
-  body('billing_cycle').isIn(['monthly', 'annual']).withMessage('billing_cycle must be monthly or annual'),
+  body('billing_cycle').optional().isIn(['monthly', 'annual']).withMessage('billing_cycle must be monthly or annual'),
   body('is_anonymous').optional().isBoolean(),
   body('donor_email').optional().isEmail().normalizeEmail(),
   validate,

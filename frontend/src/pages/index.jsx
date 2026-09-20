@@ -333,6 +333,9 @@ export default function LandingPage() {
               <Link href="/leaderboard" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
                 Leaderboard
               </Link>
+              <Link href="/gifting" className="text-sm text-white/60 hover:text-white hidden md:inline transition-colors">
+                Gifting
+              </Link>
               <Link href="/auth/login" className="text-sm text-white/80 hover:text-white px-3 py-1.5 hidden sm:inline transition-colors">
                 Sign In
               </Link>
@@ -953,6 +956,7 @@ export default function LandingPage() {
               </div>
               <div className="flex items-center gap-6 text-sm text-white/40">
                 <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+                <Link href="/gifting" className="hover:text-white transition-colors">Gifting</Link>
                 <Link href="/auth/login" className="hover:text-white transition-colors">Login</Link>
                 <Link href="/auth/register" className="hover:text-white transition-colors">Register</Link>
                 <Link href="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>

@@ -3,6 +3,7 @@ const SITE_URL = 'https://qs.solnuv.com';
 const STATIC_PAGES = [
   { url: '/',              changefreq: 'weekly',  priority: '1.0' },
   { url: '/pricing',       changefreq: 'monthly', priority: '0.9' },
+  { url: '/gifting',       changefreq: 'weekly',  priority: '0.8' },
   { url: '/auth/login',    changefreq: 'monthly', priority: '0.5' },
   { url: '/auth/register', changefreq: 'monthly', priority: '0.7' },
   { url: '/calculators',   changefreq: 'weekly',  priority: '0.9' },

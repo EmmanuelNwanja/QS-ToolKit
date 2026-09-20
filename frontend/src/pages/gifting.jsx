@@ -5,14 +5,79 @@ import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { giftingAPI, subscriptionAPI } from '../services/api';
 import useAuthStore from '../context/authStore';
+import PublicNav from '../components/PublicNav';
 import toast from 'react-hot-toast';
 
 /* ═══════════════════════════════════════════════════════════════
    Gifting — public page (guests welcome, e-commerce checkout style)
    - Directory of giftable users (server-redacted: "Emmanuel N.", em***@x.co)
    - Filter by account type · full-email donor lookup · multi-select
-   - Monthly/annual · anonymous or full donor identity · Flutterwave
+   - Auto-select N random recipients · 1 Month/1 Year billing · Flutterwave
+   - Anonymous or full donor identity
    ═══════════════════════════════════════════════════════════════ */
+
+const SITE_URL = 'https://qs.solnuv.com';
+
+const FAQS = [
+  {
+    q: 'What is QSToolkit gifting?',
+    a: 'Gifting lets you sponsor a QSToolkit subscription for a student or professional quantity surveyor. One payment activates every recipient you select — instantly and independently.',
+  },
+  {
+    q: 'Who can I gift a subscription to?',
+    a: 'Any verified QSToolkit member without an active paid subscription. Browse the public directory (names and emails are privacy-redacted) or paste a full email address to find someone specific.',
+  },
+  {
+    q: 'Can I gift anonymously?',
+    a: 'Yes. Tick “Give anonymously” and recipients will simply see “An anonymous donor” — your name, email and company stay private.',
+  },
+  {
+    q: 'How does auto-select work?',
+    a: 'Enter how many people you want to sponsor and click Auto-select. We randomly pick that many giftable members from the current directory results, so you can spread opportunity without choosing individuals.',
+  },
+  {
+    q: 'How much does a gift cost?',
+    a: 'The price is the normal plan rate — Starter or Pro, billed monthly (1 Month) or yearly (1 Year) — multiplied by the number of recipients. One Flutterwave checkout covers the whole batch.',
+  },
+  {
+    q: 'Do recipients need to do anything to activate the gift?',
+    a: 'No. Subscriptions activate automatically the moment your payment succeeds, and each recipient gets an email notification. One failed activation never blocks the others.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'QSToolkit Gift a Subscription',
+  serviceType: 'Educational subscription sponsorship',
+  url: `${SITE_URL}/gifting`,
+  provider: {
+    '@type': 'Organization',
+    name: 'QSToolkit',
+    url: SITE_URL,
+  },
+  areaServed: [
+    { '@type': 'Country', name: 'Nigeria' },
+    { '@type': 'Country', name: 'Ghana' },
+    { '@type': 'Country', name: 'Kenya' },
+    { '@type': 'Country', name: 'South Africa' },
+  ],
+  offers: {
+    '@type': 'Offer',
+    priceCurrency: 'NGN',
+    description: 'Sponsor Starter or Pro subscriptions for one or many QS practitioners in a single checkout.',
+  },
+};
 
 const fadeUp = {
   hidden: { opacity: 0.15, y: 24 },
@@ -90,6 +155,10 @@ export default function GiftingPage() {
   const [selected, setSelected] = useState([]); // [{id, display_name, email_masked, _email?}]
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [prices, setPrices] = useState({}); // { planName: {monthly, annual} }
+
+  // Auto-select random recipients
+  const [autoSelectCount, setAutoSelectCount] = useState('');
+  const [autoSelecting, setAutoSelecting] = useState(false);
 
   // Donor form
   const [anonymous, setAnonymous] = useState(false);
@@ -200,6 +269,40 @@ export default function GiftingPage() {
     : (billingCycle === 'annual' ? prices.basic?.annual : prices.basic?.monthly);
   const totalAmount = (planPrice || 0) * selected.length;
 
+  // Auto-select: randomly pick N recipients from the CURRENT directory page
+  // (respects the active account-type filter). Never selects the same member
+  // twice; shrinks gracefully if fewer members are available.
+  const runAutoSelect = () => {
+    const count = Math.floor(Number(autoSelectCount));
+    if (!count || count < 1) {
+      toast.error('Enter how many people you want to sponsor (1 or more)');
+      return;
+    }
+    if (count > 100) {
+      toast.error('A single gift is limited to 100 recipients');
+      return;
+    }
+    setAutoSelecting(true);
+    // Shuffle a copy of the current page's users (Fisher–Yates) and take N.
+    const pool = [...users];
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const picks = pool.slice(0, count);
+    setSelected((prev) => {
+      const known = new Set(prev.map((u) => u.id));
+      const fresh = picks.filter((u) => !known.has(u.id));
+      return [...prev, ...fresh];
+    });
+    if (picks.length < count) {
+      toast.success(`Selected ${picks.length} of ${count} requested — only ${picks.length} giftable members on this page. Try another filter or page for more.`);
+    } else {
+      toast.success(`🎁 ${count} recipients auto-selected`);
+    }
+    setAutoSelecting(false);
+  };
+
   const startCheckout = async () => {
     if (selected.length === 0) { toast.error('Select at least one person to gift'); return; }
     if (!anonymous && !donorEmail.trim()) { toast.error('Add your email for the receipt, or choose to gift anonymously'); return; }
@@ -223,11 +326,18 @@ export default function GiftingPage() {
       if (data?.success && data.authorization_url) {
         window.location.href = data.authorization_url;
       } else {
-        toast.error(data?.message || 'Could not start checkout');
+        const detail = Array.isArray(data?.errors) && data.errors.length > 0
+          ? data.errors.map((e) => e.message || e.msg).join('. ')
+          : null;
+        toast.error(detail || data?.message || 'Could not start checkout');
         setSubmitting(false);
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Checkout failed. Please try again.');
+      const apiErrors = err?.response?.data?.errors;
+      const detail = Array.isArray(apiErrors) && apiErrors.length > 0
+        ? apiErrors.map((e) => e.message || e.msg).join('. ')
+        : null;
+      toast.error(detail || err?.response?.data?.message || 'Checkout failed. Please try again.');
       setSubmitting(false);
     }
   };
@@ -237,11 +347,36 @@ export default function GiftingPage() {
   return (
     <>
       <Head>
-        <title>Gift a Subscription · QSToolkit</title>
-        <meta name="description" content="Sponsor a student or professional QS practitioner with a QSToolkit subscription. Gift monthly or annual plans — anonymously or with your name." />
+        <title>Gift a Subscription | Sponsor a Young QS Professional — QSToolkit</title>
+        <meta name="description" content="Sponsor a QSToolkit subscription for a student or professional quantity surveyor in Nigeria. Auto-select multiple recipients, gift 1 Month or 1 Year of Starter or Pro, and stay anonymous if you prefer. Instant activation." />
+        <meta name="keywords" content="gift subscription, sponsor a student, quantity surveyor Nigeria, QS donation, QSToolkit gift, NIQS support, pay it forward QS" />
+        <link rel="canonical" href={`${SITE_URL}/gifting`} />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Gift a Subscription | Sponsor a Young QS Professional — QSToolkit" />
+        <meta property="og:description" content="One payment can change a young quantity surveyor's career. Sponsor one person or many — instantly activated, anonymous option available." />
+        <meta property="og:url" content={`${SITE_URL}/gifting`} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.svg`} />
+        <meta property="og:image:alt" content="Gift a QSToolkit subscription" />
+        <meta property="og:site_name" content="QSToolkit" />
+        <meta property="og:locale" content="en_NG" />
+
+        {/* Twitter / X */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Gift a Subscription | Sponsor a Young QS Professional — QSToolkit" />
+        <meta name="twitter:description" content="Sponsor one or many QS practitioners with a single checkout. Instant activation, anonymous option." />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.svg`} />
+
+        {/* GEO: AI-answer-engine structured data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       </Head>
 
       <div className="min-h-screen bg-gray-50">
+        <PublicNav />
+
         {/* ── Hero ── */}
         <section className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 text-white">
           <div className="max-w-7xl mx-auto px-4 py-14 md:py-20">
@@ -287,6 +422,34 @@ export default function GiftingPage() {
                 placeholder="Search by display name…"
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none"
               />
+            </div>
+
+            {/* Auto-select random recipients */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-gray-700">Not sure who to sponsor?</p>
+                <p className="text-xs text-gray-400 mt-0.5">Tell us how many people to support and we&rsquo;ll randomly pick giftable members from the results below.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={autoSelectCount}
+                  onChange={(e) => setAutoSelectCount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && runAutoSelect()}
+                  placeholder="No. of recipients"
+                  className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold-400"
+                />
+                <button
+                  type="button"
+                  onClick={runAutoSelect}
+                  disabled={autoSelecting || loading || users.length === 0}
+                  className="btn-primary text-xs px-4 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap"
+                >
+                  {autoSelecting ? 'Selecting…' : '🎲 Auto-select'}
+                </button>
+              </div>
             </div>
 
             {/* Email lookup strip */}
@@ -381,11 +544,11 @@ export default function GiftingPage() {
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <button type="button" onClick={() => setBillingCycle('monthly')}
                   className={`border rounded-lg px-3 py-2 text-xs font-medium ${billingCycle === 'monthly' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  Monthly
+                  1 Month
                 </button>
                 <button type="button" onClick={() => setBillingCycle('annual')}
                   className={`border rounded-lg px-3 py-2 text-xs font-medium ${billingCycle === 'annual' ? 'border-gold-500 bg-gold-50 text-gray-900' : 'border-gray-200 text-gray-500'}`}>
-                  Annual <span className="text-emerald-600">−12%</span>
+                  1 Year <span className="text-emerald-600">−12%</span>
                 </button>
               </div>
 
@@ -440,6 +603,35 @@ export default function GiftingPage() {
             </div>
           </div>
         </section>
+
+        {/* ── FAQ (matches FAQPage JSON-LD for AI answer engines) ── */}
+        <section className="max-w-3xl mx-auto px-4 pb-16">
+          <h2 className="text-xl md:text-2xl font-bold text-primary-900 mb-6 text-center">Gifting FAQs</h2>
+          <div className="space-y-3">
+            {FAQS.map((f) => (
+              <details key={f.q} className="group bg-white border border-gray-200 rounded-xl px-4 py-3">
+                <summary className="text-sm font-semibold text-gray-800 cursor-pointer list-none flex items-center justify-between">
+                  {f.q}
+                  <span className="text-gray-300 group-open:rotate-45 transition-transform">＋</span>
+                </summary>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Footer ── */}
+        <footer className="bg-primary-900 border-t border-white/5 py-10 px-4">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-white/20">© {new Date().getFullYear()} QSToolkit — Built by Fudo Greentech Ltd.</p>
+            <div className="flex items-center gap-6 text-sm text-white/40">
+              <Link href="/" className="hover:text-white transition-colors">Home</Link>
+              <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+              <Link href="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>
+              <Link href="/auth/register" className="hover:text-white transition-colors">Create account</Link>
+            </div>
+          </div>
+        </footer>
 
         {/* Signup prompt modal after successful guest gifting */}
         {showSignupPrompt && (
