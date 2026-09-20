@@ -208,9 +208,7 @@ export default function QSFlowModal({ isOpen, onClose }) {
         {/* ── Header ─────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary-700 to-primary-800">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/15 rounded-lg flex items-center justify-center">
-              <span className="text-gold-400 font-bold text-sm">QS</span>
-            </div>
+            <img src="/qs-toolkit-logo-2.png" alt="QS Flow" className="h-9 w-auto" />
             <div>
               <h2 className="text-lg font-bold text-white font-display">QS Flow</h2>
               <p className="text-xs text-white/60">

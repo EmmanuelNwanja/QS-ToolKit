@@ -78,9 +78,7 @@ export default function PublicFeedbackPage() {
 
           {/* Brand header */}
           <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="text-gold-400 font-bold text-lg">QS</span>
-            </div>
+            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-12 w-auto mx-auto mb-3" />
             <p className="text-gray-500 text-sm">Powered by QSToolkit</p>
           </div>
 

@@ -126,7 +126,7 @@ export default function AiChatWidget({ context = {} }) {
           <span className="text-xl">✕</span>
         ) : (
           <div className="flex flex-col items-center leading-none">
-            <span className="text-gold-400 font-bold text-sm">QS</span>
+            <img src="/qs-toolkit-logo-2.png" alt="QS" className="h-5 w-auto" />
             <span className="text-[9px]">AI</span>
           </div>
         )}

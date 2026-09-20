@@ -39,11 +39,8 @@ export default function OnboardingPage() {
       <Head><title>Complete Your Profile - QSToolkit</title></Head>
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-lg">
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-9 h-9 bg-primary-700 rounded-lg flex items-center justify-center">
-              <span className="text-gold-400 font-bold">QS</span>
-            </div>
-            <span className="font-display text-2xl font-bold text-primary-800">QSToolkit</span>
+          <div className="mb-8 text-center">
+            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-12 w-auto mx-auto" />
           </div>
           <div className="card">
             <div className="text-center mb-8">

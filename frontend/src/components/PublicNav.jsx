@@ -19,7 +19,7 @@ export default function PublicNav() {
     <nav className="sticky top-0 z-40 bg-primary-900 border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/qs-toolkit-logo.png" alt="QSToolkit" className="h-12 w-auto max-w-[180px]" />
+          <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-12 w-auto max-w-[180px]" />
         </Link>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-4">

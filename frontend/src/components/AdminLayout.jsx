@@ -123,7 +123,7 @@ export default function AdminLayout({ children }) {
       ].join(' ')}>
         <div className="h-16 flex items-center px-5 border-b border-gray-200">
           <Link href="/admin">
-            <img src="/qs-toolkit-logo.png" alt="QSToolkit Admin" className="h-12 w-auto max-w-[180px]" />
+            <img src="/qs-toolkit-logo-2.png" alt="QSToolkit Admin" className="h-12 w-auto max-w-[180px]" />
           </Link>
         </div>
 
