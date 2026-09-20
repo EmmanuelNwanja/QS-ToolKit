@@ -330,8 +330,8 @@ export default function PricingPage() {
                         <h3 className="font-display text-xl font-bold text-primary-800">{plan.name}</h3>
                         <p className="text-xs text-gray-400 mt-1">{plan.desc}</p>
                         <div className="flex items-end gap-1 mt-4">
-                          <span className="text-3xl font-bold text-primary-700">{price}</span>
-                          <span className="text-gray-400 text-sm mb-1">{period}</span>
+                          <span className="text-2xl md:text-3xl font-bold text-primary-700 truncate max-w-full">{price}</span>
+                          <span className="text-gray-400 text-sm mb-1 flex-shrink-0">{period}</span>
                         </div>
                       </div>
                       <ul className="space-y-3 flex-1 mb-8">
@@ -477,7 +477,7 @@ export default function PricingPage() {
             <p className="text-xs text-white/20">
               © {new Date().getFullYear()} QSToolkit
             </p>
-            <div className="flex items-center gap-6 text-sm text-white/40">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/40">
               <Link href="/" className="hover:text-white transition-colors">Home</Link>
               <Link href="/gifting" className="hover:text-white transition-colors">Gifting</Link>
               <Link href="/auth/login" className="hover:text-white transition-colors">Login</Link>

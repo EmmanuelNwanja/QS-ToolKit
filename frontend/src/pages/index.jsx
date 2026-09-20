@@ -951,7 +951,7 @@ export default function LandingPage() {
                   Quantity Surveying Toolkit for Nigerian professionals.
                 </p>
               </div>
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/40">
                 <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
                 <Link href="/gifting" className="hover:text-white transition-colors">Gifting</Link>
                 <Link href="/auth/login" className="hover:text-white transition-colors">Login</Link>

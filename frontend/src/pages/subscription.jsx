@@ -386,11 +386,11 @@ export default function SubscriptionPage() {
 
                     <ul className="space-y-1.5 mb-4 mt-3">
                       {features.map(f => (
-                        <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
-                          <span className={`font-bold mt-0.5 ${f === 'Promo code eligible' ? 'text-gold-500' : 'text-emerald-500'}`}>
+                        <li key={f} className="flex items-start gap-2 text-xs text-gray-600 min-w-0">
+                          <span className={`font-bold mt-0.5 flex-shrink-0 ${f === 'Promo code eligible' ? 'text-gold-500' : 'text-emerald-500'}`}>
                             {f === 'Promo code eligible' ? '🎟' : '✓'}
                           </span>
-                          {f}
+                          <span className="break-words">{f}</span>
                         </li>
                       ))}
                     </ul>

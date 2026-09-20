@@ -82,8 +82,8 @@ export default function InvoicesListPage() {
                 { label: 'Pending', value: formatNaira(invoices.filter(i => i.status === 'sent').reduce((s,i) => s + (i.total_amount||0), 0)),    color: 'text-blue-600' },
                 { label: 'Overdue', value: formatNaira(invoices.filter(i => i.status === 'overdue').reduce((s,i) => s + (i.total_amount||0), 0)), color: 'text-red-600' }
               ].map((stat) => (
-                <div key={stat.label} className="card py-3 text-center">
-                  <p className={`font-bold text-base ${stat.color}`}>{stat.value}</p>
+                <div key={stat.label} className="card py-3 text-center overflow-hidden">
+                  <p className={`font-bold text-sm sm:text-base truncate ${stat.color}`}>{stat.value}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
                 </div>
               ))}

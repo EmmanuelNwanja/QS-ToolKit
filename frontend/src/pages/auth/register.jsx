@@ -90,9 +90,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-lg">
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 bg-primary-700 rounded-xl flex items-center justify-center">
-                <span className="text-gold-400 font-bold">QS</span>
-              </div>
+              <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-9 w-auto" />
               <span className="font-display text-2xl font-bold text-primary-800">QSToolkit</span>
             </Link>
             <h1 className="font-display text-2xl font-bold text-primary-800">Create Your Account</h1>

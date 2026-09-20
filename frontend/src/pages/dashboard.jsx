@@ -153,12 +153,12 @@ export default function DashboardPage() {
           <Row gutter={[16, 16]}>
             {STAT_CARDS.map(s => (
               <Col xs={12} lg={6} key={s.key}>
-                <Card bordered={false} className="!rounded-xl shadow-sm">
+                <Card bordered={false} className="!rounded-xl shadow-sm overflow-hidden">
                   <Statistic
                     title={s.label}
                     value={loading ? '--' : s.getValue(stats)}
                     prefix={!s.isText && s.icon}
-                    valueStyle={{ color: s.color, fontWeight: 700 }}
+                    valueStyle={{ color: s.color, fontWeight: 700, fontSize: 24 }}
                   />
                 </Card>
               </Col>

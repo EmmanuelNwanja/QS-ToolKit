@@ -213,14 +213,14 @@ export default function AdminDashboard() {
                   <Col xs={12} md={8} xl={6} key={i}>
                     <Card
                       bordered={false}
-                      className={`!rounded-xl shadow-sm ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+                      className={`!rounded-xl shadow-sm overflow-hidden ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
                       onClick={s.onClick}
                     >
                       <Statistic
                         title={s.title}
                         value={s.value}
                         prefix={s.icon}
-                        valueStyle={{ color: s.color, fontWeight: 700, fontSize: s.isText ? 20 : 28 }}
+                        valueStyle={{ color: s.color, fontWeight: 700, fontSize: s.isText ? 18 : 28 }}
                       />
                     </Card>
                   </Col>

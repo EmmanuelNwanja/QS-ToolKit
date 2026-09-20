@@ -174,9 +174,7 @@ export default function LoginPage() {
         <div className="hidden lg:flex lg:w-1/2 bg-primary-800 flex-col justify-center items-center p-12 text-white">
           <div className="max-w-md">
             <div className="flex items-center gap-3 mb-10">
-              <div className="w-10 h-10 bg-gold-500 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold">QS</span>
-              </div>
+              <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-10 w-auto" />
               <span className="font-display text-2xl font-bold">QSToolkit</span>
             </div>
             <h2 className="font-display text-3xl font-bold mb-4">Nigeria&apos;s #1 QS Platform</h2>
@@ -197,9 +195,7 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col justify-center items-center px-4 py-12">
           <div className="w-full max-w-md">
             <div className="flex items-center gap-2 mb-8 lg:hidden">
-              <div className="w-8 h-8 bg-primary-700 rounded-lg flex items-center justify-center">
-                <span className="text-gold-400 font-bold text-sm">QS</span>
-              </div>
+              <img src="/qs-toolkit-logo-2.png" alt="QSToolkit" className="h-8 w-auto" />
               <span className="font-display text-xl font-bold text-primary-800">QSToolkit</span>
             </div>
 
