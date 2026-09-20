@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ProtectedAdminRoute from '../../components/ProtectedAdminRoute';
 import { adminAPI, userActionsAPI } from '../../services/api';
@@ -19,6 +19,8 @@ export default function AdminUsers() {
   const [showSubsModal, setShowSubsModal] = useState(false);
   const [userSubs, setUserSubs] = useState(null);
   const [loadingSubs, setLoadingSubs] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  const dropdownRef = useRef(null);
 
   const actionTypes = [
     { value: 'suspend', label: 'Suspend User', color: 'bg-red-500' },
@@ -41,6 +43,18 @@ export default function AdminUsers() {
   useEffect(() => {
     fetchUsers();
   }, [filter]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+      }
+    };
+    if (openDropdownId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openDropdownId]);
 
   const fetchUsers = async () => {
     try {
@@ -311,13 +325,13 @@ export default function AdminUsers() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => openSubsModal(user)}
-                              className="px-3 py-1 text-xs rounded font-medium text-white bg-blue-500 hover:bg-blue-600 transition"
+                              className="px-3 py-2 text-xs rounded font-medium text-white bg-blue-500 hover:bg-blue-600 transition min-h-[36px]"
                             >
                               Subs
                             </button>
                             <button
                               onClick={() => openActionModal(user, user.subscription_status === 'suspended' ? 'unsuspend' : 'suspend')}
-                              className={`px-3 py-1 text-xs rounded font-medium text-white transition ${
+                              className={`px-3 py-2 text-xs rounded font-medium text-white transition min-h-[36px] ${
                                 user.subscription_status === 'suspended'
                                   ? 'bg-green-500 hover:bg-green-600'
                                   : 'bg-red-500 hover:bg-red-600'
@@ -325,21 +339,26 @@ export default function AdminUsers() {
                             >
                               {user.subscription_status === 'suspended' ? 'Unsuspend' : 'Suspend'}
                             </button>
-                            <div className="relative group">
-                              <button className="px-3 py-1 text-xs rounded font-medium text-white bg-gray-400 hover:bg-gray-500 transition">
+                            <div className="relative" ref={openDropdownId === user.id ? dropdownRef : undefined}>
+                              <button
+                                onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
+                                className="px-3 py-2 text-xs rounded font-medium text-white bg-gray-400 hover:bg-gray-500 transition min-h-[36px]"
+                              >
                                 More
                               </button>
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-10">
-                                {actionTypes.map((action) => (
-                                  <button
-                                    key={action.value}
-                                    onClick={() => openActionModal(user, action.value)}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg border-b last:border-b-0"
-                                  >
-                                    {action.label}
-                                  </button>
-                                ))}
-                              </div>
+                              {openDropdownId === user.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10 border border-gray-200">
+                                  {actionTypes.map((action) => (
+                                    <button
+                                      key={action.value}
+                                      onClick={() => { openActionModal(user, action.value); setOpenDropdownId(null); }}
+                                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg border-b last:border-b-0 min-h-[44px]"
+                                    >
+                                      {action.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>

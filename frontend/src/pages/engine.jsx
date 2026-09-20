@@ -352,7 +352,7 @@ export default function EnginePage() {
 
                     {varianceResult && varianceResult.diff && (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                           <div className="p-3 bg-emerald-50 rounded-lg text-center">
                             <p className="text-emerald-700 font-bold text-lg">+{varianceResult.diff.summary?.items_added || 0}</p>
                             <p className="text-emerald-600 text-xs">Added</p>

@@ -160,7 +160,7 @@ export default function MeasurementScene({ scene, onComplete }) {
                       <input value={row.unit} onChange={e => updateRow(i, 'unit', e.target.value)} className="w-full px-1 py-1.5 border border-gray-200 rounded-lg text-xs text-center focus:ring-1 focus:ring-primary-500" placeholder="m²" />
                     </td>
                     <td className="py-1.5 px-1">
-                      <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 text-xs" disabled={computed.length <= 1}>✕</button>
+                       <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 text-xs min-w-[44px] min-h-[44px] flex items-center justify-center" disabled={computed.length <= 1}>✕</button>
                     </td>
                   </tr>
                 );

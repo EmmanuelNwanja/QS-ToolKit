@@ -63,7 +63,7 @@ export default function FeedbackPage() {
         <div className="max-w-5xl space-y-6">
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: 'Total Reviews', value: responses.length, icon: '⭐' },
               { label: 'Average Rating', value: `${avgRating}/10`, icon: '📊' },

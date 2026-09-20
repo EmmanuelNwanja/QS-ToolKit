@@ -53,7 +53,7 @@ export default function CarpentryForm({ onCalculate, loading }) {
       {/* Building dimensions */}
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Building Dimensions</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <label className="label text-xs">Building Length (mm)</label>
             <input type="number" className="input py-1.5 text-xs" value={form.building_length_mm}
@@ -80,7 +80,7 @@ export default function CarpentryForm({ onCalculate, loading }) {
 
       {carpSuggest.map((s, si) => <p key={si} className="text-gold-600 text-xs">Suggestion: ~{s.rafterCount} rafters @ {s.rafterLength}mm, wall plate ~{s.wallPlateLengthMm}mm</p>)}
       {/* Roof type + Wastage */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="label text-xs">Roof Type</label>
           <select className="input py-1.5 text-xs" value={form.roof_type} onChange={e => set('roof_type', e.target.value)}>
@@ -102,7 +102,7 @@ export default function CarpentryForm({ onCalculate, loading }) {
           {showAdvanced ? '▼' : '▶'} {showAdvanced ? 'Hide' : 'Show'} Timber Sizes
         </button>
         {showAdvanced && (
-          <div className="mt-2 bg-gray-50 rounded-lg p-3 grid grid-cols-2 gap-2">
+          <div className="mt-2 bg-gray-50 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
               { label: 'Wall Plate', key: 'wall_plate_size', sizes: TIMBER_SIZES.wall_plate },
               { label: 'Tie Beam',   key: 'tie_beam_size',   sizes: TIMBER_SIZES.tie_beam },

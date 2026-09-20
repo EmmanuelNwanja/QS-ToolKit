@@ -128,7 +128,7 @@ export default function BOQScene({ scene, onComplete }) {
                   <td className="py-1.5 px-1">
                     <button
                       onClick={() => removeRow(i)}
-                      className="text-gray-300 hover:text-red-500 text-xs"
+                      className="text-gray-300 hover:text-red-500 text-xs min-w-[44px] min-h-[44px] flex items-center justify-center"
                       disabled={totals.rows.length <= 1}
                     >
                       ✕

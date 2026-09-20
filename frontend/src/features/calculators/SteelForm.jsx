@@ -21,7 +21,7 @@ export default function SteelForm({ onCalculate, loading }) {
             <span className="text-xs font-medium text-gray-500">Bar {i + 1}</span>
             {bars.length > 1 && <button type="button" onClick={() => remove(i)} className="text-xs text-red-400">Remove</button>}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             <div><label className="label text-xs">Diameter (mm)</label><select className="input py-1.5 text-xs" value={bar.diameter_mm} onChange={e => update(i,'diameter_mm',e.target.value)}>{DIAMETERS.map(d => <option key={d}>{d}</option>)}</select></div>
             <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={bar.length_m} onChange={e => update(i,'length_m',e.target.value)} required /></div>
             <div><label className="label text-xs">Quantity</label><input type="number" className="input py-1.5 text-xs" value={bar.quantity} onChange={e => update(i,'quantity',e.target.value)} required /></div>

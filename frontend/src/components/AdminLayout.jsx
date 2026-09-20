@@ -147,7 +147,7 @@ export default function AdminLayout({ children }) {
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
             <button onClick={() => { logout(); router.push('/auth/login'); }}
-              className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded" title="Logout">
+              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded min-w-[44px] min-h-[44px] flex items-center justify-center" title="Logout">
               ↩
             </button>
           </div>

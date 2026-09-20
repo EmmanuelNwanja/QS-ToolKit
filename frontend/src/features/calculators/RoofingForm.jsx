@@ -11,7 +11,7 @@ export default function RoofingForm({ onCalculate, loading }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
       <div><label className="label">Roof Type</label><select className="input" value={form.roof_type} onChange={e => set('roof_type', e.target.value)}><option value="gable">Gable</option><option value="hip">Hip</option><option value="flat">Flat</option></select></div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label className="label">Building Length (m)</label><input type="number" step="0.1" className="input" value={form.length} onChange={e => set('length', e.target.value)} required /></div>
         <div><label className="label">Building Width (m)</label><input type="number" step="0.1" className="input" value={form.width} onChange={e => set('width', e.target.value)} required /></div>
         <div><label className="label">Pitch (°)</label><input type="number" className="input" value={form.pitch_degrees} onChange={e => set('pitch_degrees', e.target.value)} min={0} max={60} /></div>

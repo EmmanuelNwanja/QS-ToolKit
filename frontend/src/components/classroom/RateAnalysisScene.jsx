@@ -132,7 +132,7 @@ export default function RateAnalysisScene({ scene, onComplete }) {
                     </td>
                     <td className="py-1.5 px-2 text-right text-xs font-mono text-gray-700">{formatNaira(row.amount)}</td>
                     <td className="py-1.5 px-1">
-                      <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 text-xs" disabled={totals.rows.length <= 1}>✕</button>
+                       <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 text-xs min-w-[44px] min-h-[44px] flex items-center justify-center" disabled={totals.rows.length <= 1}>✕</button>
                     </td>
                   </tr>
                 ))}

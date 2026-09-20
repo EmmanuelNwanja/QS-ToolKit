@@ -28,7 +28,7 @@ export default function EarthworkForm({ onCalculate, loading }) {
   };
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div><label className="label">Soil Type</label>
           <select className="input" value={soilType} onChange={e => setSoilType(e.target.value)}>
             <option value="loam">Loam (BF 1.25)</option>
@@ -44,7 +44,7 @@ export default function EarthworkForm({ onCalculate, loading }) {
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div><label className="label">Excavation Type</label>
           <select className="input" value={excavationType} onChange={e => setExcavationType(e.target.value)}>
             <option value="trench">Trench</option>
@@ -55,7 +55,7 @@ export default function EarthworkForm({ onCalculate, loading }) {
           <input type="number" min="0" className="input" value={workingSpace} onChange={e => setWorkingSpace(e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
         <div><label className="label">Working Space Mode</label>
           <select className="input" value={workingSpaceMode} onChange={e => setWorkingSpaceMode(e.target.value)}>
             <option value="both_sides">Both Sides</option>
@@ -76,7 +76,7 @@ export default function EarthworkForm({ onCalculate, loading }) {
         <div className="flex items-center justify-between mb-2"><label className="label mb-0">Sections</label><button type="button" onClick={add} className="text-xs text-primary-600">+ Add</button></div>
         {sections.map((s, i) => (
           <div key={i}>
-            <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-2">
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.length} onChange={e => update(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Width (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.width} onChange={e => update(i,'width',e.target.value)} required /></div>
               <div><label className="label text-xs">Depth (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.depth} onChange={e => update(i,'depth',e.target.value)} required /></div>

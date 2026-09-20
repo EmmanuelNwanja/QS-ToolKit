@@ -106,7 +106,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={d.width_mm} onChange={e => updateDoor(i, 'width_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={d.height_mm} onChange={e => updateDoor(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={d.quantity} onChange={e => updateDoor(i, 'quantity', e.target.value)} /></div>
@@ -149,7 +149,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={w.width_mm} onChange={e => updateWindow(i, 'width_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={w.height_mm} onChange={e => updateWindow(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={w.quantity} onChange={e => updateWindow(i, 'quantity', e.target.value)} /></div>
@@ -173,7 +173,7 @@ export default function DoorWindowForm({ onCalculate, loading }) {
                 <input className={`${inputCls} w-14 text-center font-bold`} value={b.ref} onChange={e => updateBp(i, 'ref', e.target.value)} />
                 {bp.length > 1 && <button type="button" onClick={() => removeBp(i)} className="text-xs text-red-400">Remove</button>}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={b.width_mm} onChange={e => updateBp(i, 'width_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={b.height_mm} onChange={e => updateBp(i, 'height_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Quantity</label><input type="number" className={inputCls} min={1} value={b.quantity} onChange={e => updateBp(i, 'quantity', e.target.value)} /></div>

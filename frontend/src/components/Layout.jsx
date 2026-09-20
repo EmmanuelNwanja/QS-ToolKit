@@ -191,7 +191,7 @@ export default function Layout({ children, title }) {
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
               <p className="text-xs text-gray-500">{PLAN_DISPLAY_NAMES[planName()] || planName()} plan</p>
             </div>
-            <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded" title="Logout">
+            <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded min-w-[44px] min-h-[44px] flex items-center justify-center" title="Logout">
               ↩
             </button>
           </div>

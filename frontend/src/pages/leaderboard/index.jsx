@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 {[
                   { label: 'Projects', value: myRank.total_projects },
                   { label: 'Avg Rating', value: `${myRank.avg_rating}/10` },

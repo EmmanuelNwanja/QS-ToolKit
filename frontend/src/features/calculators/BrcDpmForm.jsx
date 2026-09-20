@@ -113,7 +113,7 @@ export default function BrcDpmForm({ onCalculate, loading }) {
           </select>
           {selectedBrc && <p className="text-xs text-blue-600 mt-1">💡 Use: {selectedBrc.note}</p>}
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
           <div><label className={lbl}>Side Lap (mm)</label><input type="number" className={inputCls} value={form.brc_side_lap_mm} onChange={e => set('brc_side_lap_mm', e.target.value)} /></div>
           <div><label className={lbl}>End Lap (mm)</label><input type="number" className={inputCls} value={form.brc_end_lap_mm} onChange={e => set('brc_end_lap_mm', e.target.value)} /></div>
           <div><label className={lbl}>Wastage (%)</label><input type="number" className={inputCls} value={form.wastage_percent} onChange={e => set('wastage_percent', e.target.value)} /></div>
@@ -145,7 +145,7 @@ export default function BrcDpmForm({ onCalculate, loading }) {
             <label htmlFor="dpc" className="text-sm font-medium text-gray-700">Damp Proof Course (DPC)</label>
           </div>
           {form.include_dpc && (
-            <div className="ml-5 grid grid-cols-2 gap-2">
+            <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className={lbl}>DPC Width (mm)</label><input type="number" className={inputCls} value={form.dpc_width_mm} onChange={e => set('dpc_width_mm', e.target.value)} /></div>
               <div><label className={lbl}>Known Perimeter (m) <span className="text-gray-400">(0 = auto)</span></label><input type="number" className={inputCls} value={form.dpc_perimeter_m} onChange={e => set('dpc_perimeter_m', e.target.value)} /></div>
             </div>
@@ -165,7 +165,7 @@ export default function BrcDpmForm({ onCalculate, loading }) {
             <label htmlFor="oversite" className="text-sm font-medium text-gray-700">Oversite Concrete Bed</label>
           </div>
           {form.include_oversite_concrete && (
-            <div className="ml-5 grid grid-cols-2 gap-2">
+            <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className={lbl}>Thickness (mm)</label><input type="number" className={inputCls} value={form.oversite_thickness_mm} onChange={e => set('oversite_thickness_mm', e.target.value)} /></div>
               <div>
                 <label className={lbl}>Mix Ratio</label>

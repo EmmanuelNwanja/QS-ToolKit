@@ -38,7 +38,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className={lbl}>Building Length (mm)</label>
           <input type="number" className={inputCls} value={form.building_length_mm} onChange={e => set('building_length_mm', e.target.value)} required />
@@ -63,7 +63,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
       {/* Ridge */}
       <div className="border-t pt-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ridge Capping</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <label className={lbl}>Ridge Type</label>
             <select className={inputCls} value={form.ridge_type} onChange={e => set('ridge_type', e.target.value)}>
@@ -81,7 +81,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
       {/* Valley gutters */}
       <div className="border-t pt-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Valley Gutters</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <label className={lbl}>Number of Valleys</label>
             <input type="number" className={inputCls} value={form.no_valleys} min={0} onChange={e => set('no_valleys', e.target.value)} />
@@ -96,7 +96,7 @@ export default function RoofAccessoriesForm({ onCalculate, loading }) {
       {/* Metal straps */}
       <div className="border-t pt-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Metal Fixing Straps</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <label className={lbl}>Strap Spacing (mm)</label>
             <select className={inputCls} value={form.metal_strap_spacing_mm} onChange={e => set('metal_strap_spacing_mm', e.target.value)}>

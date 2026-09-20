@@ -69,7 +69,7 @@ export default function FormworkForm({ onCalculate, loading }) {
                 <input className={`${inputCls} w-28`} value={s.name} onChange={e => updateItem(setSlabs, i, 'name', e.target.value)} placeholder="Slab name" />
                 {slabs.length > 1 && <button type="button" onClick={() => removeItem(setSlabs, i)} className="text-xs text-red-400">Remove</button>}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div><label className={lbl}>Length (mm)</label><input type="number" className={inputCls} value={s.length_mm} onChange={e => updateItem(setSlabs, i, 'length_mm', e.target.value)} placeholder="e.g. 10500" /></div>
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={s.width_mm} onChange={e => updateItem(setSlabs, i, 'width_mm', e.target.value)} placeholder="e.g. 3937" /></div>
                 <div><label className={lbl}>Beam Width (mm)</label><input type="number" className={inputCls} value={s.beam_width_mm} onChange={e => updateItem(setSlabs, i, 'beam_width_mm', e.target.value)} /></div>
@@ -95,7 +95,7 @@ export default function FormworkForm({ onCalculate, loading }) {
                 <input className={`${inputCls} w-24`} value={b.name} onChange={e => updateItem(setBeams, i, 'name', e.target.value)} />
                 {beams.length > 1 && <button type="button" onClick={() => removeItem(setBeams, i)} className="text-xs text-red-400">Remove</button>}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div><label className={lbl}>Length (mm)</label><input type="number" className={inputCls} value={b.length_mm} onChange={e => updateItem(setBeams, i, 'length_mm', e.target.value)} placeholder="e.g. 13350" /></div>
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={b.width_mm} onChange={e => updateItem(setBeams, i, 'width_mm', e.target.value)} />{fwSuggest.beams.filter(s => s.index === i).map((s, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {s.width}mm</span>)}</div>
                 <div><label className={lbl}>Depth (mm)</label><input type="number" className={inputCls} value={b.depth_mm} onChange={e => updateItem(setBeams, i, 'depth_mm', e.target.value)} />{fwSuggest.beams.filter(s => s.index === i).map((s, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {s.depth}mm</span>)}</div>
@@ -116,7 +116,7 @@ export default function FormworkForm({ onCalculate, loading }) {
           {columns.map((c, i) => (
             <div key={i} className="bg-gray-50 rounded-lg p-3 space-y-2">
               <input className={`${inputCls} w-28`} value={c.name} onChange={e => updateItem(setColumns, i, 'name', e.target.value)} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={c.width_mm} onChange={e => updateItem(setColumns, i, 'width_mm', e.target.value)} />{fwSuggest.columns.filter(sg => sg.index === i).map((sg, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {sg.width}mm</span>)}</div>
                 <div><label className={lbl}>Depth (mm)</label><input type="number" className={inputCls} value={c.depth_mm} onChange={e => updateItem(setColumns, i, 'depth_mm', e.target.value)} />{fwSuggest.columns.filter(sg => sg.index === i).map((sg, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {sg.depth}mm</span>)}</div>
                 <div><label className={lbl}>Height (mm)</label><input type="number" className={inputCls} value={c.height_mm} onChange={e => updateItem(setColumns, i, 'height_mm', e.target.value)} /></div>
@@ -137,7 +137,7 @@ export default function FormworkForm({ onCalculate, loading }) {
           {lintels.map((l, i) => (
             <div key={i} className="bg-gray-50 rounded-lg p-3 space-y-2">
               <input className={`${inputCls} w-28`} value={l.name} onChange={e => updateItem(setLintels, i, 'name', e.target.value)} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div><label className={lbl}>Length (mm)</label><input type="number" className={inputCls} value={l.length_mm} onChange={e => updateItem(setLintels, i, 'length_mm', e.target.value)} /></div>
                 <div><label className={lbl}>Width (mm)</label><input type="number" className={inputCls} value={l.width_mm} onChange={e => updateItem(setLintels, i, 'width_mm', e.target.value)} />{fwSuggest.lintels.filter(sg => sg.index === i).map((sg, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {sg.width}mm</span>)}</div>
                 <div><label className={lbl}>Depth (mm)</label><input type="number" className={inputCls} value={l.depth_mm} onChange={e => updateItem(setLintels, i, 'depth_mm', e.target.value)} />{fwSuggest.lintels.filter(sg => sg.index === i).map((sg, si) => <span key={si} className="text-gold-600 text-xs ml-1">Suggestion: {sg.depth}mm</span>)}</div>
@@ -156,7 +156,7 @@ export default function FormworkForm({ onCalculate, loading }) {
             <label htmlFor="stairEnabled" className="text-sm text-gray-700">Include staircase formwork</label>
           </div>
           {stairEnabled && (
-            <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-2 gap-2">
+            <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className={lbl}>Waist Length (m)</label><input type="number" step="0.01" className={inputCls} value={stair.waist_length_m} onChange={e => setStair(s => ({ ...s, waist_length_m: e.target.value }))} />{fwSuggest.staircase.map((sg, si) => <span key={si} className="text-gold-600 text-xs ml-1">Est.: {sg.waistLengthM}m</span>)}</div>
               <div><label className={lbl}>Stair Width (m)</label><input type="number" step="0.01" className={inputCls} value={stair.width_m} onChange={e => setStair(s => ({ ...s, width_m: e.target.value }))} /></div>
               <div><label className={lbl}>No. of Risers</label><input type="number" className={inputCls} value={stair.no_risers} onChange={e => setStair(s => ({ ...s, no_risers: e.target.value }))} /></div>

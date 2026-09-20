@@ -35,7 +35,7 @@ export default function PlasteringForm({ onCalculate, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
         <div><label className="label">Thickness (mm)</label><input type="number" className="input" value={thickness} onChange={e => setThickness(e.target.value)} /></div>
         <div><label className="label">Mix Ratio</label><select className="input" value={mortarRatio} onChange={e => setMortarRatio(e.target.value)}><option value="1:3">1:3</option><option value="1:4">1:4</option></select></div>
         <div><label className="label">Wastage (%)</label><input type="number" className="input" value={wastage} onChange={e => setWastage(e.target.value)} /></div>
@@ -48,7 +48,7 @@ export default function PlasteringForm({ onCalculate, loading }) {
         <div className="flex items-center justify-between mb-2"><label className="label mb-0">Surfaces</label><button type="button" onClick={addSurface} className="text-xs text-primary-600">+ Add surface</button></div>
         {surfaces.map((s, i) => (
           <div key={i} className="rounded-md border border-gray-100 p-2 mb-2">
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.length} onChange={e => update(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.height} onChange={e => update(i,'height',e.target.value)} required /></div>
             </div>
@@ -59,7 +59,7 @@ export default function PlasteringForm({ onCalculate, loading }) {
                 <button type="button" onClick={() => addOpening(i)} className="text-xs text-primary-600">+ Add Opening</button>
               </div>
               {(s.openings || []).map((opening, oi) => (
-                <div key={`${i}-opening-${oi}`} className="grid grid-cols-2 gap-2">
+                <div key={`${i}-opening-${oi}`} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="Width (m)" value={opening.width} onChange={e => updateOpening(i, oi, 'width', e.target.value)} /></div>
                   <div><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="Height (m)" value={opening.height} onChange={e => updateOpening(i, oi, 'height', e.target.value)} /></div>
                 </div>

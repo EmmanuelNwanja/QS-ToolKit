@@ -22,7 +22,7 @@ export default function MasonryForm({ onCalculate, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label">Block Size</label>
           <select className="input" value={blockSize} onChange={e => setBlockSize(e.target.value)}>
@@ -47,14 +47,14 @@ export default function MasonryForm({ onCalculate, loading }) {
         </div>
         {walls.map((wall, i) => (
           <div key={i} className="bg-gray-50 rounded-lg p-3 mb-2 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={wall.length} onChange={e => updateWall(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={wall.height} onChange={e => updateWall(i,'height',e.target.value)} required /></div>
             </div>
             {masonrySuggest[i]?.netArea ? <p className="text-gold-600 text-xs">Suggestion: {masonrySuggest[i].netArea}m² net → ~{masonrySuggest[i].estimatedBlocks} blocks, {masonrySuggest[i].mortarM3}m³ mortar</p> : null}
             <button type="button" onClick={() => addOpening(i)} className="text-xs text-gray-500 hover:text-primary-600">+ Deduct opening (door/window)</button>
             {wall.openings.map((o, j) => (
-              <div key={j} className="grid grid-cols-2 gap-2 ml-3">
+              <div key={j} className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-3">
                 <div><label className="label text-xs">Opening W (m)</label><input type="number" step="0.01" className="input py-1 text-xs" value={o.width} onChange={e => { const w=[...wall.openings]; w[j]={...o,width:e.target.value}; updateWall(i,'openings',w); }} /></div>
                 <div><label className="label text-xs">Opening H (m)</label><input type="number" step="0.01" className="input py-1 text-xs" value={o.height} onChange={e => { const w=[...wall.openings]; w[j]={...o,height:e.target.value}; updateWall(i,'openings',w); }} /></div>
               </div>

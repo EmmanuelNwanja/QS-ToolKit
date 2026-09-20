@@ -14,7 +14,7 @@ export default function TilingForm({ onCalculate, loading }) {
   };
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
         <div><label className="label">Tile L (m)</label><input type="number" step="0.05" className="input" value={tileL} onChange={e => setTileL(e.target.value)} /></div>
         <div><label className="label">Tile W (m)</label><input type="number" step="0.05" className="input" value={tileW} onChange={e => setTileW(e.target.value)} /></div>
         <div><label className="label">Wastage (%)</label><input type="number" className="input" value={wastage} onChange={e => setWastage(e.target.value)} /></div>
@@ -23,7 +23,7 @@ export default function TilingForm({ onCalculate, loading }) {
         <div className="flex items-center justify-between mb-2"><label className="label mb-0">Rooms / Areas</label><button type="button" onClick={add} className="text-xs text-primary-600">+ Add</button></div>
         {rooms.map((r, i) => (
           <div key={i}>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.length} onChange={e => update(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Width (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={r.width} onChange={e => update(i,'width',e.target.value)} required /></div>
             </div>

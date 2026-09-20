@@ -160,7 +160,7 @@ export default function ResearchDashboard() {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: 'Total Projects', value: projects.length, icon: '📁', color: 'text-indigo-700' },
               { label: 'In Progress', value: inProgress.length, icon: '🔄', color: 'text-amber-600' },

@@ -32,7 +32,7 @@ export default function PaintForm({ onCalculate, loading }) {
   };
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label className="label">No. of Coats</label><input type="number" className="input" value={coats} onChange={e => setCoats(e.target.value)} min={1} max={5} /></div>
         <div><label className="label">Coverage (m²/L)</label><input type="number" className="input" value={coverage} onChange={e => setCoverage(e.target.value)} /></div>
       </div>
@@ -48,7 +48,7 @@ export default function PaintForm({ onCalculate, loading }) {
         <div className="flex items-center justify-between mb-2"><label className="label mb-0">Surfaces</label><button type="button" onClick={add} className="text-xs text-primary-600">+ Add</button></div>
         {surfaces.map((s, i) => (
           <div key={i} className="rounded-md border border-gray-100 p-2 mb-2">
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
             <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.length} onChange={e => update(i,'length',e.target.value)} required /></div>
             <div><label className="label text-xs">Height (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" value={s.height} onChange={e => update(i,'height',e.target.value)} required /></div>
             </div>
@@ -59,7 +59,7 @@ export default function PaintForm({ onCalculate, loading }) {
                 <button type="button" onClick={() => addOpening(i)} className="text-xs text-primary-600">+ Add Opening</button>
               </div>
               {(s.openings || []).map((opening, oi) => (
-                <div key={`${i}-opening-${oi}`} className="grid grid-cols-2 gap-2">
+                <div key={`${i}-opening-${oi}`} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="Width (m)" value={opening.width} onChange={e => updateOpening(i, oi, 'width', e.target.value)} /></div>
                   <div><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="Height (m)" value={opening.height} onChange={e => updateOpening(i, oi, 'height', e.target.value)} /></div>
                 </div>

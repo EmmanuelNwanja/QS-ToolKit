@@ -52,7 +52,7 @@ export default function ConcreteForm({ onCalculate, loading }) {
                 <button type="button" onClick={() => removeElement(i)} className="text-red-400 text-xs hover:text-red-600">Remove</button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="label text-xs">Length (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="e.g. 10" value={el.length} onChange={e => updateElement(i,'length',e.target.value)} required /></div>
               <div><label className="label text-xs">Width (m)</label><input type="number" step="0.01" className="input py-1.5 text-xs" placeholder="e.g. 5" value={el.width} onChange={e => updateElement(i,'width',e.target.value)} required /></div>
               {el.type === 'slab' && <div className="col-span-2"><label className="label text-xs">Thickness (m)</label><input type="number" step="0.001" className="input py-1.5 text-xs" placeholder="e.g. 0.15" value={el.thickness} onChange={e => updateElement(i,'thickness',e.target.value)} required />{conSuggest[i]?.suggestedThickness ? <span className="text-gold-600 text-xs ml-1">Suggestion: {conSuggest[i].suggestedThickness}m</span> : null}</div>}
