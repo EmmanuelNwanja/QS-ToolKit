@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body, query, oneOf } = require('express-validator');
 const ctrl = require('../controllers/giftingController');
+const { protect } = require('../middlewares/authMiddleware');
 const { adminAuth, requirePermission } = require('../middlewares/adminMiddleware');
 const { paymentLimiter } = require('../middlewares/rateLimiter');
 const { validate } = require('../utils/validators');
@@ -46,6 +47,6 @@ router.get('/confirm', [
 ], ctrl.confirmGift);
 
 // ── Admin analytics ───────────────────────────────────────────
-router.get('/admin/analytics', adminAuth, requirePermission('view_analytics'), ctrl.adminGiftAnalytics);
+router.get('/admin/analytics', protect, adminAuth, requirePermission('view_analytics'), ctrl.adminGiftAnalytics);
 
 module.exports = router;
